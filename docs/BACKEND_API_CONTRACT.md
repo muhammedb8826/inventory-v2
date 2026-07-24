@@ -121,9 +121,9 @@ Change password. Requires the current password. All active refresh tokens are re
 | Role | Typical access |
 |------|----------------|
 | Admin | All permissions |
-| Sales Representative | Sales, customers, bank, credits, dashboard |
+| Sales Representative | Sales, customers, **inquiries**, bank, credits, dashboard |
 | Purchaser | Purchases, suppliers, credits |
-| Stock Keeper | Inventory, stock transfers |
+| Stock Keeper | Inventory, BOM, production, stock transfers |
 
 Permission `sales.negative_stock` is required to set `allowNegativeStock: true` on sales.
 
@@ -140,6 +140,9 @@ type BankAccountType = 'CASH' | 'BANK';
 type TransferStatus = 'PENDING' | 'COMPLETED' | 'CANCELLED';
 type CreditStatus = 'OPEN' | 'PARTIAL' | 'PAID';
 type DocumentStatus = 'POSTED' | 'VOIDED';
+type InquiryStatus = 'NEW' | 'IN_PROGRESS' | 'QUOTED' | 'CONVERTED' | 'CLOSED' | 'CANCELLED';
+type InquirySource = 'PUBLIC' | 'INTERNAL';
+type InquiryPriority = 'LOW' | 'NORMAL' | 'HIGH' | 'URGENT';
 ```
 
 ---
@@ -162,7 +165,9 @@ Many list endpoints return:
 | `from` / `to` | ISO date range on list `createdAt` (or `expenseDate` for expenses) |
 | `search` | Case-insensitive text search (fields vary per endpoint — see below) |
 
-**Paginated** `{ data, meta }`: `/purchases`, `/sales`, `/inventory`, `/inventory/low-stock`, `/inventory/adjustments`, `/boms`, `/production-orders`, `/stock-transfers`, `/credits/customers`, `/credits/suppliers`, `/expenses`, `/suppliers`, `/customers`, `/banks/transactions`, `/users`, `/roles`, `/locations`, `/notifications`.
+**Paginated** `{ data, meta }`: `/purchases`, `/sales`, `/inventory`, `/inventory/low-stock`, `/inventory/adjustments`, `/boms`, `/production-orders`, `/stock-transfers`, `/credits/customers`, `/credits/suppliers`, `/expenses`, `/suppliers`, `/customers`, `/inquiries`, `/banks/transactions`, `/users`, `/roles`, `/locations`, `/notifications`.
+
+**List `totals`** (summed over the filtered set, not just the page): `/inventory`, `/purchases`, `/sales`, `/expenses`, `/credits/*`.
 
 **Plain arrays** (no pagination): `/banks/accounts`, `/permissions`.
 
@@ -197,6 +202,7 @@ All report endpoints require `reports.read`. Optional query filters on date-base
 | `/boms` | `finishedItemId`, `isActive` (`true`\|`false`), `search` |
 | `/production-orders` | `locationId`, `finishedItemId`, `bomId`, `status`, `search`, `from`/`to` |
 | `/suppliers`, `/customers` | `search` (name, email, phone) |
+| `/inquiries` | `status`, `source` (`PUBLIC` \| `INTERNAL`), `priority`, `customerId`, `assignedToUserId`, `itemId`, `search` (name, email, phone, subject, message) |
 | `/purchases` | `includeVoided`, `supplierId`, `locationId`, `paymentMethod`, `search` (notes, supplier name) |
 | `/sales` | `includeVoided`, `soldByUserId`, `customerId`, `locationId`, `paymentMethod`, `search` (notes, customer name) |
 | `/expenses` | `categoryId`, `bankAccountId`, `search` (description, category name) |
@@ -504,6 +510,48 @@ Body fields: `name`, `phone`, `email`, `address`, `isActive` (PATCH).
 
 ---
 
+## Customer inquiries
+
+Track leads / product questions from the website (**public**) and from staff (**internal**).
+
+### Public (no auth)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/public/inquiries` | Submit from website / landing page (`/contact`) |
+
+**Body:** `contactName`, `subject`, `message` (required); at least one of `phone` / `email`; optional `itemId`.
+
+**Response** (`201`): `{ "id", "status": "NEW", "message": "Inquiry submitted successfully" }`.
+
+CORS must allow the marketing/site origin via `CORS_ORIGIN`.
+
+### Internal (JWT + permissions)
+
+| Method | Path | Permission |
+|--------|------|------------|
+| GET | `/inquiries` | `inquiries.read` |
+| GET | `/inquiries/:id` | `inquiries.read` |
+| POST | `/inquiries` | `inquiries.write` |
+| PATCH | `/inquiries/:id` | `inquiries.write` |
+| DELETE | `/inquiries/:id` | `inquiries.write` |
+
+**Statuses:** `NEW` → `IN_PROGRESS` → `QUOTED` → `CONVERTED` / `CLOSED` / `CANCELLED`.
+
+**Priorities:** `LOW` \| `NORMAL` \| `HIGH` \| `URGENT`.
+
+**Create body (internal):** same contact fields as public, plus optional `priority`, `customerId`, `assignedToUserId`, `internalNotes`, `followUpAt`. Source is always `INTERNAL`.
+
+**PATCH body:** any of `contactName`, `phone`, `email`, `subject`, `message`, `status`, `priority`, `customerId`, `itemId`, `assignedToUserId`, `internalNotes`, `followUpAt`, `convertedSaleId`. Setting `convertedSaleId` auto-sets `status` to `CONVERTED` if status is omitted.
+
+**DELETE** soft-cancels (`status = CANCELLED`). Converted inquiries cannot be deleted — set `CLOSED` instead.
+
+**Nested relations on list/detail:** `customer`, `item`, `assignedTo` (user), `createdBy` (user). The assign FK field is `assignedToUserId`.
+
+Inquiry events also create in-app notifications (`type: INQUIRY`) — see [Notifications](#notifications-in-app).
+
+---
+
 ## CRUD coverage by resource
 
 | Resource | List | Get | Create | Update | Delete / void |
@@ -514,6 +562,7 @@ Body fields: `name`, `phone`, `email`, `address`, `isActive` (PATCH).
 | Inventory | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Stock transfers | ✓ | ✓ | ✓ | — | ✓ (void, reverses stock) |
 | Suppliers / customers | ✓ | ✓ | ✓ | ✓ | ✓ (soft) |
+| Inquiries | ✓ | ✓ | ✓ | ✓ | ✓ (soft-cancel) |
 | **Purchases** | ✓ | ✓ | ✓ | ✓ (full document) | ✓ (void) |
 | **Sales** | ✓ | ✓ | ✓ | ✓ (full document) | ✓ (void) |
 | Expenses | ✓ | — | ✓ | ✓ (metadata) | ✓ (reverses bank) |
@@ -864,7 +913,7 @@ Optional query: `?from=2026-05-01&to=2026-05-31` filters the `profitAndLoss` blo
 
 User-scoped in-app notifications. Any authenticated user can manage **their own** notifications — no extra permission required. Poll `GET /notifications/unread-count` for badge counts (no WebSocket/SSE yet).
 
-Notifications are created automatically when you record a **sale**, **purchase**, or **stock transfer**. Low-stock / out-of-stock alerts go to users with `inventory.read`.
+Notifications are created automatically when you record a **sale**, **purchase**, or **stock transfer**. Low-stock / out-of-stock alerts go to users with `inventory.read`. **Customer inquiries** also create notifications (see below).
 
 | Method | Path | Auth |
 |--------|------|------|
@@ -875,7 +924,7 @@ Notifications are created automatically when you record a **sale**, **purchase**
 | PATCH | `/notifications/:id/read` | Bearer token |
 | DELETE | `/notifications/:id` | Bearer token |
 
-**List query params:** `page`, `limit`, `search`, `from`, `to`, `isRead` (`true`|`false`), `module` (e.g. `sales`, `inventory`).
+**List query params:** `page`, `limit`, `search`, `from`, `to`, `isRead` (`true`|`false`), `module` (e.g. `sales`, `inventory`, `inquiries`).
 
 **List response**
 
@@ -914,15 +963,26 @@ Notifications are created automatically when you record a **sale**, **purchase**
 
 | Value | Typical use |
 |-------|-------------|
-| `LOW_STOCK` | Inventory below threshold |
+| `LOW_STOCK` | Quantity at/below reorder point or out of stock |
 | `STOCK_TRANSFER` | Transfer completed / pending |
 | `SALE` | Sale events |
 | `PURCHASE` | Purchase events |
 | `CREDIT_DUE` | Credit payment reminders |
 | `EXPENSE` | Expense events |
 | `SYSTEM` | General system messages |
+| `INQUIRY` | Customer inquiry submitted / assignment changes |
 
-Use `entityType` + `entityId` to deep-link to the related record from the notification detail page (e.g. `/sales/:entityId`). The UI route for a notification is `/notifications/:id`.
+### Inquiry notifications
+
+| Event | Recipients | Title |
+|-------|------------|-------|
+| Public form submitted | Users with `inquiries.read` | New customer inquiry |
+| Assigned to a user | New assignee (skipped if they assigned themselves) | Inquiry assigned to you |
+| Reassigned / unassigned | Previous assignee (skipped if they are the actor) | Inquiry reassigned / Inquiry unassigned |
+
+Deep-link with `entityType: "inquiry"` + `entityId` → UI `/inquiries?id=:entityId`. Metadata includes `event` (`submitted` \| `assigned` \| `reassigned` \| `unassigned`), `subject`, `contactName`, `source`, `priority`.
+
+Use `entityType` + `entityId` to deep-link to the related record from the notification detail page (e.g. `/sales/:entityId`, `/inquiries?id=:entityId`). The UI route for a notification is `/notifications/:id`.
 
 The frontend polls unread count every 60s and maps entity types in `lib/notification-routes.ts`.
 
@@ -1068,5 +1128,6 @@ Open [http://localhost:3000](http://localhost:3000).
 | `/profit-loss` | `/profit-loss/*` |
 | `/reports` | `/reports/*` |
 | `/locations`, `/suppliers`, `/customers` | master data + PATCH |
+| `/inquiries` | `/inquiries` (staff CRM); public form at `/contact` → `POST /public/inquiries` |
 | `/users`, `/roles` | admin CRUD |
 | `/notifications`, `/notifications/[id]` | in-app notification bell, list, and detail |

@@ -237,8 +237,8 @@ export function NotificationBell() {
             </div>
           ) : items.length === 0 ? (
             <p className="py-10 text-center text-sm text-[var(--frappe-text-muted)]">
-              No notifications yet. Alerts appear when you record sales, purchases,
-              or transfers.
+              No notifications yet. Alerts appear for sales, purchases, transfers,
+              and inquiries.
             </p>
           ) : (
             <div className="space-y-1">

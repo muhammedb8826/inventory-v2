@@ -7,7 +7,8 @@ Next.js frontend for the multi-location stock and business management platform. 
 - JWT authentication with refresh tokens
 - Role-based navigation (permissions from `/auth/me`)
 - **Dashboard**, **Inventory** (CRUD, Excel import, reorder points, **audited stock adjustments**, **itemType**), **BOMs**, **Production orders**, **Stock Transfers**
-- **Notifications** — in-app bell + `/notifications` list (sales, purchases, transfers, low-stock for `inventory.read`)
+- **Inquiries** — public contact form (`/contact` → `POST /public/inquiries`) and staff CRM (`/inquiries`)
+- **Notifications** — in-app bell + `/notifications` list (sales, purchases, transfers, inquiries, low-stock for `inventory.read`)
 - **Purchases** and **Sales** — Frappe-style form pages (`/new`), detail (`/[id]`), edit (`/[id]/edit`), and void (DELETE)
 - **Credits**, **Expenses** (with delete), **Bank**, **Profit & Loss**
 - **Master data** — Locations, Suppliers, Customers with create and edit (PATCH)
@@ -43,10 +44,12 @@ Ensure backend `CORS_ORIGIN` includes `http://localhost:3000`.
 
 - `app/(app)/` — Authenticated routes with sidebar shell
 - `app/login/` — Sign-in page
+- `app/contact/` — Public inquiry form (no auth)
 - `docs/BACKEND_API_CONTRACT.md` — API contract for frontend/backend integration
 - `lib/api.ts` — API client with Bearer token and refresh
 - `lib/auth.tsx` — Auth context
 - `components/app-shell.tsx` — Sidebar layout wrapper
+- `components/inquiries/` — Staff inquiry CRM dialogs
 - `components/purchases/`, `components/sales/` — Transaction forms and detail views
 
 ## Scripts

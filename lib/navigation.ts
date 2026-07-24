@@ -17,6 +17,7 @@ import {
   BarChart3,
   ClipboardList,
   Factory,
+  MessageSquare,
 } from "lucide-react";
 
 export interface NavItem {
@@ -69,6 +70,12 @@ export const mainNav: NavItem[] = [
     href: "/sales",
     icon: Receipt,
     permission: "sales.read",
+  },
+  {
+    title: "Inquiries",
+    href: "/inquiries",
+    icon: MessageSquare,
+    permission: "inquiries.read",
   },
   {
     title: "Credits",

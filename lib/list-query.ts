@@ -3,6 +3,9 @@ import type {
   BankTransactionDirection,
   BankTransactionType,
   CreditStatus,
+  InquiryPriority,
+  InquirySource,
+  InquiryStatus,
   LocationType,
   PaymentMethod,
   ProductionOrderStatus,
@@ -118,6 +121,15 @@ export type PermissionsListQueryParams = GenericListQueryParams & {
 export type NotificationsListQueryParams = GenericListQueryParams & {
   isRead?: boolean;
   module?: string;
+};
+
+export type InquiriesListQueryParams = GenericListQueryParams & {
+  status?: InquiryStatus;
+  source?: InquirySource;
+  priority?: InquiryPriority;
+  customerId?: string;
+  assignedToUserId?: string;
+  itemId?: string;
 };
 
 export type ReportsDateQueryParams = {
@@ -361,6 +373,14 @@ export function buildNotificationsListPath(
   limit?: number
 ): string {
   return buildListPath("/notifications", { params, page, limit });
+}
+
+export function buildInquiriesListPath(
+  params?: InquiriesListQueryParams,
+  page?: number,
+  limit?: number
+): string {
+  return buildListPath("/inquiries", { params, page, limit });
 }
 
 export function buildReportsSummaryPath(params?: ReportsDateQueryParams): string {

@@ -708,7 +708,8 @@ export type NotificationType =
   | "PURCHASE"
   | "CREDIT_DUE"
   | "EXPENSE"
-  | "SYSTEM";
+  | "SYSTEM"
+  | "INQUIRY";
 
 export interface Notification {
   id: string;
@@ -728,4 +729,80 @@ export interface Notification {
 
 export interface NotificationUnreadCount {
   count: number;
+}
+
+export type InquiryStatus =
+  | "NEW"
+  | "IN_PROGRESS"
+  | "QUOTED"
+  | "CONVERTED"
+  | "CLOSED"
+  | "CANCELLED";
+
+export type InquirySource = "PUBLIC" | "INTERNAL";
+
+export type InquiryPriority = "LOW" | "NORMAL" | "HIGH" | "URGENT";
+
+export interface Inquiry {
+  id: string;
+  contactName: string;
+  phone?: string | null;
+  email?: string | null;
+  subject: string;
+  message: string;
+  status: InquiryStatus;
+  priority: InquiryPriority;
+  source: InquirySource;
+  customerId?: string | null;
+  itemId?: string | null;
+  assignedToUserId?: string | null;
+  createdById?: string | null;
+  internalNotes?: string | null;
+  followUpAt?: string | null;
+  convertedSaleId?: string | null;
+  customer?: Customer | null;
+  item?: Item | null;
+  assignedTo?: UserAdmin | null;
+  createdBy?: UserAdmin | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PublicInquiryResponse {
+  id: string;
+  status: InquiryStatus;
+  message: string;
+}
+
+export interface CreatePublicInquiryBody {
+  contactName: string;
+  subject: string;
+  message: string;
+  phone?: string;
+  email?: string;
+  itemId?: string;
+}
+
+export interface CreateInquiryBody extends CreatePublicInquiryBody {
+  priority?: InquiryPriority;
+  customerId?: string;
+  assignedToUserId?: string;
+  internalNotes?: string;
+  followUpAt?: string;
+}
+
+export interface UpdateInquiryBody {
+  contactName?: string;
+  phone?: string | null;
+  email?: string | null;
+  subject?: string;
+  message?: string;
+  status?: InquiryStatus;
+  priority?: InquiryPriority;
+  customerId?: string | null;
+  itemId?: string | null;
+  assignedToUserId?: string | null;
+  internalNotes?: string | null;
+  followUpAt?: string | null;
+  convertedSaleId?: string | null;
 }
