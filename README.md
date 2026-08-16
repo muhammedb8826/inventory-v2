@@ -7,7 +7,7 @@ Next.js frontend for the multi-location stock and business management platform. 
 - JWT authentication with refresh tokens
 - Role-based navigation (permissions from `/auth/me`)
 - **Dashboard**, **Inventory** (CRUD, Excel import, reorder points, **audited stock adjustments**, **itemType**), **BOMs**, **Production orders**, **Stock Transfers**
-- **Inquiries** — public contact form (`/contact` → `POST /public/inquiries`) and staff CRM (`/inquiries`)
+- **Inquiries** — public customer site (`/` + `/contact` → `POST /public/inquiries`) and staff CRM (`/inquiries`)
 - **Notifications** — in-app bell + `/notifications` list (sales, purchases, transfers, inquiries, low-stock for `inventory.read`)
 - **Purchases** and **Sales** — Frappe-style form pages (`/new`), detail (`/[id]`), edit (`/[id]/edit`), and void (DELETE)
 - **Credits**, **Expenses** (with delete), **Bank**, **Profit & Loss**
@@ -30,7 +30,7 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Sign in with seeded credentials (e.g. `admin@stock.local` / `Admin@123`).
+Open [http://localhost:3000](http://localhost:3000) for the **customer site** (quote / inquiry form). Staff sign in at [http://localhost:3000/login](http://localhost:3000/login) (seeded credentials e.g. `admin@stock.local` / `Admin@123`).
 
 Ensure backend `CORS_ORIGIN` includes `http://localhost:3000`.
 
@@ -42,13 +42,14 @@ Ensure backend `CORS_ORIGIN` includes `http://localhost:3000`.
 
 ## Project structure
 
+- `app/(site)/` — Public customer website (landing + contact / inquiry form)
 - `app/(app)/` — Authenticated routes with sidebar shell
-- `app/login/` — Sign-in page
-- `app/contact/` — Public inquiry form (no auth)
+- `app/login/` — Staff sign-in page
 - `docs/BACKEND_API_CONTRACT.md` — API contract for frontend/backend integration
 - `lib/api.ts` — API client with Bearer token and refresh
 - `lib/auth.tsx` — Auth context
 - `components/app-shell.tsx` — Sidebar layout wrapper
+- `components/site/` — Public site chrome and inquiry form
 - `components/inquiries/` — Staff inquiry CRM dialogs
 - `components/purchases/`, `components/sales/` — Transaction forms and detail views
 

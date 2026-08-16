@@ -518,7 +518,7 @@ Track leads / product questions from the website (**public**) and from staff (**
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/public/inquiries` | Submit from website / landing page (`/contact`) |
+| POST | `/public/inquiries` | Submit from website / landing page (`/` or `/contact`) |
 
 **Body:** `contactName`, `subject`, `message` (required); at least one of `phone` / `email`; optional `itemId`.
 
@@ -1114,6 +1114,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | UI route | Primary API |
 |----------|-------------|
 | `/login` | `POST /auth/login` |
+| `/`, `/contact` | Public customer site → `POST /public/inquiries` |
 | `/account` | `PATCH /auth/me`, `PATCH /auth/me/password` |
 | `/dashboard` | `GET /dashboard` |
 | `/inventory` | `/inventory`, `/inventory/low-stock`, `/inventory/adjustments`, import |
@@ -1128,6 +1129,6 @@ Open [http://localhost:3000](http://localhost:3000).
 | `/profit-loss` | `/profit-loss/*` |
 | `/reports` | `/reports/*` |
 | `/locations`, `/suppliers`, `/customers` | master data + PATCH |
-| `/inquiries` | `/inquiries` (staff CRM); public form at `/contact` → `POST /public/inquiries` |
+| `/inquiries` | `/inquiries` (staff CRM); public form at `/` and `/contact` → `POST /public/inquiries` |
 | `/users`, `/roles` | admin CRUD |
 | `/notifications`, `/notifications/[id]` | in-app notification bell, list, and detail |
