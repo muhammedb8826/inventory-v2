@@ -1,7 +1,7 @@
 import { SiteInquiryForm } from "@/components/site/site-inquiry-form";
 
-const HERO_IMAGE =
-  "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=2400&q=80";
+const HERO_IMAGE = "/background-image.webp";
+  // "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=2400&q=80";
 
 export default function HomePage() {
   return (
