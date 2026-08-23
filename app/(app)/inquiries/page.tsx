@@ -19,7 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { InquiryCreateDialog } from "@/components/inquiries/inquiry-create-dialog";
-import { InquiryDetailSheet } from "@/components/inquiries/inquiry-detail-sheet";
+import { InquiryDetailDialog } from "@/components/inquiries/inquiry-detail-dialog";
 import {
   InquiryPriorityBadge,
   InquirySourceBadge,
@@ -266,7 +266,7 @@ export default function InquiriesPage() {
           />
         )}
 
-        <InquiryDetailSheet
+        <InquiryDetailDialog
           inquiryId={selectedId}
           open={detailOpen}
           onOpenChange={handleDetailOpenChange}
