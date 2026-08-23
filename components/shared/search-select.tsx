@@ -70,13 +70,21 @@ export function SearchSelect({
     }
   }
 
+  function keepWheelInList(event: React.WheelEvent<HTMLDivElement>) {
+    event.stopPropagation();
+    const el = event.currentTarget;
+    if (el.scrollHeight <= el.clientHeight) return;
+    el.scrollTop += event.deltaY;
+    event.preventDefault();
+  }
+
   function handleQueryChange(nextQuery: string) {
     setQuery(nextQuery);
     onQueryChange?.(nextQuery);
   }
 
   return (
-    <Popover open={open} onOpenChange={handleOpenChange}>
+    <Popover modal={false} open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -95,7 +103,7 @@ export function SearchSelect({
         </Button>
       </PopoverTrigger>
       <PopoverContent
-        className="w-[min(100vw-2rem,320px)] overflow-hidden p-0"
+        className="z-[100] w-[min(100vw-2rem,320px)] overflow-hidden p-0"
         align="start"
         onOpenAutoFocus={(event) => {
           event.preventDefault();
@@ -111,7 +119,10 @@ export function SearchSelect({
             className="h-8 border-[var(--frappe-border)] bg-[var(--frappe-surface)]"
           />
         </div>
-        <div className="max-h-60 overflow-y-auto overscroll-contain">
+        <div
+          className="max-h-60 overflow-y-auto overscroll-contain"
+          onWheel={keepWheelInList}
+        >
           {loading && filtered.length === 0 ? (
             <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
               <Spinner className="size-4" />
