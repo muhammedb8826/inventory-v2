@@ -514,13 +514,15 @@ Body fields: `name`, `phone`, `email`, `address`, `isActive` (PATCH).
 
 Track leads / product questions from the website (**public**) and from staff (**internal**).
 
+Interested catalog products are stored as **`lines`** (zero or many). Legacy single `itemId` is still accepted on create/update and becomes one line.
+
 ### Public (no auth)
 
 | Method | Path | Description |
 |--------|------|-------------|
 | POST | `/public/inquiries` | Submit from website / landing page (`/` or `/contact`) |
 
-**Body:** `contactName`, `subject`, `message` (required); at least one of `phone` / `email`; optional `itemId`.
+**Body:** `contactName`, `subject`, `message` (required); at least one of `phone` / `email`; optional `lines` (`{ itemId, quantity?, notes? }[]`) or legacy `itemId`.
 
 **Response** (`201`): `{ "id", "status": "NEW", "message": "Inquiry submitted successfully" }`.
 
@@ -536,17 +538,19 @@ CORS must allow the marketing/site origin via `CORS_ORIGIN`.
 | PATCH | `/inquiries/:id` | `inquiries.write` |
 | DELETE | `/inquiries/:id` | `inquiries.write` |
 
+**List query:** `search`, `status`, `source`, `priority`, `customerId`, `assignedToUserId`, `itemId` (matches any line), `from`/`to`, `page`/`limit`.
+
 **Statuses:** `NEW` → `IN_PROGRESS` → `QUOTED` → `CONVERTED` / `CLOSED` / `CANCELLED`.
 
 **Priorities:** `LOW` \| `NORMAL` \| `HIGH` \| `URGENT`.
 
-**Create body (internal):** same contact fields as public, plus optional `priority`, `customerId`, `assignedToUserId`, `internalNotes`, `followUpAt`. Source is always `INTERNAL`.
+**Create body (internal):** same contact fields as public, plus optional `priority`, `customerId`, `assignedToUserId`, `internalNotes`, `followUpAt`, `lines` (or legacy `itemId`). Source is always `INTERNAL`.
 
-**PATCH body:** any of `contactName`, `phone`, `email`, `subject`, `message`, `status`, `priority`, `customerId`, `itemId`, `assignedToUserId`, `internalNotes`, `followUpAt`, `convertedSaleId`. Setting `convertedSaleId` auto-sets `status` to `CONVERTED` if status is omitted.
+**PATCH body:** any of `contactName`, `phone`, `email`, `subject`, `message`, `status`, `priority`, `customerId`, `lines`, `itemId` (legacy), `assignedToUserId`, `internalNotes`, `followUpAt`, `convertedSaleId`. Sending `lines` **replaces** all interest lines. Setting `convertedSaleId` auto-sets `status` to `CONVERTED` if status is omitted.
 
 **DELETE** soft-cancels (`status = CANCELLED`). Converted inquiries cannot be deleted — set `CLOSED` instead.
 
-**Nested relations on list/detail:** `customer`, `item`, `assignedTo` (user), `createdBy` (user). The assign FK field is `assignedToUserId`.
+**Nested relations on list/detail:** `customer`, `lines[].item`, `assignedTo` (user), `createdBy` (user).
 
 Inquiry events also create in-app notifications (`type: INQUIRY`) — see [Notifications](#notifications-in-app).
 

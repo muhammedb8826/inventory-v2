@@ -743,6 +743,20 @@ export type InquirySource = "PUBLIC" | "INTERNAL";
 
 export type InquiryPriority = "LOW" | "NORMAL" | "HIGH" | "URGENT";
 
+export interface InquiryLine {
+  id?: string;
+  itemId: string;
+  quantity?: string | null;
+  notes?: string | null;
+  item?: Item | null;
+}
+
+export interface InquiryLineInput {
+  itemId: string;
+  quantity?: number;
+  notes?: string;
+}
+
 export interface Inquiry {
   id: string;
   contactName: string;
@@ -754,6 +768,7 @@ export interface Inquiry {
   priority: InquiryPriority;
   source: InquirySource;
   customerId?: string | null;
+  /** @deprecated Prefer `lines`; may still appear on older payloads */
   itemId?: string | null;
   assignedToUserId?: string | null;
   createdById?: string | null;
@@ -761,7 +776,9 @@ export interface Inquiry {
   followUpAt?: string | null;
   convertedSaleId?: string | null;
   customer?: Customer | null;
+  /** @deprecated Prefer `lines` */
   item?: Item | null;
+  lines?: InquiryLine[];
   assignedTo?: UserAdmin | null;
   createdBy?: UserAdmin | null;
   createdAt: string;
@@ -780,6 +797,8 @@ export interface CreatePublicInquiryBody {
   message: string;
   phone?: string;
   email?: string;
+  lines?: InquiryLineInput[];
+  /** @deprecated Prefer `lines` */
   itemId?: string;
 }
 
@@ -800,6 +819,8 @@ export interface UpdateInquiryBody {
   status?: InquiryStatus;
   priority?: InquiryPriority;
   customerId?: string | null;
+  lines?: InquiryLineInput[];
+  /** @deprecated Prefer `lines` */
   itemId?: string | null;
   assignedToUserId?: string | null;
   internalNotes?: string | null;

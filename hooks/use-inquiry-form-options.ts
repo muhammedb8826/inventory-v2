@@ -5,6 +5,7 @@ import { apiList } from "@/lib/list-response";
 import { fetchAllInventory, uniqueItemsFromStock } from "@/lib/inventory-fetch";
 import type { Customer, UserAdmin } from "@/lib/types";
 import { useFetch } from "@/hooks/use-fetch";
+import type { ItemSearchOption } from "@/components/shared/item-search-select";
 
 export function useInquiryFormOptions() {
   const {
@@ -34,10 +35,10 @@ export function useInquiryFormOptions() {
     [users]
   );
 
-  const itemOptions = useMemo(
+  const itemOptions: ItemSearchOption[] = useMemo(
     () =>
       uniqueItemsFromStock(stock ?? []).map((item) => ({
-        id: item.id,
+        itemId: item.id,
         label: item.sku
           ? `${item.description} (${item.sku})`
           : item.description,

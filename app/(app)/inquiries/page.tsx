@@ -26,7 +26,7 @@ import {
   InquiryStatusBadge,
 } from "@/components/inquiries/inquiry-status-badge";
 import { buildInquiriesListPath } from "@/lib/list-query";
-import { INQUIRY_PRIORITIES, INQUIRY_STATUSES } from "@/lib/inquiries";
+import { INQUIRY_PRIORITIES, INQUIRY_STATUSES, inquiryItemsSummary } from "@/lib/inquiries";
 import { formatDate } from "@/lib/format";
 import type {
   Inquiry,
@@ -222,6 +222,18 @@ export default function InquiriesPage() {
                   >
                     {r.subject}
                   </button>
+                ),
+              },
+              {
+                key: "items",
+                header: "Items",
+                cell: (r) => (
+                  <span
+                    className="line-clamp-2 max-w-[220px] text-sm text-[var(--frappe-text-muted)]"
+                    title={inquiryItemsSummary(r)}
+                  >
+                    {inquiryItemsSummary(r)}
+                  </span>
                 ),
               },
               {

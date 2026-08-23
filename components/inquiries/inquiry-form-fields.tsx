@@ -5,9 +5,14 @@ import {
   FrappeDocument,
   FrappeField,
   FrappeFormGrid,
+  FrappeGridCell,
+  FrappeGridRow,
+  FrappeGridTable,
   FrappeSection,
 } from "@/components/frappe";
 import { EntitySelectField } from "@/components/shared/entity-select-field";
+import { ItemSearchSelect } from "@/components/shared/item-search-select";
+import type { ItemSearchOption } from "@/components/shared/item-search-select";
 import { QuickCustomerDialog } from "@/components/customers/quick-customer-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -19,9 +24,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  EMPTY_INQUIRY_LINE,
   INQUIRY_PRIORITIES,
   INQUIRY_STATUSES,
   inquiryStatusLabel,
+  type InquiryFormLine,
   type InquiryFormValues,
 } from "@/lib/inquiries";
 import type { Customer, InquiryPriority, InquiryStatus } from "@/lib/types";
@@ -43,7 +50,7 @@ export function InquiryFormFields({
   idPrefix?: string;
   customerOptions: EntityOption[];
   userOptions: EntityOption[];
-  itemOptions: EntityOption[];
+  itemOptions: ItemSearchOption[];
   onCustomerCreated: (customer: Customer) => void;
 }) {
   function set<K extends keyof InquiryFormValues>(
@@ -51,6 +58,15 @@ export function InquiryFormFields({
     value: InquiryFormValues[K]
   ) {
     onChange({ [key]: value });
+  }
+
+  function updateLine(index: number, patch: Partial<InquiryFormLine>) {
+    set(
+      "lines",
+      values.lines.map((line, i) =>
+        i === index ? { ...line, ...patch } : line
+      )
+    );
   }
 
   return (
@@ -110,6 +126,70 @@ export function InquiryFormFields({
         </FrappeFormGrid>
       </FrappeSection>
 
+      <FrappeSection
+        title="Interested items"
+        description="Zero or more catalog products. Leave blank if this is a general question."
+      >
+        <FrappeGridTable
+          columns={[
+            { key: "item", label: "Item" },
+            { key: "qty", label: "Qty", className: "w-24" },
+            { key: "notes", label: "Notes", className: "w-40" },
+          ]}
+          onAddRow={() =>
+            set("lines", [...values.lines, { ...EMPTY_INQUIRY_LINE }])
+          }
+          addLabel="Add item"
+        >
+          {values.lines.map((line, index) => (
+            <FrappeGridRow
+              key={index}
+              canRemove={values.lines.length > 1}
+              onRemove={() =>
+                set(
+                  "lines",
+                  values.lines.length <= 1
+                    ? values.lines
+                    : values.lines.filter((_, i) => i !== index)
+                )
+              }
+            >
+              <FrappeGridCell>
+                <ItemSearchSelect
+                  value={line.itemId}
+                  onValueChange={(itemId) => updateLine(index, { itemId })}
+                  options={itemOptions}
+                  placeholder="Select item…"
+                  searchPlaceholder="Search catalog…"
+                />
+              </FrappeGridCell>
+              <FrappeGridCell>
+                <Input
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={line.quantity}
+                  onChange={(e) =>
+                    updateLine(index, { quantity: e.target.value })
+                  }
+                  className="h-8"
+                />
+              </FrappeGridCell>
+              <FrappeGridCell>
+                <Input
+                  value={line.notes}
+                  onChange={(e) =>
+                    updateLine(index, { notes: e.target.value })
+                  }
+                  placeholder="Optional"
+                  className="h-8"
+                />
+              </FrappeGridCell>
+            </FrappeGridRow>
+          ))}
+        </FrappeGridTable>
+      </FrappeSection>
+
       <FrappeSection title="Assignment">
         <FrappeFormGrid columns={2} className="gap-5">
           <FrappeField label="Priority">
@@ -161,17 +241,6 @@ export function InquiryFormFields({
             listHref="/users"
             listLabel="Users"
             emptyMessage="No users"
-          />
-          <EntitySelectField
-            label="Catalog item"
-            fullWidth
-            stackedActions
-            value={values.itemId}
-            onValueChange={(id) => set("itemId", id)}
-            options={itemOptions}
-            listHref="/inventory"
-            listLabel="Inventory"
-            emptyMessage="No items"
           />
           <FrappeField label="Internal notes" fullWidth>
             <Textarea
