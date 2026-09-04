@@ -19,8 +19,8 @@ const outfit = Outfit({
 
 export const metadata: Metadata = {
   title: {
-    default: "Stock — Request a quote",
-    template: "%s · Stock",
+    default: "Request a quote",
+    template: "%s",
   },
   description:
     "Ask about products, availability, and custom quotes. Our team will follow up shortly.",

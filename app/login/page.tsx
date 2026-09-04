@@ -18,11 +18,13 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { useBranding } from "@/components/branding/branding-provider";
 import { Package2 } from "lucide-react";
 import { errorMessage } from "@/lib/format";
 
 export default function LoginPage() {
   const { login, user, loading: authLoading } = useAuth();
+  const { appName } = useBranding();
   const router = useRouter();
   const searchParams = useSearchParams();
   const isClient = useIsClient();
@@ -67,9 +69,7 @@ export default function LoginPage() {
       </div>
       <div className="mb-8 flex items-center gap-2">
         <Package2 className="size-8" />
-        <span className="font-heading text-xl font-semibold">
-          Stock Management System
-        </span>
+        <span className="font-heading text-xl font-semibold">{appName}</span>
       </div>
       <Card className="w-full max-w-md">
         <CardHeader>

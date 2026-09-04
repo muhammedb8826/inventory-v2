@@ -18,6 +18,7 @@ import {
 import { useAuth } from "@/lib/auth";
 import { hasAnyPermission, hasPermission } from "@/lib/permissions";
 import { adminNav, mainNav, masterNav, type NavItem } from "@/lib/navigation";
+import { useBranding } from "@/components/branding/branding-provider";
 import { CommandIcon } from "lucide-react";
 
 function filterNav(
@@ -68,6 +69,7 @@ export function AppSidebar({
   ...props
 }: React.ComponentProps<typeof Sidebar>) {
   const { user } = useAuth();
+  const { appName } = useBranding();
   const adminVisible = filterNav(adminNav, user);
 
   return (
@@ -81,7 +83,7 @@ export function AppSidebar({
             >
               <Link href="/dashboard">
                 <CommandIcon className="size-5!" />
-                <span className="text-base font-semibold">Stock Manager</span>
+                <span className="text-base font-semibold">{appName}</span>
               </Link>
             </SidebarMenuButton>
           </SidebarMenuItem>

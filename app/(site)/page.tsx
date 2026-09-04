@@ -1,17 +1,19 @@
-import { SiteInquiryForm } from "@/components/site/site-inquiry-form";
+"use client";
 
-const HERO_IMAGE = "/background-image.webp";
-  // "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?auto=format&fit=crop&w=2400&q=80";
+import { SiteInquiryForm } from "@/components/site/site-inquiry-form";
+import { useBranding } from "@/components/branding/branding-provider";
 
 export default function HomePage() {
+  const { appName, heroImageSrc, headline, supportingText } = useBranding();
+
   return (
     <>
       <section className="relative flex min-h-svh items-end overflow-hidden">
         <div className="absolute inset-0">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={HERO_IMAGE}
-            alt="Showroom seating and furnishings"
+            src={heroImageSrc}
+            alt={`${appName} showroom`}
             className="site-hero-media h-full w-full object-cover"
           />
           <div
@@ -25,15 +27,14 @@ export default function HomePage() {
 
         <div className="relative z-10 mx-auto w-full max-w-6xl px-5 pb-16 pt-32 sm:px-8 sm:pb-20">
           <p className="site-display site-animate-rise text-4xl font-semibold text-white sm:text-5xl md:text-6xl">
-            Stock
+            {appName}
           </p>
           <div className="site-rule mt-4 h-px w-24 bg-white/70" />
           <h1 className="site-display site-animate-rise site-animate-rise-delay-1 mt-6 max-w-2xl text-3xl font-medium leading-tight text-white sm:text-4xl md:text-[2.75rem]">
-            Tell us what you need. We will send a clear quote.
+            {headline}
           </h1>
           <p className="site-animate-rise site-animate-rise-delay-2 mt-4 max-w-lg text-base leading-relaxed text-white/85 sm:text-lg">
-            Share a product question or custom request — our team replies by
-            phone or email.
+            {supportingText}
           </p>
           <div className="site-animate-rise site-animate-rise-delay-3 mt-8">
             <a

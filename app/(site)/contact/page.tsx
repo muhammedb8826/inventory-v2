@@ -1,19 +1,18 @@
-import type { Metadata } from "next";
+"use client";
+
 import Link from "next/link";
 import { SiteInquiryForm } from "@/components/site/site-inquiry-form";
-
-export const metadata: Metadata = {
-  title: "Contact",
-  description: "Send a product question or quote request to the Stock team.",
-};
+import { useBranding } from "@/components/branding/branding-provider";
 
 export default function ContactPage() {
+  const { appName } = useBranding();
+
   return (
     <div className="mx-auto max-w-6xl px-5 pb-20 pt-10 sm:px-8 sm:pt-14">
       <div className="mb-10 max-w-xl">
         <p className="text-sm font-medium text-[var(--site-accent)]">
           <Link href="/" className="hover:underline">
-            ← Back to Stock
+            ← Back to {appName}
           </Link>
         </p>
         <h1

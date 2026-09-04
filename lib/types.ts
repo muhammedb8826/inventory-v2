@@ -827,3 +827,19 @@ export interface UpdateInquiryBody {
   followUpAt?: string | null;
   convertedSaleId?: string | null;
 }
+
+/** Public + admin branding / site appearance settings */
+export interface BrandingSettings {
+  appName: string;
+  /** Absolute URL or path to the hero image; null = use frontend default */
+  heroImageUrl?: string | null;
+  headline?: string | null;
+  supportingText?: string | null;
+  updatedAt?: string;
+}
+
+export interface UpdateBrandingBody {
+  appName?: string;
+  headline?: string | null;
+  supportingText?: string | null;
+}

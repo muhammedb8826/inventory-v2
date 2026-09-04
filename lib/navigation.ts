@@ -18,6 +18,7 @@ import {
   ClipboardList,
   Factory,
   MessageSquare,
+  Palette,
 } from "lucide-react";
 
 export interface NavItem {
@@ -131,6 +132,12 @@ export const masterNav: NavItem[] = [
 ];
 
 export const adminNav: NavItem[] = [
+  {
+    title: "Branding",
+    href: "/settings/branding",
+    icon: Palette,
+    permissions: ["settings.read", "settings.write"],
+  },
   {
     title: "Users",
     href: "/users",

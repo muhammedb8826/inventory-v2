@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useBranding } from "@/components/branding/branding-provider";
 import { cn } from "@/lib/utils";
 
 export function SiteHeader() {
   const pathname = usePathname();
+  const { appName } = useBranding();
   const onHero = pathname === "/";
 
   return (
@@ -25,7 +27,7 @@ export function SiteHeader() {
             onHero ? "text-white drop-shadow-sm" : "text-[var(--site-ink)]"
           )}
         >
-          Stock
+          {appName}
         </Link>
         <nav
           className={cn(
@@ -60,10 +62,12 @@ export function SiteHeader() {
 }
 
 export function SiteFooter() {
+  const { appName } = useBranding();
+
   return (
     <footer className="border-t border-[var(--site-line)] bg-[var(--site-surface)]">
       <div className="mx-auto flex max-w-6xl flex-col gap-3 px-5 py-8 text-sm text-[var(--site-ink-soft)] sm:flex-row sm:items-center sm:justify-between sm:px-8">
-        <p className="site-display text-lg text-[var(--site-ink)]">Stock</p>
+        <p className="site-display text-lg text-[var(--site-ink)]">{appName}</p>
         <p>Questions about products, availability, or custom quotes.</p>
         <Link
           href="/login"

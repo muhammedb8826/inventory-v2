@@ -12,7 +12,7 @@ Next.js frontend for the multi-location stock and business management platform. 
 - **Purchases** and **Sales** — Frappe-style form pages (`/new`), detail (`/[id]`), edit (`/[id]/edit`), and void (DELETE)
 - **Credits**, **Expenses** (with delete), **Bank**, **Profit & Loss**
 - **Master data** — Locations, Suppliers, Customers with create and edit (PATCH)
-- **Admin** — Users and Roles (create, edit, delete; permission picker for roles)
+- **Admin** — Branding (app name + hero image), Users and Roles (create, edit, delete; permission picker for roles)
 - Quick-create dialogs for related records on transaction forms
 
 ## Prerequisites
