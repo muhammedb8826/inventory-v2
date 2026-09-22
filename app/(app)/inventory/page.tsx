@@ -40,21 +40,16 @@ import {
 } from "@/components/ui/alert-dialog";
 import { api } from "@/lib/api";
 import { buildInventoryListPath, buildLowStockListPath } from "@/lib/list-query";
-import {
-  isLowStockRow,
-  optionalStringBodyValue,
-  reorderPointBodyValue,
-} from "@/lib/inventory-stock";
+import { isLowStockRow } from "@/lib/inventory-stock";
+import { resolveItemImageUrl } from "@/lib/inventory-media";
 import { formatMoney, formatQty, errorMessage } from "@/lib/format";
 import type {
   InventoryListTotals,
-  ItemType,
   LowStockRecord,
   StockRecord,
 } from "@/lib/types";
-import { ITEM_TYPE_OPTIONS, itemTypeLabel } from "@/lib/item-types";
+import { itemTypeLabel } from "@/lib/item-types";
 import { ListPageTotals } from "@/components/shared/list-page-totals";
-import { requestNotificationsRefresh } from "@/lib/notification-events";
 import { useLocations } from "@/hooks/use-locations";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
 import { Badge } from "@/components/ui/badge";
@@ -62,10 +57,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExportInventoryButton } from "@/components/inventory/export-inventory-button";
 import { InventoryAdjustmentsPanel } from "@/components/inventory/inventory-adjustments-panel";
 import { StockAdjustDialog } from "@/components/inventory/stock-adjust-dialog";
+import { StockFormDialog } from "@/components/inventory/stock-form-dialog";
 import { useAuth } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { toast } from "sonner";
-import { PlusIcon, UploadIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { ImageIcon, UploadIcon, PencilIcon, Trash2Icon } from "lucide-react";
 
 const ALL_LOCATIONS = "__all__";
 const VIEW_ALL = "all";
@@ -278,23 +274,39 @@ export default function InventoryPage() {
               {
                 key: "item",
                 header: "Item",
-                cell: (r) => (
-                  <div>
-                    <p className="font-medium">{r.item.description}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {[
-                        r.item.sku ? `SKU: ${r.item.sku}` : null,
-                        r.item.itemType
-                          ? itemTypeLabel(r.item.itemType)
-                          : null,
-                      ]
-                        .filter(Boolean)
-                        .join(" · ") || null}
-                    </p>
-                  </div>
-                ),
-              },
-              {
+                cell: (r) => {
+                  const imageSrc = resolveItemImageUrl(r.item.imageUrl);
+                  return (
+                    <div className="flex items-center gap-3">
+                      <div className="bg-muted flex size-10 shrink-0 items-center justify-center overflow-hidden rounded border">
+                        {imageSrc ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={imageSrc}
+                            alt=""
+                            className="size-full object-cover"
+                          />
+                        ) : (
+                          <ImageIcon className="text-muted-foreground size-4" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="font-medium">{r.item.description}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {[
+                            r.item.sku ? `SKU: ${r.item.sku}` : null,
+                            r.item.itemType
+                              ? itemTypeLabel(r.item.itemType)
+                              : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" · ") || null}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                },
+              },              {
                 key: "qty",
                 header: "Quantity",
                 className: "w-28 text-right tabular-nums",
@@ -403,232 +415,6 @@ export default function InventoryPage() {
         </Tabs>
       </PermissionGate>
     </AppShell>
-  );
-}
-
-function StockFormDialog({
-  locationId,
-  record,
-  onSuccess,
-  trigger,
-  disabled,
-}: {
-  locationId: string;
-  record?: StockRecord;
-  onSuccess: () => void;
-  trigger?: React.ReactNode;
-  disabled?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const [description, setDescription] = useState(record?.item.description ?? "");
-  const [sku, setSku] = useState(record?.item.sku ?? "");
-  const [unit, setUnit] = useState(record?.item.unit ?? "pcs");
-  const [itemType, setItemType] = useState<ItemType | "">(
-    record?.item.itemType ?? ""
-  );
-  const [quantity, setQuantity] = useState(record?.quantity ?? "");
-  const [purchasePrice, setPurchasePrice] = useState(
-    record?.purchasePrice ?? ""
-  );
-  const [reorderPoint, setReorderPoint] = useState(record?.reorderPoint ?? "");
-  const [saving, setSaving] = useState(false);
-
-  function handleOpenChange(nextOpen: boolean) {
-    setOpen(nextOpen);
-    if (nextOpen) {
-      setDescription(record?.item.description ?? "");
-      setSku(record?.item.sku ?? "");
-      setUnit(record?.item.unit ?? "pcs");
-      setItemType(record?.item.itemType ?? "");
-      setQuantity(record?.quantity ?? "");
-      setPurchasePrice(record?.purchasePrice ?? "");
-      setReorderPoint(record?.reorderPoint ?? "");
-    }
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    const targetLocationId = record?.locationId ?? locationId;
-    if (!record && !targetLocationId) {
-      toast.error("Select a location first");
-      return;
-    }
-    setSaving(true);
-    try {
-      const reorderValue = reorderPointBodyValue(reorderPoint);
-      if (reorderValue === undefined) {
-        toast.error("Enter a valid reorder point or leave blank");
-        setSaving(false);
-        return;
-      }
-      if (!description.trim()) {
-        toast.error("Description is required");
-        setSaving(false);
-        return;
-      }
-      if (record) {
-        await api(`/inventory/${record.id}`, {
-          method: "PATCH",
-          body: {
-            description: description.trim(),
-            sku: optionalStringBodyValue(sku),
-            unit: optionalStringBodyValue(unit),
-            itemType: itemType || null,
-            purchasePrice: parseFloat(purchasePrice),
-            reorderPoint: reorderValue,
-          },
-        });
-        toast.success("Stock updated");
-        requestNotificationsRefresh();
-      } else {
-        if (!quantity.trim() || Number.isNaN(parseFloat(quantity))) {
-          toast.error("Quantity is required");
-          setSaving(false);
-          return;
-        }
-        const body: Record<string, unknown> = {
-          description: description.trim(),
-          locationId: targetLocationId,
-          quantity: parseFloat(quantity),
-          purchasePrice: parseFloat(purchasePrice),
-          sku: optionalStringBodyValue(sku) ?? undefined,
-          unit: optionalStringBodyValue(unit) ?? undefined,
-        };
-        if (itemType) body.itemType = itemType;
-        if (reorderValue !== null) {
-          body.reorderPoint = reorderValue;
-        }
-        await api("/inventory", {
-          method: "POST",
-          body,
-        });
-        toast.success("Stock added");
-      }
-      setOpen(false);
-      onSuccess();
-    } catch (err) {
-      toast.error(errorMessage(err));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button size="sm" disabled={disabled}>
-            <PlusIcon />
-            Add item
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent>
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>{record ? "Edit stock" : "Add stock"}</DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label>Description</Label>
-              <Input
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                required
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label>SKU (optional)</Label>
-                <Input value={sku} onChange={(e) => setSku(e.target.value)} />
-              </div>
-              <div className="grid gap-2">
-                <Label>Unit</Label>
-                <Input value={unit} onChange={(e) => setUnit(e.target.value)} />
-              </div>
-            </div>
-            <div className="grid gap-2">
-              <Label>Item type (optional)</Label>
-              <Select
-                value={itemType || "__none__"}
-                onValueChange={(v) =>
-                  setItemType(v === "__none__" ? "" : (v as ItemType))
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Not set" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">Not set</SelectItem>
-                  {ITEM_TYPE_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            {record ? (
-              <p className="text-xs text-muted-foreground">
-                Description, SKU, unit, and item type update this item everywhere
-                it is stocked. Clear SKU or unit to remove them. Quantity cannot
-                be edited here — use Adjust on the stock row.
-              </p>
-            ) : null}
-            {!record ? (
-              <div className="grid gap-2">
-                <Label>Quantity</Label>
-                <Input
-                  type="number"
-                  step="any"
-                  min="0"
-                  value={quantity}
-                  onChange={(e) => setQuantity(e.target.value)}
-                  required
-                />
-              </div>
-            ) : (
-              <div className="rounded border border-dashed border-[var(--frappe-border)] px-3 py-2 text-sm text-[var(--frappe-text-muted)]">
-                On hand:{" "}
-                <span className="font-medium tabular-nums text-[var(--frappe-text)]">
-                  {formatQty(record.quantity)}
-                </span>
-              </div>
-            )}
-            <div className="grid gap-2">
-              <Label>Purchase price</Label>
-              <Input
-                type="number"
-                step="any"
-                min="0"
-                value={purchasePrice}
-                onChange={(e) => setPurchasePrice(e.target.value)}
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label>Reorder point (optional)</Label>
-              <Input
-                type="number"
-                step="any"
-                min="0"
-                placeholder="Alert when quantity at or below"
-                value={reorderPoint}
-                onChange={(e) => setReorderPoint(e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Leave blank to disable low-stock alerts for this item.
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button type="submit" disabled={saving}>
-              {record ? "Save" : "Create"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
   );
 }
 

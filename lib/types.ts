@@ -118,6 +118,10 @@ export interface Item {
   description: string;
   unit?: string | null;
   itemType?: ItemType | null;
+  /** Relative path from API, e.g. `/uploads/items/...` */
+  imagePath?: string | null;
+  /** Absolute or relative image URL for display */
+  imageUrl?: string | null;
 }
 
 export interface StockRecord {
