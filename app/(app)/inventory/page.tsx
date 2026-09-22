@@ -468,8 +468,10 @@ function ImportDialog({
           </DialogHeader>
           <p className="py-2 text-sm text-muted-foreground">
             Columns: description, quantity, purchasePrice (or price). Optional:
-            sku, reorderPoint (or reorder_point), optional itemType
-            (RAW, SEMI, FINISHED, OTHER).
+            sku, reorderPoint (or reorder_point), itemType (RAW, SEMI,
+            FINISHED, OTHER), imageUrl. For images, insert a picture on the
+            data row in the .xlsx file (preferred), or put a public http/https
+            link in imageUrl. JPEG/PNG/GIF up to 5 MB.
           </p>
           <Input
             type="file"
