@@ -57,6 +57,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExportInventoryButton } from "@/components/inventory/export-inventory-button";
 import { InventoryAdjustmentsPanel } from "@/components/inventory/inventory-adjustments-panel";
 import { StockAdjustDialog } from "@/components/inventory/stock-adjust-dialog";
+import { StockDetailDialog } from "@/components/inventory/stock-detail-dialog";
 import { StockFormDialog } from "@/components/inventory/stock-form-dialog";
 import { useAuth } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
@@ -275,35 +276,47 @@ export default function InventoryPage() {
                 key: "item",
                 header: "Item",
                 cell: (r) => {
-                  const imageSrc = resolveItemImageUrl(r.item.imageUrl);
+                  const imageSrc = resolveItemImageUrl(
+                    r.item.imageUrl ?? r.item.imagePath
+                  );
                   return (
-                    <div className="flex items-center gap-3">
-                      <div className="bg-muted flex size-10 shrink-0 items-center justify-center overflow-hidden rounded border">
-                        {imageSrc ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={imageSrc}
-                            alt=""
-                            className="size-full object-cover"
-                          />
-                        ) : (
-                          <ImageIcon className="text-muted-foreground size-4" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="font-medium">{r.item.description}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {[
-                            r.item.sku ? `SKU: ${r.item.sku}` : null,
-                            r.item.itemType
-                              ? itemTypeLabel(r.item.itemType)
-                              : null,
-                          ]
-                            .filter(Boolean)
-                            .join(" · ") || null}
-                        </p>
-                      </div>
-                    </div>
+                    <StockDetailDialog
+                      record={r}
+                      trigger={
+                        <button
+                          type="button"
+                          className="flex max-w-full items-center gap-3 text-left"
+                        >
+                          <div className="bg-muted flex size-10 shrink-0 items-center justify-center overflow-hidden rounded border">
+                            {imageSrc ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={imageSrc}
+                                alt=""
+                                className="size-full object-cover"
+                              />
+                            ) : (
+                              <ImageIcon className="text-muted-foreground size-4" />
+                            )}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="font-medium text-[var(--frappe-primary)] hover:underline">
+                              {r.item.description}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {[
+                                r.item.sku ? `SKU: ${r.item.sku}` : null,
+                                r.item.itemType
+                                  ? itemTypeLabel(r.item.itemType)
+                                  : null,
+                              ]
+                                .filter(Boolean)
+                                .join(" · ") || null}
+                            </p>
+                          </div>
+                        </button>
+                      }
+                    />
                   );
                 },
               },              {
@@ -375,12 +388,10 @@ export default function InventoryPage() {
               {
                 key: "actions",
                 header: "",
-                className: "w-32 text-right",
-                cell: (r) =>
-                  hasPermission(user, "inventory.write") ||
-                  hasPermission(user, "inventory.adjust") ||
-                  hasPermission(user, "inventory.delete") ? (
+                className: "w-40 text-right",
+                cell: (r) => (
                     <div className="flex justify-end gap-1">
+                      <StockDetailDialog record={r} />
                       {hasPermission(user, "inventory.adjust") ? (
                         <StockAdjustDialog
                           record={r}
@@ -403,7 +414,7 @@ export default function InventoryPage() {
                         <DeleteStockButton id={r.id} onSuccess={reload} />
                       ) : null}
                     </div>
-                  ) : null,
+                  ),
               },
             ]}
           />
