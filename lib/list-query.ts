@@ -2,6 +2,7 @@ import type {
   BankAccountType,
   BankTransactionDirection,
   BankTransactionType,
+  CreditSource,
   CreditStatus,
   InquiryPriority,
   InquirySource,
@@ -66,11 +67,13 @@ export type ExpensesListQueryParams = GenericListQueryParams & {
 export type CreditsCustomersListQueryParams = GenericListQueryParams & {
   status?: CreditStatus;
   customerId?: string;
+  source?: CreditSource;
 };
 
 export type CreditsSuppliersListQueryParams = GenericListQueryParams & {
   status?: CreditStatus;
   supplierId?: string;
+  source?: CreditSource;
 };
 
 export type StockTransfersListQueryParams = GenericListQueryParams & {

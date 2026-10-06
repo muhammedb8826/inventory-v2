@@ -66,9 +66,13 @@ interface TransferRow {
 export default function StockTransfersPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<TransferStatus | "">("");
+
+  const [fromLocationId, setFromLocationId] = useState("");
+  const [toLocationId, setToLocationId] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const debouncedSearch = useDebouncedValue(search);
+  const { data: locations } = useLocations();
 
   const { rows, meta, setPage, setLimit, loading, reload } =
     usePaginatedList<TransferRow>(
@@ -79,11 +83,13 @@ export default function StockTransfersPage() {
             to: to || undefined,
             search: debouncedSearch || undefined,
             status: status || undefined,
+            fromLocationId: fromLocationId || undefined,
+            toLocationId: toLocationId || undefined,
           },
           page,
           limit
         ),
-      [from, to, debouncedSearch, status]
+      [from, to, debouncedSearch, status, fromLocationId, toLocationId]
     );
 
   return (
@@ -122,6 +128,40 @@ export default function StockTransfersPage() {
               <SelectItem value="PENDING">Pending</SelectItem>
               <SelectItem value="COMPLETED">Completed</SelectItem>
               <SelectItem value="CANCELLED">Cancelled</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select
+            value={fromLocationId || "__all__"}
+            onValueChange={(v) =>
+              setFromLocationId(v === "__all__" ? "" : v)
+            }
+          >
+            <SelectTrigger className="w-[170px]">
+              <SelectValue placeholder="From location" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">From any location</SelectItem>
+              {(locations ?? []).map((l) => (
+                <SelectItem key={l.id} value={l.id}>
+                  {l.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={toLocationId || "__all__"}
+            onValueChange={(v) => setToLocationId(v === "__all__" ? "" : v)}
+          >
+            <SelectTrigger className="w-[170px]">
+              <SelectValue placeholder="To location" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">To any location</SelectItem>
+              {(locations ?? []).map((l) => (
+                <SelectItem key={l.id} value={l.id}>
+                  {l.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </FrappeFilterBar>

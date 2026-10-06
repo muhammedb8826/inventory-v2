@@ -1,14 +1,19 @@
 "use client";
 
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { PermissionGate } from "@/components/permission-gate";
 import {
   FrappeDocument,
   FrappeFormGrid,
   FrappeSection,
   FrappeButtonLink,
 } from "@/components/frappe";
-import { formatDate, formatQty } from "@/lib/format";
+import { formatDate, formatQty, errorMessage } from "@/lib/format";
+import { api } from "@/lib/api";
 import type { StockTransfer } from "@/lib/types";
+import { toast } from "sonner";
 
 function DetailField({
   label,
@@ -27,13 +32,54 @@ function DetailField({
   );
 }
 
-export function TransferDetail({ transfer }: { transfer: StockTransfer }) {
+export function TransferDetail({
+  transfer,
+  onChanged,
+}: {
+  transfer: StockTransfer;
+  onChanged?: (transfer: StockTransfer) => void;
+}) {
   const lines = transfer.lines ?? [];
+  const [voiding, setVoiding] = useState(false);
+
+  async function handleVoid() {
+    const ok = confirm(
+      "Void this completed transfer? Stock will move back to the source location."
+    );
+    if (!ok) return;
+    setVoiding(true);
+    try {
+      const updated = await api<StockTransfer>(
+        `/stock-transfers/${transfer.id}`,
+        { method: "DELETE" }
+      );
+      toast.success("Transfer voided");
+      onChanged?.(updated);
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setVoiding(false);
+    }
+  }
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <FrappeButtonLink href="/stock-transfers">← Back to list</FrappeButtonLink>
+        {transfer.status === "COMPLETED" ? (
+          <PermissionGate permission="stock_transfer.write">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="text-destructive"
+              disabled={voiding}
+              onClick={handleVoid}
+            >
+              {voiding ? "Voiding…" : "Void transfer"}
+            </Button>
+          </PermissionGate>
+        ) : null}
         <Badge variant="outline" className="ml-auto">
           {transfer.status}
         </Badge>

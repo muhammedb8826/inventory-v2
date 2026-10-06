@@ -26,6 +26,9 @@ import {
   InquiryStatusBadge,
 } from "@/components/inquiries/inquiry-status-badge";
 import { buildInquiriesListPath } from "@/lib/list-query";
+import { apiList } from "@/lib/list-response";
+import { fetchCustomers } from "@/lib/party-fetch";
+import { useFetch } from "@/hooks/use-fetch";
 import { INQUIRY_PRIORITIES, INQUIRY_STATUSES, inquiryItemsSummary } from "@/lib/inquiries";
 import { formatDate } from "@/lib/format";
 import type {
@@ -33,6 +36,7 @@ import type {
   InquiryPriority,
   InquirySource,
   InquiryStatus,
+  UserAdmin,
 } from "@/lib/types";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
 
@@ -43,13 +47,16 @@ export default function InquiriesPage() {
 
   const [search, setSearch] = useState("");
   const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");
-  const [status, setStatus] = useState<InquiryStatus | "">("");
+  const [to, setTo] = useState("");  const [status, setStatus] = useState<InquiryStatus | "">("");
   const [source, setSource] = useState<InquirySource | "">("");
   const [priority, setPriority] = useState<InquiryPriority | "">("");
+  const [customerId, setCustomerId] = useState("");
+  const [assignedToUserId, setAssignedToUserId] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const debouncedSearch = useDebouncedValue(search);
+  const { data: customers } = useFetch(() => fetchCustomers(), []);
+  const { data: users } = useFetch(() => apiList<UserAdmin>("/users"), []);
 
   useEffect(() => {
     if (!deepLinkId) return;
@@ -68,11 +75,22 @@ export default function InquiriesPage() {
             status: status || undefined,
             source: source || undefined,
             priority: priority || undefined,
+            customerId: customerId || undefined,
+            assignedToUserId: assignedToUserId || undefined,
           },
           page,
           limit
         ),
-      [from, to, debouncedSearch, status, source, priority]
+      [
+        from,
+        to,
+        debouncedSearch,
+        status,
+        source,
+        priority,
+        customerId,
+        assignedToUserId,
+      ]
     );
 
   function openInquiry(id: string) {
@@ -166,6 +184,40 @@ export default function InquiriesPage() {
               {INQUIRY_PRIORITIES.map((p) => (
                 <SelectItem key={p} value={p}>
                   {p}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={customerId || "__all__"}
+            onValueChange={(v) => setCustomerId(v === "__all__" ? "" : v)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All customers" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All customers</SelectItem>
+              {(customers ?? []).map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={assignedToUserId || "__all__"}
+            onValueChange={(v) =>
+              setAssignedToUserId(v === "__all__" ? "" : v)
+            }
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Anyone assigned" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Anyone assigned</SelectItem>
+              {(users ?? []).map((u) => (
+                <SelectItem key={u.id} value={u.id}>
+                  {u.fullName || u.email}
                 </SelectItem>
               ))}
             </SelectContent>

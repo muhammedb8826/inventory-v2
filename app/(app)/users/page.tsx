@@ -42,7 +42,10 @@ export default function UsersPage() {
   const [search, setSearch] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [roleId, setRoleId] = useState("");
+  const [activeFilter, setActiveFilter] = useState<"" | "true" | "false">("");
   const debouncedSearch = useDebouncedValue(search);
+  const { data: roles } = useFetch(() => apiList<Role>("/roles"), []);
   const { rows, meta, setPage, setLimit, loading, reload } = usePaginatedList<UserAdmin>(
     (page, limit) =>
       buildUsersListPath(
@@ -50,11 +53,13 @@ export default function UsersPage() {
           from: from || undefined,
           to: to || undefined,
           search: debouncedSearch || undefined,
+          roleId: roleId || undefined,
+          isActive: activeFilter ? activeFilter === "true" : undefined,
         },
         page,
         limit
       ),
-    [from, to, debouncedSearch]
+    [from, to, debouncedSearch, roleId, activeFilter]
   );
 
   return (
@@ -79,6 +84,37 @@ export default function UsersPage() {
             onFromChange={setFrom}
             onToChange={setTo}
           />
+          <Select
+            value={roleId || "__all__"}
+            onValueChange={(v) => setRoleId(v === "__all__" ? "" : v)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All roles" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All roles</SelectItem>
+              {(roles ?? []).map((r) => (
+                <SelectItem key={r.id} value={r.id}>
+                  {r.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={activeFilter || "__all__"}
+            onValueChange={(v) =>
+              setActiveFilter(v === "__all__" ? "" : (v as "true" | "false"))
+            }
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All users</SelectItem>
+              <SelectItem value="true">Active</SelectItem>
+              <SelectItem value="false">Inactive</SelectItem>
+            </SelectContent>
+          </Select>
         </FrappeFilterBar>
         {loading ? (
           <PageLoading />

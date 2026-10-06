@@ -29,7 +29,14 @@ import { documentTotal } from "@/lib/document-utils";
 import { formatCommissionRate, saleRepName } from "@/lib/sale-utils";
 import { buildSalesListPath } from "@/lib/list-query";
 import { apiList } from "@/lib/list-response";
-import type { Sale, SaleListTotals, UserAdmin } from "@/lib/types";
+import { fetchCustomers } from "@/lib/party-fetch";
+import { useLocations } from "@/hooks/use-locations";
+import type {
+  PaymentMethod,
+  Sale,
+  SaleListTotals,
+  UserAdmin,
+} from "@/lib/types";
 import { ListPageTotals } from "@/components/shared/list-page-totals";
 import { useFetch } from "@/hooks/use-fetch";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
@@ -67,6 +74,9 @@ export default function SalesPage() {
   const initialTo = searchParams.get("to") ?? "";
   const [includeVoided, setIncludeVoided] = useState(false);
   const [soldByUserId, setSoldByUserId] = useState(initialSoldBy);
+  const [customerId, setCustomerId] = useState("");
+  const [locationId, setLocationId] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
   const [from, setFrom] = useState(initialFrom);
   const [to, setTo] = useState(initialTo);
   const [search, setSearch] = useState("");
@@ -76,6 +86,8 @@ export default function SalesPage() {
     () => (canOnBehalf ? apiList<UserAdmin>("/users") : Promise.resolve([])),
     [canOnBehalf]
   );
+  const { data: customers } = useFetch(() => fetchCustomers(), []);
+  const { data: locations } = useLocations();
 
   const activeUsers = useMemo(
     () => (users ?? []).filter((u) => u.isActive !== false),
@@ -93,12 +105,24 @@ export default function SalesPage() {
           to: to || undefined,
           includeVoided,
           soldByUserId: soldByUserId || undefined,
+          customerId: customerId || undefined,
+          locationId: locationId || undefined,
+          paymentMethod: paymentMethod || undefined,
           search: debouncedSearch || undefined,
         },
         page,
         limit
       ),
-    [from, to, includeVoided, soldByUserId, debouncedSearch]
+    [
+      from,
+      to,
+      includeVoided,
+      soldByUserId,
+      customerId,
+      locationId,
+      paymentMethod,
+      debouncedSearch,
+    ]
   );
 
   return (
@@ -152,6 +176,54 @@ export default function SalesPage() {
               Include voided
             </Label>
           </div>
+          <Select
+            value={customerId || "__all__"}
+            onValueChange={(v) => setCustomerId(v === "__all__" ? "" : v)}
+          >
+            <SelectTrigger className="w-[190px]">
+              <SelectValue placeholder="All customers" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All customers</SelectItem>
+              {(customers ?? []).map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={locationId || "__all__"}
+            onValueChange={(v) => setLocationId(v === "__all__" ? "" : v)}
+          >
+            <SelectTrigger className="w-[170px]">
+              <SelectValue placeholder="All locations" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All locations</SelectItem>
+              {(locations ?? []).map((l) => (
+                <SelectItem key={l.id} value={l.id}>
+                  {l.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={paymentMethod || "__all__"}
+            onValueChange={(v) =>
+              setPaymentMethod(v === "__all__" ? "" : (v as PaymentMethod))
+            }
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Payment" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All payments</SelectItem>
+              <SelectItem value="CASH">Cash</SelectItem>
+              <SelectItem value="BANK">Bank</SelectItem>
+              <SelectItem value="CREDIT">Credit</SelectItem>
+            </SelectContent>
+          </Select>
           {canOnBehalf ? (
             <div className="flex items-center gap-2">
               <Label className="text-sm text-[var(--frappe-text-muted)]">

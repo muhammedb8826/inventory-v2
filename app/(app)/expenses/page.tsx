@@ -24,10 +24,21 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { api } from "@/lib/api";
 import { apiList } from "@/lib/list-response";
 import { buildExpensesListPath } from "@/lib/list-query";
-import { bankAccountSelectOptions } from "@/lib/bank-accounts";
+import {
+  bankAccountSelectOptions,
+  bankAccountsForSelect,
+  formatBankAccountLabel,
+} from "@/lib/bank-accounts";
 import { formatMoney, formatDate, errorMessage } from "@/lib/format";
 import type { BankAccount, Expense, ExpenseCategory, ExpenseListTotals } from "@/lib/types";
 import { ListPageTotals } from "@/components/shared/list-page-totals";
@@ -40,7 +51,17 @@ export default function ExpensesPage() {
   const [search, setSearch] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [categoryId, setCategoryId] = useState("");
+  const [bankAccountId, setBankAccountId] = useState("");
   const debouncedSearch = useDebouncedValue(search);
+  const { data: categories } = useFetch(
+    () => api<ExpenseCategory[]>("/expenses/categories"),
+    []
+  );
+  const { data: banks } = useFetch(
+    () => apiList<BankAccount>("/banks/accounts"),
+    []
+  );
   const { rows, meta, totals, setPage, setLimit, loading, reload } =
     usePaginatedList<Expense, ExpenseListTotals>(
       (page, limit) =>
@@ -49,11 +70,13 @@ export default function ExpensesPage() {
             from: from || undefined,
             to: to || undefined,
             search: debouncedSearch || undefined,
+            categoryId: categoryId || undefined,
+            bankAccountId: bankAccountId || undefined,
           },
           page,
           limit
         ),
-      [from, to, debouncedSearch]
+      [from, to, debouncedSearch, categoryId, bankAccountId]
     );
 
   return (
@@ -78,6 +101,38 @@ export default function ExpensesPage() {
             onFromChange={setFrom}
             onToChange={setTo}
           />
+          <Select
+            value={categoryId || "__all__"}
+            onValueChange={(v) => setCategoryId(v === "__all__" ? "" : v)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All categories" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All categories</SelectItem>
+              {(categories ?? []).map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={bankAccountId || "__all__"}
+            onValueChange={(v) => setBankAccountId(v === "__all__" ? "" : v)}
+          >
+            <SelectTrigger className="w-[190px]">
+              <SelectValue placeholder="All accounts" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All accounts</SelectItem>
+              {bankAccountsForSelect(banks ?? []).map((b) => (
+                <SelectItem key={b.id} value={b.id}>
+                  {formatBankAccountLabel(b)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </FrappeFilterBar>
         <FrappeListToolbar>
           <span className="text-[var(--frappe-text-muted)]">

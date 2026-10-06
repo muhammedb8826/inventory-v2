@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -38,7 +39,10 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
 import { apiList } from "@/lib/list-response";
-import { buildBanksTransactionsListPath } from "@/lib/list-query";
+import {
+  buildBanksAccountsListPath,
+  buildBanksTransactionsListPath,
+} from "@/lib/list-query";
 import {
   BANK_TRANSACTION_DIRECTION_OPTIONS,
   BANK_TRANSACTION_TYPE_OPTIONS,
@@ -55,6 +59,7 @@ import {
 import { formatMoney, formatDate, errorMessage } from "@/lib/format";
 import type {
   BankAccount,
+  BankAccountType,
   BankLiquidity,
   BankTransaction,
   BankTransactionDirection,
@@ -68,6 +73,12 @@ import { PencilIcon, PlusIcon } from "lucide-react";
 
 export default function BanksPage() {
   const [accountId, setAccountId] = useState<string>("");
+  const [accountTypeFilter, setAccountTypeFilter] = useState<
+    BankAccountType | ""
+  >("");
+  const [showInactive, setShowInactive] = useState(false);
+  const [accountSearch, setAccountSearch] = useState("");
+  const debouncedAccountSearch = useDebouncedValue(accountSearch);
   const [transactionType, setTransactionType] = useState<
     BankTransactionType | ""
   >("");
@@ -79,8 +90,15 @@ export default function BanksPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const { data: accounts, loading, reload } = useFetch(
-    () => apiList<BankAccount>("/banks/accounts"),
-    []
+    () =>
+      apiList<BankAccount>(
+        buildBanksAccountsListPath({
+          type: accountTypeFilter || undefined,
+          includeInactive: showInactive || undefined,
+          search: debouncedAccountSearch || undefined,
+        })
+      ),
+    [accountTypeFilter, showInactive, debouncedAccountSearch]
   );
   const { data: liquidity, reload: reloadLiquidity } = useFetch(
     () => api<BankLiquidity>("/banks/liquidity"),
@@ -144,6 +162,43 @@ export default function BanksPage() {
               <TabsTrigger value="transactions">Transactions</TabsTrigger>
             </TabsList>
             <TabsContent value="accounts" className="mt-4 space-y-4">
+              <FrappeFilterBar>
+                <ListSearchField
+                  value={accountSearch}
+                  onChange={setAccountSearch}
+                  placeholder="Search accounts…"
+                />
+                <Select
+                  value={accountTypeFilter || "__all__"}
+                  onValueChange={(v) =>
+                    setAccountTypeFilter(
+                      v === "__all__" ? "" : (v as BankAccountType)
+                    )
+                  }
+                >
+                  <SelectTrigger className="w-[170px]">
+                    <SelectValue placeholder="All types" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all__">All types</SelectItem>
+                    <SelectItem value="CASH">Cash</SelectItem>
+                    <SelectItem value="BANK">Bank</SelectItem>
+                  </SelectContent>
+                </Select>
+                <div className="flex items-center gap-2 self-end">
+                  <Switch
+                    id="banks-show-inactive"
+                    checked={showInactive}
+                    onCheckedChange={setShowInactive}
+                  />
+                  <Label
+                    htmlFor="banks-show-inactive"
+                    className="text-sm font-normal text-[var(--frappe-text)]"
+                  >
+                    Include inactive
+                  </Label>
+                </div>
+              </FrappeFilterBar>
               {liquidity?.totals ? (
                 <div className="grid gap-4 sm:grid-cols-3">
                   <Card>

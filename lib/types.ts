@@ -28,6 +28,8 @@ export type ProductionOrderStatus =
   | "CANCELLED";
 export type TransferStatus = "PENDING" | "COMPLETED" | "CANCELLED";
 export type CreditStatus = "OPEN" | "PARTIAL" | "PAID";
+/** How a credit balance was created. OPENING is cutover AR/AP with no sale/purchase. */
+export type CreditSource = "SALE" | "PURCHASE" | "OPENING";
 export type DocumentStatus = "POSTED" | "VOIDED";
 export type CommissionBasis = "PROFIT" | "SALES";
 
@@ -236,6 +238,10 @@ export interface CreditRecord {
   supplierId?: string;
   saleId?: string;
   purchaseId?: string;
+  source?: CreditSource;
+  /** Prior-system invoice / document number (opening credits). */
+  reference?: string | null;
+  notes?: string | null;
   amount: string;
   paidAmount: string;
   balance?: string;

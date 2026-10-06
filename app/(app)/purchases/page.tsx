@@ -17,13 +17,27 @@ import { formatMoney, formatDate } from "@/lib/format";
 import { documentTotal } from "@/lib/document-utils";
 import { buildPurchasesListPath } from "@/lib/list-query";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
+import { useLocations } from "@/hooks/use-locations";
+import { fetchSuppliers } from "@/lib/party-fetch";
+import { useFetch } from "@/hooks/use-fetch";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { PlusIcon } from "lucide-react";
 
-import type { Purchase, PurchaseListTotals } from "@/lib/types";
+import type {
+  PaymentMethod,
+  Purchase,
+  PurchaseListTotals,
+} from "@/lib/types";
 import { ListPageTotals } from "@/components/shared/list-page-totals";
 
 type PurchaseRow = Pick<
@@ -44,7 +58,12 @@ export default function PurchasesPage() {
   const [includeVoided, setIncludeVoided] = useState(false);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [supplierId, setSupplierId] = useState("");
+  const [locationId, setLocationId] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod | "">("");
   const debouncedSearch = useDebouncedValue(search);
+  const { data: suppliers } = useFetch(() => fetchSuppliers(), []);
+  const { data: locations } = useLocations();
   const { rows, meta, totals, setPage, setLimit, loading } = usePaginatedList<
     PurchaseRow,
     PurchaseListTotals
@@ -56,11 +75,22 @@ export default function PurchasesPage() {
           to: to || undefined,
           includeVoided,
           search: debouncedSearch || undefined,
+          supplierId: supplierId || undefined,
+          locationId: locationId || undefined,
+          paymentMethod: paymentMethod || undefined,
         },
         page,
         limit
       ),
-    [from, to, includeVoided, debouncedSearch]
+    [
+      from,
+      to,
+      includeVoided,
+      debouncedSearch,
+      supplierId,
+      locationId,
+      paymentMethod,
+    ]
   );
 
   return (
@@ -105,6 +135,54 @@ export default function PurchasesPage() {
               Include voided
             </Label>
           </div>
+          <Select
+            value={supplierId || "__all__"}
+            onValueChange={(v) => setSupplierId(v === "__all__" ? "" : v)}
+          >
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="All suppliers" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All suppliers</SelectItem>
+              {(suppliers ?? []).map((s) => (
+                <SelectItem key={s.id} value={s.id}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={locationId || "__all__"}
+            onValueChange={(v) => setLocationId(v === "__all__" ? "" : v)}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All locations" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All locations</SelectItem>
+              {(locations ?? []).map((l) => (
+                <SelectItem key={l.id} value={l.id}>
+                  {l.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={paymentMethod || "__all__"}
+            onValueChange={(v) =>
+              setPaymentMethod(v === "__all__" ? "" : (v as PaymentMethod))
+            }
+          >
+            <SelectTrigger className="w-[150px]">
+              <SelectValue placeholder="Payment" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All payments</SelectItem>
+              <SelectItem value="CASH">Cash</SelectItem>
+              <SelectItem value="BANK">Bank</SelectItem>
+              <SelectItem value="CREDIT">Credit</SelectItem>
+            </SelectContent>
+          </Select>
         </FrappeFilterBar>
         <FrappeListToolbar>
           <span className="text-[var(--frappe-text-muted)]">

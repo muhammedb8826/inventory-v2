@@ -14,7 +14,12 @@ export default function StockTransferDetailPage() {
   const params = useParams();
   const id = typeof params.id === "string" ? params.id : "";
 
-  const { data: transfer, loading, error } = useFetch(
+  const {
+    data: transfer,
+    loading,
+    error,
+    setData: setTransfer,
+  } = useFetch(
     () =>
       id
         ? api<StockTransfer>(`/stock-transfers/${id}`)
@@ -53,7 +58,7 @@ export default function StockTransferDetailPage() {
             </FrappeButtonLink>
           </div>
         ) : (
-          <TransferDetail transfer={transfer} />
+          <TransferDetail transfer={transfer} onChanged={setTransfer} />
         )}
       </PermissionGate>
     </AppShell>

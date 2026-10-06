@@ -17,9 +17,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { SearchSelect } from "@/components/shared/search-select";
 import {
   Select,
   SelectContent,
@@ -31,6 +34,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
 import { apiList } from "@/lib/list-response";
+import { fetchCustomers, fetchSuppliers } from "@/lib/party-fetch";
 import {
   bankAccountsForSelect,
   formatBankAccountLabel,
@@ -45,6 +49,7 @@ import type {
   BankAccount,
   CreditListTotals,
   CreditRecord,
+  CreditSource,
   CreditStatus,
 } from "@/lib/types";
 import { ListPageTotals } from "@/components/shared/list-page-totals";
@@ -52,6 +57,13 @@ import { useFetch } from "@/hooks/use-fetch";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { PlusIcon, Trash2Icon } from "lucide-react";
+
+function creditSourceLabel(r: CreditRecord, partyKey: "customer" | "supplier") {
+  if (r.source === "OPENING") return "Opening";
+  if (r.source === "PURCHASE" || partyKey === "supplier") return "Purchase";
+  return "Sale";
+}
 
 function creditStatusBadge(status: CreditStatus) {
   const variant =
@@ -132,6 +144,22 @@ function creditColumns(
       cell: (r: CreditRecord) => formatDate(r.createdAt),
     },
     {
+      key: "source",
+      header: "Source",
+      cell: (r: CreditRecord) => (
+        <div className="min-w-0">
+          <Badge variant={r.source === "OPENING" ? "secondary" : "outline"}>
+            {creditSourceLabel(r, partyKey)}
+          </Badge>
+          {r.reference ? (
+            <div className="mt-0.5 text-xs text-[var(--frappe-text-muted)]">
+              {r.reference}
+            </div>
+          ) : null}
+        </div>
+      ),
+    },
+    {
       key: "dueDate",
       header: "Due date",
       cell: (r: CreditRecord) => (
@@ -170,16 +198,28 @@ function creditColumns(
     {
       key: "pay",
       header: "",
-      cell: (r: CreditRecord) =>
-        r.status === "PAID" ? null : (
-          <PermissionGate permission="credit.write">
-            <PaymentButton
-              type={partyKey}
-              credit={r}
-              onSuccess={onSuccess}
-            />
-          </PermissionGate>
-        ),
+      cell: (r: CreditRecord) => (
+        <div className="flex items-center justify-end gap-1">
+          {r.status === "PAID" ? null : (
+            <PermissionGate permission="credit.write">
+              <PaymentButton
+                type={partyKey}
+                credit={r}
+                onSuccess={onSuccess}
+              />
+            </PermissionGate>
+          )}
+          {r.source === "OPENING" ? (
+            <PermissionGate permission="credit.write">
+              <DeleteOpeningCreditButton
+                type={partyKey}
+                credit={r}
+                onSuccess={onSuccess}
+              />
+            </PermissionGate>
+          ) : null}
+        </div>
+      ),
     },
   ];
 }
@@ -187,9 +227,23 @@ function creditColumns(
 export default function CreditsPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<CreditStatus | "">("");
+  const [source, setSource] = useState<CreditSource | "">("");
+  const [tab, setTab] = useState<"customers" | "suppliers">("customers");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const debouncedSearch = useDebouncedValue(search);
+
+  function handleTabChange(next: "customers" | "suppliers") {
+    setTab(next);
+    // SALE only applies to customers, PURCHASE only to suppliers.
+    if (
+      (next === "suppliers" && source === "SALE") ||
+      (next === "customers" && source === "PURCHASE")
+    ) {
+      setSource("");
+    }
+  }
+
 
   const customerList = usePaginatedList<CreditRecord, CreditListTotals>(
     (page, limit) =>
@@ -199,11 +253,12 @@ export default function CreditsPage() {
           to: to || undefined,
           search: debouncedSearch || undefined,
           status: status || undefined,
+          source: source || undefined,
         },
         page,
         limit
       ),
-    [from, to, debouncedSearch, status]
+    [from, to, debouncedSearch, status, source]
   );
   const supplierList = usePaginatedList<CreditRecord, CreditListTotals>(
     (page, limit) =>
@@ -213,11 +268,12 @@ export default function CreditsPage() {
           to: to || undefined,
           search: debouncedSearch || undefined,
           status: status || undefined,
+          source: source || undefined,
         },
         page,
         limit
       ),
-    [from, to, debouncedSearch, status]
+    [from, to, debouncedSearch, status, source]
   );
 
   const reloadAll = () => {
@@ -256,8 +312,28 @@ export default function CreditsPage() {
               <SelectItem value="PAID">Paid</SelectItem>
             </SelectContent>
           </Select>
+          <Select
+            value={source || "__all__"}
+            onValueChange={(v) =>
+              setSource(v === "__all__" ? "" : (v as CreditSource))
+            }
+          >
+            <SelectTrigger className="w-[170px]">
+              <SelectValue placeholder="Source" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All sources</SelectItem>
+              <SelectItem value={tab === "customers" ? "SALE" : "PURCHASE"}>
+                {tab === "customers" ? "From sale" : "From purchase"}
+              </SelectItem>
+              <SelectItem value="OPENING">Opening balance</SelectItem>
+            </SelectContent>
+          </Select>
         </FrappeFilterBar>
-        <Tabs defaultValue="customers">
+        <Tabs
+          value={tab}
+          onValueChange={(v) => handleTabChange(v as "customers" | "suppliers")}
+        >
           <TabsList>
             <TabsTrigger value="customers">Customer credit</TabsTrigger>
             <TabsTrigger value="suppliers">Supplier credit</TabsTrigger>
@@ -286,6 +362,9 @@ export default function CreditsPage() {
                   ]}
                 />
               ) : null}
+              <PermissionGate permission="credit.write">
+                <OpeningCreditDialog type="customer" onSuccess={reloadAll} />
+              </PermissionGate>
             </FrappeListToolbar>
             {customerList.loading ? (
               <PageLoading />
@@ -327,6 +406,9 @@ export default function CreditsPage() {
                   ]}
                 />
               ) : null}
+              <PermissionGate permission="credit.write">
+                <OpeningCreditDialog type="supplier" onSuccess={reloadAll} />
+              </PermissionGate>
             </FrappeListToolbar>
             {supplierList.loading ? (
               <PageLoading />
@@ -476,5 +558,224 @@ function PaymentButton({
         </DialogContent>
       </Dialog>
     </>
+  );
+}
+
+function OpeningCreditDialog({
+  type,
+  onSuccess,
+}: {
+  type: "customer" | "supplier";
+  onSuccess: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [partyId, setPartyId] = useState("");
+  const [amount, setAmount] = useState("");
+  const [dueDate, setDueDate] = useState("");
+  const [reference, setReference] = useState("");
+  const [notes, setNotes] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const { data: parties, loading: partiesLoading } = useFetch(
+    () => (type === "customer" ? fetchCustomers() : fetchSuppliers()),
+    [type]
+  );
+
+  const partyOptions = (parties ?? []).map((p) => ({
+    value: p.id,
+    label: p.phone ? `${p.name} · ${p.phone}` : p.name,
+  }));
+
+  function resetForm() {
+    setPartyId("");
+    setAmount("");
+    setDueDate("");
+    setReference("");
+    setNotes("");
+  }
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const parsedAmount = parseFloat(amount);
+    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+      toast.error("Amount must be greater than zero");
+      return;
+    }
+    setSaving(true);
+    try {
+      const path =
+        type === "customer" ? "/credits/customers" : "/credits/suppliers";
+      await api(path, {
+        method: "POST",
+        body: {
+          [type === "customer" ? "customerId" : "supplierId"]: partyId,
+          amount: parsedAmount,
+          dueDate: dueDate || undefined,
+          reference: reference.trim() || undefined,
+          notes: notes.trim() || undefined,
+        },
+      });
+      toast.success(
+        type === "customer"
+          ? "Opening receivable added"
+          : "Opening payable added"
+      );
+      setOpen(false);
+      resetForm();
+      onSuccess();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const label = type === "customer" ? "customer" : "supplier";
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        setOpen(next);
+        if (!next) resetForm();
+      }}
+    >
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline">
+          <PlusIcon />
+          Opening {type === "customer" ? "receivable" : "payable"}
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>
+              New opening {type === "customer" ? "receivable" : "payable"}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <p className="text-sm text-[var(--frappe-text-muted)]">
+              Carry over an unpaid invoice from a previous system. No stock or
+              cash movement until you record a payment.
+            </p>
+            <div className="grid gap-2">
+              <Label>
+                {type === "customer" ? "Customer" : "Supplier"}{" "}
+                <span className="text-[var(--frappe-red)]">*</span>
+              </Label>
+              <SearchSelect
+                value={partyId}
+                onValueChange={setPartyId}
+                options={partyOptions}
+                placeholder={`Select ${label}…`}
+                searchPlaceholder={`Search ${label}…`}
+                emptyMessage={`No ${label}s found.`}
+                loading={partiesLoading}
+                disabled={partiesLoading}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>
+                Amount <span className="text-[var(--frappe-red)]">*</span>
+              </Label>
+              <Input
+                type="number"
+                step="any"
+                min="0.01"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                placeholder="12500"
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Due date</Label>
+              <Input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Reference</Label>
+              <Input
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                placeholder="Prior-system invoice number"
+                maxLength={100}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label>Notes</Label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Optional context for this balance"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={saving || !partyId}>
+              {saving ? "Saving…" : "Create"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function DeleteOpeningCreditButton({
+  type,
+  credit,
+  onSuccess,
+}: {
+  type: "customer" | "supplier";
+  credit: CreditRecord;
+  onSuccess: () => void;
+}) {
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    const ok = confirm(
+      "Delete this opening credit? Only unpaid opening balances can be removed."
+    );
+    if (!ok) return;
+    setDeleting(true);
+    try {
+      const path =
+        type === "customer"
+          ? `/credits/customers/${credit.id}`
+          : `/credits/suppliers/${credit.id}`;
+      await api(path, { method: "DELETE" });
+      toast.success("Opening credit deleted");
+      onSuccess();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <Button
+      type="button"
+      size="icon"
+      variant="ghost"
+      className="size-8 text-destructive"
+      disabled={deleting}
+      onClick={handleDelete}
+      aria-label="Delete opening credit"
+    >
+      <Trash2Icon className="size-4" />
+    </Button>
   );
 }
