@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { api } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
@@ -18,11 +18,29 @@ type SelectedLine = {
   quantity: string;
 };
 
-export function SiteInquiryForm({
-  headingId = "inquire-heading",
-}: {
+type SiteInquiryFormProps = {
   headingId?: string;
-}) {
+};
+
+/** Next.js requires a Suspense boundary around `useSearchParams` for static prerender. */
+export function SiteInquiryForm(props: SiteInquiryFormProps) {
+  return (
+    <Suspense
+      fallback={
+        <div
+          className="h-64 animate-pulse rounded-md bg-[var(--site-line)]/40"
+          aria-hidden
+        />
+      }
+    >
+      <SiteInquiryFormInner {...props} />
+    </Suspense>
+  );
+}
+
+function SiteInquiryFormInner({
+  headingId = "inquire-heading",
+}: SiteInquiryFormProps) {
   const searchParams = useSearchParams();
   const [contactName, setContactName] = useState("");
   const [phone, setPhone] = useState("");
