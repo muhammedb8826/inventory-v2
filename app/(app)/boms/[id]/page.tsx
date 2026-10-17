@@ -32,7 +32,7 @@ export default function BomDetailPage() {
         { label: id ? id.slice(0, 8) : "…" },
       ]}
     >
-      <PermissionGate permission="bom.read">
+      <PermissionGate permission="bom.read" showDenied>
         {loading ? (
           <PageLoading />
         ) : error || !bom ? (

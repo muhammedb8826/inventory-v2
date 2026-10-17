@@ -4,7 +4,6 @@ import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { DataCardTable } from "@/components/shared/data-card-table";
 import { PageLoading } from "@/components/shared/page-loading";
-import { PermissionGate } from "@/components/permission-gate";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,129 +28,158 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { apiList } from "@/lib/list-response";
 import { errorMessage } from "@/lib/format";
 import { buildUsersListPath } from "@/lib/list-query";
+import { hasPermission } from "@/lib/permissions";
 import type { Role, UserAdmin } from "@/lib/types";
 import { useFetch } from "@/hooks/use-fetch";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
 import { toast } from "sonner";
 import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { AccessDenied } from "@/components/shared/access-denied";
 
 export default function UsersPage() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <AppShell title="Users">
+        <PageLoading />
+      </AppShell>
+    );
+  }
+
+  if (!hasPermission(user, "users.read")) {
+    return (
+      <AppShell title="Users">
+        <AccessDenied />
+      </AppShell>
+    );
+  }
+
+  return <UsersPageContent />;
+}
+
+function UsersPageContent() {
+  const { user } = useAuth();
+  const canWrite = hasPermission(user, "users.write");
+  const canLoadRoles =
+    canWrite || hasPermission(user, "roles.read");
   const [search, setSearch] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [roleId, setRoleId] = useState("");
   const [activeFilter, setActiveFilter] = useState<"" | "true" | "false">("");
   const debouncedSearch = useDebouncedValue(search);
-  const { data: roles } = useFetch(() => apiList<Role>("/roles"), []);
-  const { rows, meta, setPage, setLimit, loading, reload } = usePaginatedList<UserAdmin>(
-    (page, limit) =>
-      buildUsersListPath(
-        {
-          from: from || undefined,
-          to: to || undefined,
-          search: debouncedSearch || undefined,
-          roleId: roleId || undefined,
-          isActive: activeFilter ? activeFilter === "true" : undefined,
-        },
-        page,
-        limit
-      ),
-    [from, to, debouncedSearch, roleId, activeFilter]
+  const { data: roles } = useFetch(
+    () => apiList<Role>("/roles"),
+    [],
+    { enabled: canLoadRoles }
   );
+  const { rows, meta, setPage, setLimit, loading, reload } =
+    usePaginatedList<UserAdmin>(
+      (page, limit) =>
+        buildUsersListPath(
+          {
+            from: from || undefined,
+            to: to || undefined,
+            search: debouncedSearch || undefined,
+            roleId: roleId || undefined,
+            isActive: activeFilter ? activeFilter === "true" : undefined,
+          },
+          page,
+          limit
+        ),
+      [from, to, debouncedSearch, roleId, activeFilter]
+    );
 
   return (
     <AppShell
       title="Users"
       actions={
-        <PermissionGate permission="users.write">
-          <UserDialog mode="create" onSuccess={reload} />
-        </PermissionGate>
+        canWrite ? <UserDialog mode="create" onSuccess={reload} /> : null
       }
     >
-      <PermissionGate permission="users.read">
-        <FrappeFilterBar>
-          <ListSearchField
-            value={search}
-            onChange={setSearch}
-            placeholder="Search users..."
-          />
-          <DateRangeFilter
-            from={from}
-            to={to}
-            onFromChange={setFrom}
-            onToChange={setTo}
-          />
-          <Select
-            value={roleId || "__all__"}
-            onValueChange={(v) => setRoleId(v === "__all__" ? "" : v)}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All roles" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All roles</SelectItem>
-              {(roles ?? []).map((r) => (
-                <SelectItem key={r.id} value={r.id}>
-                  {r.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={activeFilter || "__all__"}
-            onValueChange={(v) =>
-              setActiveFilter(v === "__all__" ? "" : (v as "true" | "false"))
-            }
-          >
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All users</SelectItem>
-              <SelectItem value="true">Active</SelectItem>
-              <SelectItem value="false">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        </FrappeFilterBar>
-        {loading ? (
-          <PageLoading />
-        ) : (
-          <DataCardTable
-            rows={rows}
-            emptyTitle="No users"
-            pagination={{
-              meta,
-              onPageChange: setPage,
-              onLimitChange: setLimit,
-            }}
-            columns={[
-              { key: "name", header: "Name", cell: (r) => r.fullName },
-              { key: "email", header: "Email", cell: (r) => r.email },
-              {
-                key: "role",
-                header: "Role",
-                cell: (r) => r.role?.name ?? "—",
-              },
-              {
-                key: "actions",
-                header: "",
-                className: "w-24 text-right",
-                cell: (r) => (
-                  <PermissionGate permission="users.write">
-                    <div className="flex justify-end gap-1">
-                      <UserDialog mode="edit" user={r} onSuccess={reload} />
-                      <DeleteUserButton user={r} onSuccess={reload} />
-                    </div>
-                  </PermissionGate>
-                ),
-              },
-            ]}
-          />
-        )}
-      </PermissionGate>
+      <FrappeFilterBar>
+        <ListSearchField
+          value={search}
+          onChange={setSearch}
+          placeholder="Search users..."
+        />
+        <DateRangeFilter
+          from={from}
+          to={to}
+          onFromChange={setFrom}
+          onToChange={setTo}
+        />
+        <Select
+          value={roleId || "__all__"}
+          onValueChange={(v) => setRoleId(v === "__all__" ? "" : v)}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="All roles" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All roles</SelectItem>
+            {(roles ?? []).map((r) => (
+              <SelectItem key={r.id} value={r.id}>
+                {r.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={activeFilter || "__all__"}
+          onValueChange={(v) =>
+            setActiveFilter(v === "__all__" ? "" : (v as "true" | "false"))
+          }
+        >
+          <SelectTrigger className="w-[150px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__all__">All users</SelectItem>
+            <SelectItem value="true">Active</SelectItem>
+            <SelectItem value="false">Inactive</SelectItem>
+          </SelectContent>
+        </Select>
+      </FrappeFilterBar>
+      {loading ? (
+        <PageLoading />
+      ) : (
+        <DataCardTable
+          rows={rows}
+          emptyTitle="No users"
+          pagination={{
+            meta,
+            onPageChange: setPage,
+            onLimitChange: setLimit,
+          }}
+          columns={[
+            { key: "name", header: "Name", cell: (r) => r.fullName },
+            { key: "email", header: "Email", cell: (r) => r.email },
+            {
+              key: "role",
+              header: "Role",
+              cell: (r) => r.role?.name ?? "—",
+            },
+            {
+              key: "actions",
+              header: "",
+              className: "w-24 text-right",
+              cell: (r) =>
+                canWrite ? (
+                  <div className="flex justify-end gap-1">
+                    <UserDialog mode="edit" user={r} onSuccess={reload} />
+                    <DeleteUserButton user={r} onSuccess={reload} />
+                  </div>
+                ) : null,
+            },
+          ]}
+        />
+      )}
     </AppShell>
   );
 }
@@ -165,23 +193,34 @@ function UserDialog({
   user?: UserAdmin;
   onSuccess: () => void;
 }) {
+  const { user: me, refreshUser } = useAuth();
+  const canLoadRoles =
+    hasPermission(me, "users.write") || hasPermission(me, "roles.read");
   const [open, setOpen] = useState(false);
   const [email, setEmail] = useState(user?.email ?? "");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState(user?.fullName ?? "");
-  const [roleId, setRoleId] = useState(user?.role?.id ?? "");
+  const [roleId, setRoleId] = useState(user?.roleId ?? user?.role?.id ?? "");
   const [saving, setSaving] = useState(false);
-  const { data: roles } = useFetch(() => apiList<Role>("/roles"), []);
+  const { data: roles } = useFetch(
+    () => apiList<Role>("/roles"),
+    [],
+    { enabled: open && canLoadRoles }
+  );
 
   function resetForm() {
     setEmail(user?.email ?? "");
     setPassword("");
     setFullName(user?.fullName ?? "");
-    setRoleId(user?.role?.id ?? "");
+    setRoleId(user?.roleId ?? user?.role?.id ?? "");
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!roleId) {
+      toast.error("Select a role");
+      return;
+    }
     setSaving(true);
     try {
       if (mode === "create") {
@@ -191,10 +230,19 @@ function UserDialog({
         });
         toast.success("User created");
       } else if (user) {
-        const body: Record<string, string> = { fullName, roleId };
+        const previousRoleId = user.roleId ?? user.role?.id ?? "";
+        const body: {
+          fullName: string;
+          roleId: string;
+          password?: string;
+        } = { fullName, roleId };
         if (password) body.password = password;
         await api(`/users/${user.id}`, { method: "PATCH", body });
         toast.success("User updated");
+        if (me?.id === user.id && roleId !== previousRoleId) {
+          await refreshUser();
+          toast.message("Your permissions were refreshed for the new role.");
+        }
       }
       setOpen(false);
       onSuccess();
@@ -276,7 +324,7 @@ function UserDialog({
             </div>
             <div className="grid gap-2">
               <Label>Role</Label>
-              <Select value={roleId} onValueChange={setRoleId} required>
+              <Select value={roleId || undefined} onValueChange={setRoleId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select role" />
                 </SelectTrigger>
@@ -291,7 +339,7 @@ function UserDialog({
             </div>
           </div>
           <DialogFooter>
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" disabled={saving || !roleId}>
               {mode === "create" ? "Create" : "Save"}
             </Button>
           </DialogFooter>

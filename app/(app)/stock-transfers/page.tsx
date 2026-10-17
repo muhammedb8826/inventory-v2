@@ -101,7 +101,7 @@ export default function StockTransfersPage() {
         </PermissionGate>
       }
     >
-      <PermissionGate permission="stock_transfer.read">
+      <PermissionGate permission="stock_transfer.read" showDenied>
         <FrappeFilterBar>
           <ListSearchField
             value={search}

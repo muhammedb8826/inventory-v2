@@ -88,7 +88,7 @@ export default function ExpensesPage() {
         </PermissionGate>
       }
     >
-      <PermissionGate permission="expense.read">
+      <PermissionGate permission="expense.read" showDenied>
         <FrappeFilterBar>
           <ListSearchField
             value={search}

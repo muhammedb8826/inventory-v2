@@ -283,7 +283,7 @@ export default function CreditsPage() {
 
   return (
     <AppShell title="Credits">
-      <PermissionGate permission="credit.read">
+      <PermissionGate permission="credit.read" showDenied>
         <FrappeFilterBar>
           <ListSearchField
             value={search}

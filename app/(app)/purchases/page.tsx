@@ -109,7 +109,7 @@ export default function PurchasesPage() {
         </PermissionGate>
       }
     >
-      <PermissionGate permission="purchase.read">
+      <PermissionGate permission="purchase.read" showDenied>
         <FrappeFilterBar>
           <ListSearchField
             value={search}

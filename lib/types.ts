@@ -753,6 +753,13 @@ export type InquirySource = "PUBLIC" | "INTERNAL";
 
 export type InquiryPriority = "LOW" | "NORMAL" | "HIGH" | "URGENT";
 
+/** CRM assignment ownership — assign → PENDING → Accept/Decline */
+export type InquiryAssignmentStatus =
+  | "UNASSIGNED"
+  | "PENDING"
+  | "ACCEPTED"
+  | "DECLINED";
+
 export interface InquiryLine {
   id?: string;
   itemId: string;
@@ -781,6 +788,9 @@ export interface Inquiry {
   /** @deprecated Prefer `lines`; may still appear on older payloads */
   itemId?: string | null;
   assignedToUserId?: string | null;
+  assignmentStatus?: InquiryAssignmentStatus;
+  assignedAt?: string | null;
+  acceptedAt?: string | null;
   createdById?: string | null;
   internalNotes?: string | null;
   followUpAt?: string | null;
@@ -793,6 +803,13 @@ export interface Inquiry {
   createdBy?: UserAdmin | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PublicCatalogItem {
+  id: string;
+  sku?: string | null;
+  description: string;
+  imageUrl?: string | null;
 }
 
 export interface PublicInquiryResponse {

@@ -7,14 +7,7 @@ import { PermissionGate } from "@/components/permission-gate";
 export default function DashboardPage() {
   return (
     <AppShell title="Dashboard" layout="default">
-      <PermissionGate
-        permission="dashboard.read"
-        fallback={
-          <p className="text-muted-foreground">
-            You do not have permission to view the dashboard.
-          </p>
-        }
-      >
+      <PermissionGate permission="dashboard.read" showDenied>
         <DashboardOverview />
       </PermissionGate>
     </AppShell>

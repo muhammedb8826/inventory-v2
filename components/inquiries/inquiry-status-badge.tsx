@@ -1,6 +1,14 @@
 import { Badge } from "@/components/ui/badge";
-import { inquiryStatusLabel } from "@/lib/inquiries";
-import type { InquiryPriority, InquirySource, InquiryStatus } from "@/lib/types";
+import {
+  inquiryAssignmentLabel,
+  inquiryStatusLabel,
+} from "@/lib/inquiries";
+import type {
+  InquiryAssignmentStatus,
+  InquiryPriority,
+  InquirySource,
+  InquiryStatus,
+} from "@/lib/types";
 
 export function InquiryStatusBadge({ status }: { status: InquiryStatus }) {
   const variant =
@@ -13,6 +21,24 @@ export function InquiryStatusBadge({ status }: { status: InquiryStatus }) {
           : "default";
 
   return <Badge variant={variant}>{inquiryStatusLabel(status)}</Badge>;
+}
+
+export function InquiryAssignmentBadge({
+  status,
+}: {
+  status?: InquiryAssignmentStatus | null;
+}) {
+  const value = status ?? "UNASSIGNED";
+  const variant =
+    value === "PENDING"
+      ? "destructive"
+      : value === "ACCEPTED"
+        ? "default"
+        : value === "DECLINED"
+          ? "outline"
+          : "secondary";
+
+  return <Badge variant={variant}>{inquiryAssignmentLabel(value)}</Badge>;
 }
 
 export function InquiryPriorityBadge({

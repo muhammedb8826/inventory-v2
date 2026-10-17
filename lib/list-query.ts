@@ -4,6 +4,7 @@ import type {
   BankTransactionType,
   CreditSource,
   CreditStatus,
+  InquiryAssignmentStatus,
   InquiryPriority,
   InquirySource,
   InquiryStatus,
@@ -132,6 +133,7 @@ export type InquiriesListQueryParams = GenericListQueryParams & {
   priority?: InquiryPriority;
   customerId?: string;
   assignedToUserId?: string;
+  assignmentStatus?: InquiryAssignmentStatus;
   itemId?: string;
 };
 

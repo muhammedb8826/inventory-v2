@@ -42,7 +42,7 @@ export default function StockTransferDetailPage() {
         { label: id ? id.slice(0, 8) : "…" },
       ]}
     >
-      <PermissionGate permission="stock_transfer.read">
+      <PermissionGate permission="stock_transfer.read" showDenied>
         {loading ? (
           <PageLoading />
         ) : error || !transfer ? (

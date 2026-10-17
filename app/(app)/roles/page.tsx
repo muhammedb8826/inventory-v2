@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { DataCardTable } from "@/components/shared/data-card-table";
 import { PageLoading } from "@/components/shared/page-loading";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { PermissionGate } from "@/components/permission-gate";
 import { FrappeButtonPrimary, FrappeField, FrappeFilterBar } from "@/components/frappe";
 import { Button } from "@/components/ui/button";
@@ -23,8 +24,10 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { errorMessage } from "@/lib/format";
 import { buildRolesListPath } from "@/lib/list-query";
+import { hasPermission } from "@/lib/permissions";
 import {
   normalizeRolePermissions,
   rolePermissionCodes,
@@ -58,6 +61,30 @@ function groupPermissions(permissions: Permission[]) {
 }
 
 export default function RolesPage() {
+  const { user, loading: authLoading } = useAuth();
+
+  if (authLoading) {
+    return (
+      <AppShell title="Roles">
+        <PageLoading />
+      </AppShell>
+    );
+  }
+
+  if (!hasPermission(user, "roles.read")) {
+    return (
+      <AppShell title="Roles">
+        <AccessDenied />
+      </AppShell>
+    );
+  }
+
+  return <RolesPageContent />;
+}
+
+function RolesPageContent() {
+  const { user } = useAuth();
+  const canWrite = hasPermission(user, "roles.write");
   const [search, setSearch] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -79,13 +106,9 @@ export default function RolesPage() {
   return (
     <AppShell
       title="Roles"
-      actions={
-        <PermissionGate permission="roles.write">
-          <RoleDialog mode="create" onSuccess={reload} />
-        </PermissionGate>
-      }
+      actions={canWrite ? <RoleDialog mode="create" onSuccess={reload} /> : null}
     >
-      <PermissionGate permission="roles.read">
+      <>
         <FrappeFilterBar>
           <ListSearchField
             value={search}
@@ -157,7 +180,7 @@ export default function RolesPage() {
             ]}
           />
         )}
-      </PermissionGate>
+      </>
     </AppShell>
   );
 }
@@ -180,7 +203,8 @@ function RoleDialog({
 
   const { data: catalog } = useFetch(
     () => api<Permission[]>("/permissions"),
-    []
+    [],
+    { enabled: open }
   );
 
   const filteredCatalog = useMemo(() => {

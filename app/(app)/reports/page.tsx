@@ -428,7 +428,7 @@ export default function ReportsPage() {
       subtitle="Financial, inventory, customer, supplier, and cash movement reports"
       breadcrumbs={[{ label: "Stock", href: "/dashboard" }, { label: "Reports" }]}
     >
-      <PermissionGate permission="reports.read">
+      <PermissionGate permission="reports.read" showDenied>
         <div className="mb-4">
           <DateRangeFilter
             from={from}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { api } from "@/lib/api";
+import { api, isForbiddenError } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
 import { paginateArray } from "@/lib/pagination";
 import {
@@ -15,8 +15,9 @@ import { toast } from "sonner";
 export function usePaginatedList<T, Totals = undefined>(
   buildPath: (page: number, limit: number) => string | null,
   deps: unknown[] = [],
-  options?: { initialLimit?: number }
+  options?: { initialLimit?: number; toastOnError?: boolean }
 ) {
+  const toastOnError = options?.toastOnError ?? true;
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [limit, setLimit] = useState(options?.initialLimit ?? DEFAULT_LIMIT);
   const [rows, setRows] = useState<T[]>([]);
@@ -34,6 +35,7 @@ export function usePaginatedList<T, Totals = undefined>(
       setAllRows([]);
       setMeta(EMPTY_PAGINATION_META);
       setTotals(null);
+      setError(null);
       setLoading(false);
       return;
     }
@@ -71,12 +73,18 @@ export function usePaginatedList<T, Totals = undefined>(
     } catch (e) {
       const msg = errorMessage(e);
       setError(msg);
-      toast.error(msg);
+      setRows([]);
+      setAllRows([]);
+      setMeta(EMPTY_PAGINATION_META);
+      setTotals(null);
+      if (toastOnError && !isForbiddenError(e)) {
+        toast.error(msg);
+      }
     } finally {
       setLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [path]);
+  }, [path, toastOnError]);
 
   useEffect(() => {
     setPage(DEFAULT_PAGE);

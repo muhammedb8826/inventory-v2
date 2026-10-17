@@ -1,6 +1,7 @@
 import type {
   CreateInquiryBody,
   Inquiry,
+  InquiryAssignmentStatus,
   InquiryLine,
   InquiryLineInput,
   InquiryPriority,
@@ -22,6 +23,13 @@ export const INQUIRY_PRIORITIES: InquiryPriority[] = [
   "NORMAL",
   "HIGH",
   "URGENT",
+];
+
+export const INQUIRY_ASSIGNMENT_STATUSES: InquiryAssignmentStatus[] = [
+  "UNASSIGNED",
+  "PENDING",
+  "ACCEPTED",
+  "DECLINED",
 ];
 
 export interface InquiryFormLine {
@@ -69,6 +77,13 @@ export const EMPTY_INQUIRY_FORM: InquiryFormValues = {
 };
 
 export function inquiryStatusLabel(status: InquiryStatus): string {
+  return status.replaceAll("_", " ");
+}
+
+export function inquiryAssignmentLabel(
+  status?: InquiryAssignmentStatus | null
+): string {
+  if (!status) return "Unassigned";
   return status.replaceAll("_", " ");
 }
 

@@ -21,43 +21,66 @@ import {
 import { InquiryCreateDialog } from "@/components/inquiries/inquiry-create-dialog";
 import { InquiryDetailDialog } from "@/components/inquiries/inquiry-detail-dialog";
 import {
+  InquiryAssignmentBadge,
   InquiryPriorityBadge,
   InquirySourceBadge,
   InquiryStatusBadge,
 } from "@/components/inquiries/inquiry-status-badge";
 import { buildInquiriesListPath } from "@/lib/list-query";
-import { apiList } from "@/lib/list-response";
+import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { fetchCustomers } from "@/lib/party-fetch";
 import { useFetch } from "@/hooks/use-fetch";
-import { INQUIRY_PRIORITIES, INQUIRY_STATUSES, inquiryItemsSummary } from "@/lib/inquiries";
+import {
+  INQUIRY_ASSIGNMENT_STATUSES,
+  INQUIRY_PRIORITIES,
+  INQUIRY_STATUSES,
+  inquiryItemsSummary,
+} from "@/lib/inquiries";
 import { formatDate } from "@/lib/format";
+import { hasPermission } from "@/lib/permissions";
 import type {
   Inquiry,
+  InquiryAssignmentStatus,
   InquiryPriority,
   InquirySource,
   InquiryStatus,
   UserAdmin,
 } from "@/lib/types";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
+import { AccessDenied } from "@/components/shared/access-denied";
 
 export default function InquiriesPage() {
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const deepLinkId = searchParams.get("id");
 
   const [search, setSearch] = useState("");
   const [from, setFrom] = useState("");
-  const [to, setTo] = useState("");  const [status, setStatus] = useState<InquiryStatus | "">("");
+  const [to, setTo] = useState("");
+  const [status, setStatus] = useState<InquiryStatus | "">("");
   const [source, setSource] = useState<InquirySource | "">("");
   const [priority, setPriority] = useState<InquiryPriority | "">("");
+  const [assignmentStatus, setAssignmentStatus] = useState<
+    InquiryAssignmentStatus | ""
+  >("");
   const [customerId, setCustomerId] = useState("");
   const [assignedToUserId, setAssignedToUserId] = useState("");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
   const debouncedSearch = useDebouncedValue(search);
-  const { data: customers } = useFetch(() => fetchCustomers(), []);
-  const { data: users } = useFetch(() => apiList<UserAdmin>("/users"), []);
-
+  const canRead = hasPermission(user, "inquiries.read");
+  const { data: customers } = useFetch(
+    () => fetchCustomers(),
+    [],
+    { enabled: canRead && hasPermission(user, "customers.read") }
+  );
+  const { data: users } = useFetch(
+    () => api<UserAdmin[]>("/users/assignees"),
+    [],
+    { enabled: canRead }
+  );
   useEffect(() => {
     if (!deepLinkId) return;
     setSelectedId(deepLinkId);
@@ -67,27 +90,32 @@ export default function InquiriesPage() {
   const { rows, meta, setPage, setLimit, loading, reload } =
     usePaginatedList<Inquiry>(
       (page, limit) =>
-        buildInquiriesListPath(
-          {
-            from: from || undefined,
-            to: to || undefined,
-            search: debouncedSearch || undefined,
-            status: status || undefined,
-            source: source || undefined,
-            priority: priority || undefined,
-            customerId: customerId || undefined,
-            assignedToUserId: assignedToUserId || undefined,
-          },
-          page,
-          limit
-        ),
+        canRead
+          ? buildInquiriesListPath(
+              {
+                from: from || undefined,
+                to: to || undefined,
+                search: debouncedSearch || undefined,
+                status: status || undefined,
+                source: source || undefined,
+                priority: priority || undefined,
+                assignmentStatus: assignmentStatus || undefined,
+                customerId: customerId || undefined,
+                assignedToUserId: assignedToUserId || undefined,
+              },
+              page,
+              limit
+            )
+          : null,
       [
+        canRead,
         from,
         to,
         debouncedSearch,
         status,
         source,
         priority,
+        assignmentStatus,
         customerId,
         assignedToUserId,
       ]
@@ -103,6 +131,22 @@ export default function InquiriesPage() {
     if (!open && deepLinkId) {
       router.replace("/inquiries");
     }
+  }
+
+  if (authLoading) {
+    return (
+      <AppShell title="Inquiries">
+        <PageLoading />
+      </AppShell>
+    );
+  }
+
+  if (!canRead) {
+    return (
+      <AppShell title="Inquiries">
+        <AccessDenied />
+      </AppShell>
+    );
   }
 
   return (
@@ -124,7 +168,7 @@ export default function InquiriesPage() {
         </PermissionGate>
       }
     >
-      <PermissionGate permission="inquiries.read">
+      <>
         <FrappeFilterBar>
           <ListSearchField
             value={search}
@@ -184,6 +228,26 @@ export default function InquiriesPage() {
               {INQUIRY_PRIORITIES.map((p) => (
                 <SelectItem key={p} value={p}>
                   {p}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select
+            value={assignmentStatus || "__all__"}
+            onValueChange={(v) =>
+              setAssignmentStatus(
+                v === "__all__" ? "" : (v as InquiryAssignmentStatus)
+              )
+            }
+          >
+            <SelectTrigger className="w-[170px]">
+              <SelectValue placeholder="Assignment" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">All assignments</SelectItem>
+              {INQUIRY_ASSIGNMENT_STATUSES.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s.replaceAll("_", " ")}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -294,6 +358,13 @@ export default function InquiriesPage() {
                 cell: (r) => <InquiryStatusBadge status={r.status} />,
               },
               {
+                key: "assignment",
+                header: "Assignment",
+                cell: (r) => (
+                  <InquiryAssignmentBadge status={r.assignmentStatus} />
+                ),
+              },
+              {
                 key: "priority",
                 header: "Priority",
                 cell: (r) => <InquiryPriorityBadge priority={r.priority} />,
@@ -336,7 +407,7 @@ export default function InquiriesPage() {
           onOpenChange={handleDetailOpenChange}
           onChanged={reload}
         />
-      </PermissionGate>
+      </>
     </AppShell>
   );
 }

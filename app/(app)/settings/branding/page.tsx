@@ -27,6 +27,7 @@ import {
   updateBranding,
   uploadHeroImage,
 } from "@/lib/branding";
+import { isForbiddenError } from "@/lib/api";
 import { errorMessage } from "@/lib/format";
 import type { BrandingSettings } from "@/lib/types";
 import { toast } from "sonner";
@@ -69,7 +70,9 @@ export default function BrandingSettingsPage() {
         const data = await fetchAdminBranding();
         if (!cancelled) applyBranding(data);
       } catch (err) {
-        if (!cancelled) toast.error(errorMessage(err));
+        if (!cancelled && !isForbiddenError(err)) {
+          toast.error(errorMessage(err));
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -171,7 +174,10 @@ export default function BrandingSettingsPage() {
         { label: "Branding" },
       ]}
     >
-      <PermissionGate permissions={["settings.read", "settings.write"]}>
+      <PermissionGate
+        permissions={["settings.read", "settings.write"]}
+        showDenied
+      >
         {loading ? (
           <PageLoading />
         ) : (

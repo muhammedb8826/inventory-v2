@@ -37,7 +37,7 @@ export default function ProductionOrderDetailPage() {
         { label: id ? id.slice(0, 8) : "…" },
       ]}
     >
-      <PermissionGate permission="production.read">
+      <PermissionGate permission="production.read" showDenied>
         {loading ? (
           <PageLoading />
         ) : error || !order ? (

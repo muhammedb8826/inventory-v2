@@ -100,7 +100,7 @@ export default function SalesCommissionsPage() {
         <FrappeButtonLink href="/sales">← Sales list</FrappeButtonLink>
       }
     >
-      <PermissionGate permission="sales.read">
+      <PermissionGate permission="sales.read" showDenied>
         <FrappeFilterBar className="items-end">
           <div className="grid gap-2">
             <Label htmlFor="comm-from">From</Label>

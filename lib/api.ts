@@ -3,6 +3,20 @@ import type { ApiError } from "@/lib/types";
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001/api";
 
+export class ApiRequestError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiRequestError";
+    this.status = status;
+  }
+}
+
+export function isForbiddenError(err: unknown): boolean {
+  return err instanceof ApiRequestError && err.status === 403;
+}
+
 const TOKEN_KEY = "stock_access_token";
 const REFRESH_KEY = "stock_refresh_token";
 
@@ -121,7 +135,7 @@ export async function api<T>(
     } catch {
       /* ignore */
     }
-    throw new Error(message);
+    throw new ApiRequestError(message || "Request failed", res.status);
   }
 
   if (res.status === 204) return undefined as T;

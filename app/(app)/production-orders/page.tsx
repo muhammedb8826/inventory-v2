@@ -81,7 +81,7 @@ export default function ProductionOrdersPage() {
         </PermissionGate>
       }
     >
-      <PermissionGate permission="production.read">
+      <PermissionGate permission="production.read" showDenied>
         <FrappeFilterBar>
           <ListSearchField
             value={search}

@@ -149,7 +149,7 @@ export default function SalesPage() {
         </div>
       }
     >
-      <PermissionGate permission="sales.read">
+      <PermissionGate permission="sales.read" showDenied>
         <FrappeFilterBar>
           <ListSearchField
             value={search}

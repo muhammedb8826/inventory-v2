@@ -36,7 +36,7 @@ export default function PurchaseDetailPage() {
         { label: id ? id.slice(0, 8) : "…" },
       ]}
     >
-      <PermissionGate permission="purchase.read">
+      <PermissionGate permission="purchase.read" showDenied>
         {loading ? (
           <PageLoading />
         ) : error || !purchase ? (

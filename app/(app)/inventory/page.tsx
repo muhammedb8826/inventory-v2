@@ -161,7 +161,7 @@ export default function InventoryPage() {
         </div>
       }
     >
-      <PermissionGate permission="inventory.read">
+      <PermissionGate permission="inventory.read" showDenied>
         <Tabs defaultValue="stock" className="gap-4">
           <TabsList>
             <TabsTrigger value="stock">Stock</TabsTrigger>

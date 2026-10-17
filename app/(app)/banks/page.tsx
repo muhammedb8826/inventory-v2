@@ -152,7 +152,7 @@ export default function BanksPage() {
         </PermissionGate>
       }
     >
-      <PermissionGate permission="bank.read">
+      <PermissionGate permission="bank.read" showDenied>
         {loading ? (
           <PageLoading />
         ) : (

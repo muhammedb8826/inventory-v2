@@ -66,7 +66,7 @@ export default function BomsPage() {
         </PermissionGate>
       }
     >
-      <PermissionGate permission="bom.read">
+      <PermissionGate permission="bom.read" showDenied>
         <FrappeFilterBar>
           <ListSearchField
             value={search}

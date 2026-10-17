@@ -12,6 +12,7 @@ import {
   InquiryFormDialogHeader,
 } from "@/components/inquiries/inquiry-form-dialog-shell";
 import {
+  InquiryAssignmentBadge,
   InquiryPriorityBadge,
   InquirySourceBadge,
   InquiryStatusBadge,
@@ -19,6 +20,7 @@ import {
 import { PermissionGate } from "@/components/permission-gate";
 import { PageLoading } from "@/components/shared/page-loading";
 import { useInquiryFormOptions } from "@/hooks/use-inquiry-form-options";
+import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import {
   buildUpdateInquiryBody,
@@ -26,6 +28,7 @@ import {
   validateInquiryContact,
   type InquiryFormValues,
 } from "@/lib/inquiries";
+import { hasPermission } from "@/lib/permissions";
 import { errorMessage, formatDate } from "@/lib/format";
 import type { Inquiry } from "@/lib/types";
 import { toast } from "sonner";
@@ -41,11 +44,13 @@ export function InquiryDetailDialog({
   onOpenChange: (open: boolean) => void;
   onChanged: () => void;
 }) {
+  const { user } = useAuth();
   const [inquiry, setInquiry] = useState<Inquiry | null>(null);
   const [values, setValues] = useState<InquiryFormValues | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [acting, setActing] = useState(false);
 
   const {
     customerOptions,
@@ -54,6 +59,24 @@ export function InquiryDetailDialog({
     reloadCustomers,
     setCustomers,
   } = useInquiryFormOptions();
+
+  const canWrite = hasPermission(user, "inquiries.write");
+  const isAssignee = Boolean(
+    user?.id && inquiry?.assignedToUserId === user.id
+  );
+  const canAcceptDecline =
+    canWrite &&
+    isAssignee &&
+    inquiry?.assignmentStatus === "PENDING";
+  const canClaim =
+    canWrite &&
+    inquiry != null &&
+    inquiry.status !== "CANCELLED" &&
+    inquiry.status !== "CONVERTED" &&
+    inquiry.status !== "CLOSED" &&
+    (inquiry.assignmentStatus === "UNASSIGNED" ||
+      inquiry.assignmentStatus === "DECLINED" ||
+      !inquiry.assignmentStatus);
 
   useEffect(() => {
     if (!open || !inquiryId) {
@@ -109,6 +132,32 @@ export function InquiryDetailDialog({
     }
   }
 
+  async function handleAssignmentAction(
+    action: "accept" | "decline" | "claim"
+  ) {
+    if (!inquiryId) return;
+    setActing(true);
+    try {
+      const updated = await api<Inquiry>(`/inquiries/${inquiryId}/${action}`, {
+        method: "POST",
+      });
+      setInquiry(updated);
+      setValues(inquiryToFormValues(updated));
+      toast.success(
+        action === "accept"
+          ? "Inquiry accepted"
+          : action === "decline"
+            ? "Inquiry declined"
+            : "Inquiry claimed"
+      );
+      onChanged();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setActing(false);
+    }
+  }
+
   async function handleCancel() {
     if (!inquiryId || !inquiry) return;
     if (inquiry.status === "CONVERTED") {
@@ -139,6 +188,7 @@ export function InquiryDetailDialog({
           {inquiry ? (
             <div className="flex flex-wrap items-center gap-2 pt-0.5">
               <InquiryStatusBadge status={inquiry.status} />
+              <InquiryAssignmentBadge status={inquiry.assignmentStatus} />
               <InquiryPriorityBadge priority={inquiry.priority} />
               <InquirySourceBadge source={inquiry.source} />
               <span className="text-xs text-[var(--frappe-text-muted)]">
@@ -155,6 +205,12 @@ export function InquiryDetailDialog({
         ) : (
           <form onSubmit={handleSave} className="flex min-h-0 flex-1 flex-col">
             <InquiryFormDialogBody>
+              {inquiry?.assignmentStatus === "PENDING" && isAssignee ? (
+                <div className="mb-4 rounded-md border border-[var(--frappe-border)] bg-[var(--frappe-bg)] px-3 py-2.5 text-sm text-[var(--frappe-text)]">
+                  This inquiry was assigned to you. Accept to take ownership, or
+                  decline to return it to the pool.
+                </div>
+              ) : null}
               <InquiryFormFields
                 mode="edit"
                 idPrefix="inquiry-edit"
@@ -184,11 +240,43 @@ export function InquiryDetailDialog({
                     type="button"
                     variant="destructive"
                     className="mr-auto h-8 text-xs"
-                    disabled={cancelling}
+                    disabled={cancelling || acting}
                     onClick={() => void handleCancel()}
                   >
                     {cancelling ? "Cancelling…" : "Cancel inquiry"}
                   </Button>
+                ) : null}
+                {canClaim && inquiry?.assignmentStatus !== "PENDING" ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-8 text-xs"
+                    disabled={acting}
+                    onClick={() => void handleAssignmentAction("claim")}
+                  >
+                    {acting ? "…" : "Claim"}
+                  </Button>
+                ) : null}
+                {canAcceptDecline ? (
+                  <>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-8 text-xs"
+                      disabled={acting}
+                      onClick={() => void handleAssignmentAction("decline")}
+                    >
+                      Decline
+                    </Button>
+                    <Button
+                      type="button"
+                      className="h-8 text-xs"
+                      disabled={acting}
+                      onClick={() => void handleAssignmentAction("accept")}
+                    >
+                      Accept
+                    </Button>
+                  </>
                 ) : null}
                 <Button
                   type="button"
@@ -198,7 +286,7 @@ export function InquiryDetailDialog({
                 >
                   Close
                 </Button>
-                <FrappeButtonPrimary type="submit" disabled={saving}>
+                <FrappeButtonPrimary type="submit" disabled={saving || acting}>
                   {saving ? "Saving…" : "Save"}
                 </FrappeButtonPrimary>
               </InquiryFormDialogFooter>

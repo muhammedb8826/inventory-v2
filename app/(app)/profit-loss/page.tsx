@@ -65,7 +65,7 @@ export default function ProfitLossPage() {
 
   return (
     <AppShell title="Profit & Loss">
-      <PermissionGate permission="profit_loss.read">
+      <PermissionGate permission="profit_loss.read" showDenied>
         <div className="mb-4">
           <DateRangeFilter
             from={from}

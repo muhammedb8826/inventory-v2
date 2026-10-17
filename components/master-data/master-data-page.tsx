@@ -4,6 +4,7 @@ import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { DataCardTable } from "@/components/shared/data-card-table";
 import { PageLoading } from "@/components/shared/page-loading";
+import { AccessDenied } from "@/components/shared/access-denied";
 import { PermissionGate } from "@/components/permission-gate";
 import {
   FrappeFilterBar,
@@ -37,8 +38,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth";
 import { buildListPath, type ListQueryParams } from "@/lib/list-query";
 import { errorMessage } from "@/lib/format";
+import { hasPermission } from "@/lib/permissions";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
 import { toast } from "sonner";
 import { PencilIcon, PlusIcon } from "lucide-react";
@@ -76,22 +79,42 @@ export function MasterDataPage<
   listParams?: ListQueryParams;
   filterExtras?: React.ReactNode;
 }) {
+  const { user, loading: authLoading } = useAuth();
+  const canRead = hasPermission(user, readPermission);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
   const listParamsKey = JSON.stringify(listParams ?? {});
 
   const { rows, meta, setPage, setLimit, loading, reload } = usePaginatedList<T>(
     (page, limit) =>
-      buildListPath(endpoint, {
-        params: {
-          ...listParams,
-          search: debouncedSearch || undefined,
-        },
-        page,
-        limit,
-      }),
-    [endpoint, debouncedSearch, listParamsKey]
+      canRead
+        ? buildListPath(endpoint, {
+            params: {
+              ...listParams,
+              search: debouncedSearch || undefined,
+            },
+            page,
+            limit,
+          })
+        : null,
+    [canRead, endpoint, debouncedSearch, listParamsKey]
   );
+
+  if (authLoading) {
+    return (
+      <AppShell title={title}>
+        <PageLoading />
+      </AppShell>
+    );
+  }
+
+  if (!canRead) {
+    return (
+      <AppShell title={title}>
+        <AccessDenied />
+      </AppShell>
+    );
+  }
 
   const tableColumns = [
     ...columns,
@@ -133,7 +156,7 @@ export function MasterDataPage<
         </PermissionGate>
       }
     >
-      <PermissionGate permission={readPermission}>
+      <>
         <FrappeFilterBar>
           <ListSearchField
             value={search}
@@ -163,7 +186,7 @@ export function MasterDataPage<
             columns={tableColumns}
           />
         )}
-      </PermissionGate>
+      </>
     </AppShell>
   );
 }

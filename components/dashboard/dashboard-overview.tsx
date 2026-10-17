@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/table";
 import { DateRangeFilter } from "@/components/shared/date-range-filter";
 import { PageLoading } from "@/components/shared/page-loading";
-import { api } from "@/lib/api";
+import { api, isForbiddenError } from "@/lib/api";
 import { applyCurrencyFromResponse } from "@/lib/currency";
 import { formatMoney, errorMessage } from "@/lib/format";
 import { buildListPath } from "@/lib/list-query";
@@ -53,7 +53,7 @@ export function DashboardOverview() {
         applyCurrencyFromResponse(res);
         setData(res);
       } catch (e) {
-        toast.error(errorMessage(e));
+        if (!isForbiddenError(e)) toast.error(errorMessage(e));
       } finally {
         setLoading(false);
       }
