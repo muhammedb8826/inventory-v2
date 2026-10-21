@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { DataCardTable } from "@/components/shared/data-card-table";
 import { PageLoading } from "@/components/shared/page-loading";
@@ -200,6 +200,7 @@ function RoleDialog({
   const [permSearch, setPermSearch] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
+  const permissionsHydratedRef = useRef(false);
 
   const { data: catalog } = useFetch(
     () => api<Permission[]>("/permissions"),
@@ -223,25 +224,28 @@ function RoleDialog({
     [filteredCatalog]
   );
 
-  function syncFormState() {
-    setName(role?.name ?? "");
-    setDescription(role?.description ?? "");
-    setPermSearch("");
-    if (mode === "edit" && role && catalog?.length) {
-      setSelectedIds(
-        new Set(rolePermissionIdsFromRole(role.permissions, catalog))
-      );
-    } else {
+  function handleOpenChange(nextOpen: boolean) {
+    setOpen(nextOpen);
+    if (nextOpen) {
+      permissionsHydratedRef.current = false;
+      setName(role?.name ?? "");
+      setDescription(role?.description ?? "");
+      setPermSearch("");
+      // Catalog may still be loading — permissions hydrate in the effect below.
       setSelectedIds(new Set());
     }
   }
 
-  function handleOpenChange(nextOpen: boolean) {
-    setOpen(nextOpen);
-    if (nextOpen) {
-      syncFormState();
+  // Hydrate checked permissions once per open after the catalog loads.
+  useEffect(() => {
+    if (!open || !catalog?.length || permissionsHydratedRef.current) return;
+    permissionsHydratedRef.current = true;
+    if (mode === "edit" && role) {
+      setSelectedIds(
+        new Set(rolePermissionIdsFromRole(role.permissions, catalog))
+      );
     }
-  }
+  }, [open, catalog, mode, role]);
 
   function togglePermission(id: string) {
     setSelectedIds((prev) => {
@@ -378,11 +382,13 @@ function RoleDialog({
                         moduleSelected === items.length && items.length > 0;
                       const moduleIndeterminate =
                         moduleSelected > 0 && moduleSelected < items.length;
+                      const moduleCheckboxId = `role-module-${groupKey}`;
 
                       return (
                         <div key={groupKey} className="px-4 py-3">
-                          <label className="mb-2 flex cursor-pointer items-center gap-2">
+                          <div className="mb-2 flex items-center gap-2">
                             <Checkbox
+                              id={moduleCheckboxId}
                               checked={
                                 moduleIndeterminate
                                   ? "indeterminate"
@@ -392,35 +398,49 @@ function RoleDialog({
                                 toggleModule(items, checked === true)
                               }
                             />
-                            <span className="text-xs font-semibold tracking-wide text-[var(--frappe-text-muted)] uppercase">
-                              {groupKey}
-                            </span>
-                            <span className="text-xs text-[var(--frappe-text-muted)]">
-                              ({moduleSelected}/{items.length})
-                            </span>
-                          </label>
+                            <label
+                              htmlFor={moduleCheckboxId}
+                              className="flex cursor-pointer items-center gap-2"
+                            >
+                              <span className="text-xs font-semibold tracking-wide text-[var(--frappe-text-muted)] uppercase">
+                                {groupKey}
+                              </span>
+                              <span className="text-xs text-[var(--frappe-text-muted)]">
+                                ({moduleSelected}/{items.length})
+                              </span>
+                            </label>
+                          </div>
                           <div className="space-y-2 pl-6">
-                            {items.map((p) => (
-                              <label
-                                key={p.id}
-                                className="flex cursor-pointer items-start gap-2 rounded-sm py-0.5 text-sm hover:bg-[var(--frappe-section-head)]/60"
-                              >
-                                <Checkbox
-                                  checked={selectedIds.has(p.id)}
-                                  onCheckedChange={() => togglePermission(p.id)}
-                                />
-                                <span className="min-w-0">
-                                  <span className="font-mono text-xs text-[var(--frappe-text)]">
-                                    {p.code}
-                                  </span>
-                                  {p.description ? (
-                                    <span className="mt-0.5 block text-xs text-[var(--frappe-text-muted)]">
-                                      {p.description}
+                            {items.map((p) => {
+                              const checkboxId = `role-perm-${p.id}`;
+                              return (
+                                <div
+                                  key={p.id}
+                                  className="flex items-start gap-2 rounded-sm py-0.5 text-sm hover:bg-[var(--frappe-section-head)]/60"
+                                >
+                                  <Checkbox
+                                    id={checkboxId}
+                                    checked={selectedIds.has(p.id)}
+                                    onCheckedChange={() =>
+                                      togglePermission(p.id)
+                                    }
+                                  />
+                                  <label
+                                    htmlFor={checkboxId}
+                                    className="min-w-0 cursor-pointer"
+                                  >
+                                    <span className="font-mono text-xs text-[var(--frappe-text)]">
+                                      {p.code}
                                     </span>
-                                  ) : null}
-                                </span>
-                              </label>
-                            ))}
+                                    {p.description ? (
+                                      <span className="mt-0.5 block text-xs text-[var(--frappe-text-muted)]">
+                                        {p.description}
+                                      </span>
+                                    ) : null}
+                                  </label>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       );
