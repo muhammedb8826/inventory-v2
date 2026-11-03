@@ -532,10 +532,10 @@ function PaymentButton({
                 />
               </div>
               <div className="grid gap-2">
-                <Label>Bank account</Label>
+                <Label>Bank / cash account</Label>
                 <Select value={bankAccountId} onValueChange={setBankAccountId}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select" />
+                    <SelectValue placeholder="Select account" />
                   </SelectTrigger>
                   <SelectContent>
                     {bankAccountsForSelect(banks ?? [], bankAccountId).map(
@@ -547,6 +547,14 @@ function PaymentButton({
                     )}
                   </SelectContent>
                 </Select>
+                <p className="text-xs text-[var(--frappe-text-muted)]">
+                  {type === "customer"
+                    ? "Customer payment increases this account balance."
+                    : "Supplier payment deducts from this account balance."}
+                  {credit.source === "OPENING"
+                    ? " Opening balances use the same bank ledger as sale/purchase credits."
+                    : null}
+                </p>
               </div>
             </div>
             <DialogFooter>
@@ -655,8 +663,10 @@ function OpeningCreditDialog({
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <p className="text-sm text-[var(--frappe-text-muted)]">
-              Carry over an unpaid invoice from a previous system. No stock or
-              cash movement until you record a payment.
+              Carry over an unpaid invoice from a previous system. Creating it
+              does not move cash. When you later click Pay, you choose a
+              bank/cash account — customer receipts increase it, supplier
+              payments deduct from it (same as other credits).
             </p>
             <div className="grid gap-2">
               <Label>
