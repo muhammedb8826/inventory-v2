@@ -57,7 +57,7 @@ import { useFetch } from "@/hooks/use-fetch";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { PlusIcon, Trash2Icon } from "lucide-react";
+import { PlusIcon, RotateCcwIcon, Trash2Icon } from "lucide-react";
 
 function creditSourceLabel(r: CreditRecord, partyKey: "customer" | "supplier") {
   if (r.source === "OPENING") return "Opening";
@@ -209,6 +209,15 @@ function creditColumns(
               />
             </PermissionGate>
           )}
+          {parseFloat(r.paidAmount) > 0 ? (
+            <PermissionGate permission="credit.write">
+              <VoidPaymentsButton
+                type={partyKey}
+                credit={r}
+                onSuccess={onSuccess}
+              />
+            </PermissionGate>
+          ) : null}
           {r.source === "OPENING" ? (
             <PermissionGate permission="credit.write">
               <DeleteOpeningCreditButton
@@ -743,6 +752,56 @@ function OpeningCreditDialog({
   );
 }
 
+function VoidPaymentsButton({
+  type,
+  credit,
+  onSuccess,
+}: {
+  type: "customer" | "supplier";
+  credit: CreditRecord;
+  onSuccess: () => void;
+}) {
+  const [voiding, setVoiding] = useState(false);
+
+  async function handleVoid() {
+    const ok = confirm(
+      type === "customer"
+        ? "Void all payments on this receivable? Bank receipts will be reversed and the balance reopened."
+        : "Void all payments on this payable? Bank deductions will be reversed and the balance reopened."
+    );
+    if (!ok) return;
+    setVoiding(true);
+    try {
+      const path =
+        type === "customer"
+          ? `/credits/customers/${credit.id}/payments`
+          : `/credits/suppliers/${credit.id}/payments`;
+      await api(path, { method: "DELETE" });
+      toast.success("Payments voided");
+      onSuccess();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setVoiding(false);
+    }
+  }
+
+  return (
+    <Button
+      type="button"
+      size="icon"
+      variant="ghost"
+      className="size-8"
+      disabled={voiding}
+      onClick={handleVoid}
+      aria-label="Void payments"
+      title="Void payments"
+    >
+      <RotateCcwIcon className="size-4" />
+    </Button>
+  );
+}
+
 function DeleteOpeningCreditButton({
   type,
   credit,
@@ -753,8 +812,13 @@ function DeleteOpeningCreditButton({
   onSuccess: () => void;
 }) {
   const [deleting, setDeleting] = useState(false);
+  const hasPayments = parseFloat(credit.paidAmount) > 0;
 
   async function handleDelete() {
+    if (hasPayments) {
+      toast.error("Void payments first, then delete this opening credit.");
+      return;
+    }
     const ok = confirm(
       "Delete this opening credit? Only unpaid opening balances can be removed."
     );
@@ -781,9 +845,14 @@ function DeleteOpeningCreditButton({
       size="icon"
       variant="ghost"
       className="size-8 text-destructive"
-      disabled={deleting}
+      disabled={deleting || hasPayments}
       onClick={handleDelete}
       aria-label="Delete opening credit"
+      title={
+        hasPayments
+          ? "Void payments before deleting"
+          : "Delete opening credit"
+      }
     >
       <Trash2Icon className="size-4" />
     </Button>
