@@ -6,7 +6,11 @@ import { PermissionGate } from "@/components/permission-gate";
 
 export default function DashboardPage() {
   return (
-    <AppShell title="Dashboard" layout="default">
+    <AppShell
+      title="Dashboard"
+      subtitle="Live KPIs, cash movement, and financial mix"
+      layout="erp"
+    >
       <PermissionGate permission="dashboard.read" showDenied>
         <DashboardOverview />
       </PermissionGate>

@@ -109,12 +109,32 @@ function RolesPageContent() {
       actions={canWrite ? <RoleDialog mode="create" onSuccess={reload} /> : null}
     >
       <>
-        <FrappeFilterBar>
-          <ListSearchField
-            value={search}
-            onChange={setSearch}
-            placeholder="Search roles..."
-          />
+        <FrappeFilterBar
+          search={
+            <ListSearchField
+              variant="toolbar"
+              value={search}
+              onChange={setSearch}
+              placeholder="Search roles..."
+            />
+          }
+          chips={[
+            from
+              ? {
+                  id: "from",
+                  label: `From ${from}`,
+                  onRemove: () => setFrom(""),
+                }
+              : null,
+            to
+              ? { id: "to", label: `To ${to}`, onRemove: () => setTo("") }
+              : null,
+          ].filter(Boolean) as { id: string; label: string; onRemove: () => void }[]}
+          onClearAll={() => {
+            setFrom("");
+            setTo("");
+          }}
+        >
           <DateRangeFilter
             from={from}
             to={to}

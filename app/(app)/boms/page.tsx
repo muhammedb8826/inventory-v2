@@ -67,14 +67,35 @@ export default function BomsPage() {
       }
     >
       <PermissionGate permission="bom.read" showDenied>
-        <FrappeFilterBar>
-          <ListSearchField
-            value={search}
-            onChange={setSearch}
-            placeholder="Search BOMs…"
-          />
-          <div className="grid gap-2">
-            <Label className="text-sm text-[var(--frappe-text-muted)]">
+        <FrappeFilterBar
+          search={
+            <ListSearchField
+              variant="toolbar"
+              value={search}
+              onChange={setSearch}
+              placeholder="Search BOMs…"
+            />
+          }
+          chips={
+            isActive !== "true"
+              ? [
+                  {
+                    id: "status",
+                    label:
+                      isActive === "false"
+                        ? "Inactive"
+                        : isActive === "all"
+                          ? "All statuses"
+                          : isActive,
+                    onRemove: () => setIsActive("true"),
+                  },
+                ]
+              : []
+          }
+          onClearAll={() => setIsActive("true")}
+        >
+          <div className="grid gap-1.5">
+            <Label className="text-xs font-medium text-[var(--erp-text-muted)]">
               Status
             </Label>
             <Select
@@ -83,7 +104,7 @@ export default function BomsPage() {
                 setIsActive(v as "all" | "true" | "false")
               }
             >
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="h-9 w-full">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

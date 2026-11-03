@@ -17,6 +17,7 @@ import {
 } from "@/components/frappe";
 import { DateRangeFilter } from "@/components/shared/date-range-filter";
 import { ListSearchField } from "@/components/shared/list-search-field";
+import { FilterSelect } from "@/components/shared/filter-field";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -102,68 +103,99 @@ export default function StockTransfersPage() {
       }
     >
       <PermissionGate permission="stock_transfer.read" showDenied>
-        <FrappeFilterBar>
-          <ListSearchField
-            value={search}
-            onChange={setSearch}
-            placeholder="Search transfers..."
-          />
+        <FrappeFilterBar
+          search={
+            <ListSearchField
+              variant="toolbar"
+              value={search}
+              onChange={setSearch}
+              placeholder="Search transfers..."
+            />
+          }
+          chips={[
+            from
+              ? {
+                  id: "from",
+                  label: `From ${from}`,
+                  onRemove: () => setFrom(""),
+                }
+              : null,
+            to
+              ? { id: "to", label: `To ${to}`, onRemove: () => setTo("") }
+              : null,
+            status
+              ? {
+                  id: "status",
+                  label: status,
+                  onRemove: () => setStatus(""),
+                }
+              : null,
+            fromLocationId
+              ? {
+                  id: "fromLoc",
+                  label: `From: ${
+                    locations?.find((l) => l.id === fromLocationId)?.name ??
+                    "location"
+                  }`,
+                  onRemove: () => setFromLocationId(""),
+                }
+              : null,
+            toLocationId
+              ? {
+                  id: "toLoc",
+                  label: `To: ${
+                    locations?.find((l) => l.id === toLocationId)?.name ??
+                    "location"
+                  }`,
+                  onRemove: () => setToLocationId(""),
+                }
+              : null,
+          ].filter(Boolean) as { id: string; label: string; onRemove: () => void }[]}
+          onClearAll={() => {
+            setFrom("");
+            setTo("");
+            setStatus("");
+            setFromLocationId("");
+            setToLocationId("");
+          }}
+        >
           <DateRangeFilter
             from={from}
             to={to}
             onFromChange={setFrom}
             onToChange={setTo}
           />
-          <Select
-            value={status || "__all__"}
-            onValueChange={(v) =>
-              setStatus(v === "__all__" ? "" : (v as TransferStatus))
-            }
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All statuses</SelectItem>
-              <SelectItem value="PENDING">Pending</SelectItem>
-              <SelectItem value="COMPLETED">Completed</SelectItem>
-              <SelectItem value="CANCELLED">Cancelled</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={fromLocationId || "__all__"}
-            onValueChange={(v) =>
-              setFromLocationId(v === "__all__" ? "" : v)
-            }
-          >
-            <SelectTrigger className="w-[170px]">
-              <SelectValue placeholder="From location" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">From any location</SelectItem>
-              {(locations ?? []).map((l) => (
-                <SelectItem key={l.id} value={l.id}>
-                  {l.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={toLocationId || "__all__"}
-            onValueChange={(v) => setToLocationId(v === "__all__" ? "" : v)}
-          >
-            <SelectTrigger className="w-[170px]">
-              <SelectValue placeholder="To location" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">To any location</SelectItem>
-              {(locations ?? []).map((l) => (
-                <SelectItem key={l.id} value={l.id}>
-                  {l.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <FilterSelect
+            label="Status"
+            value={status}
+            onValueChange={(v) => setStatus(v as TransferStatus | "")}
+            allLabel="All statuses"
+            options={[
+              { value: "PENDING", label: "Pending" },
+              { value: "COMPLETED", label: "Completed" },
+              { value: "CANCELLED", label: "Cancelled" },
+            ]}
+          />
+          <FilterSelect
+            label="From location"
+            value={fromLocationId}
+            onValueChange={setFromLocationId}
+            allLabel="From any location"
+            options={(locations ?? []).map((l) => ({
+              value: l.id,
+              label: l.name,
+            }))}
+          />
+          <FilterSelect
+            label="To location"
+            value={toLocationId}
+            onValueChange={setToLocationId}
+            allLabel="To any location"
+            options={(locations ?? []).map((l) => ({
+              value: l.id,
+              label: l.name,
+            }))}
+          />
         </FrappeFilterBar>
         {loading ? (
           <PageLoading />

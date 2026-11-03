@@ -1,14 +1,18 @@
 "use client";
 
 import { cn } from "@/lib/utils";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { NotificationBell } from "@/components/notifications/notification-bell";
 import { FrappeBreadcrumbs } from "./frappe-breadcrumbs";
+import {
+  ListFilters,
+  type ListFilterChip,
+} from "@/components/shared/list-filters";
 
 export interface FrappeBreadcrumb {
   label: string;
   href?: string;
 }
+
+export type { ListFilterChip };
 
 export function FrappePageHead({
   title,
@@ -23,40 +27,43 @@ export function FrappePageHead({
   actions?: React.ReactNode;
   className?: string;
 }) {
+  const hasBreadcrumbs = Boolean(breadcrumbs && breadcrumbs.length > 0);
+
   return (
-    <header
+    <div
       className={cn(
-        "frappe-page-head shrink-0 border-b border-[var(--frappe-border)] bg-[var(--frappe-surface)]",
+        "erp-page-head frappe-page-head shrink-0 bg-[var(--erp-surface)]",
         className
       )}
     >
-      <div className="flex items-start gap-3 px-4 py-4 lg:px-6 lg:py-5">
-        <SidebarTrigger className="mt-0.5 size-8 shrink-0 text-[var(--frappe-text-muted)] hover:text-[var(--frappe-text)]" />
-        <div className="min-w-0 flex-1">
-          {breadcrumbs && breadcrumbs.length > 0 ? (
-            <FrappeBreadcrumbs items={breadcrumbs} className="mb-2.5" />
-          ) : null}
-          <div className="flex flex-wrap items-end justify-between gap-x-4 gap-y-3">
-            <div className="min-w-0">
-              <h1 className="font-heading truncate text-xl font-semibold tracking-tight text-[var(--frappe-text)] lg:text-2xl">
-                {title}
-              </h1>
-              {subtitle ? (
-                <p className="mt-1 text-sm text-[var(--frappe-text-muted)]">
-                  {subtitle}
-                </p>
-              ) : null}
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <NotificationBell />
-              {actions ? (
-                <div className="flex flex-wrap items-center gap-2">{actions}</div>
-              ) : null}
-            </div>
+      {hasBreadcrumbs ? (
+        <div className="border-b border-[var(--erp-border)] bg-[var(--erp-section-head)]/70">
+          <div className="px-3 py-2 sm:px-4 lg:px-6">
+            <FrappeBreadcrumbs items={breadcrumbs!} />
           </div>
         </div>
+      ) : null}
+
+      <div className="border-b border-[var(--erp-border)]">
+        <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-3.5 lg:px-6">
+          <div className="min-w-0">
+            <h1 className="font-heading truncate text-lg font-semibold tracking-tight text-[var(--erp-text)] sm:text-xl">
+              {title}
+            </h1>
+            {subtitle ? (
+              <p className="mt-0.5 line-clamp-2 text-sm text-[var(--erp-text-muted)]">
+                {subtitle}
+              </p>
+            ) : null}
+          </div>
+          {actions ? (
+            <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+              {actions}
+            </div>
+          ) : null}
+        </div>
       </div>
-    </header>
+    </div>
   );
 }
 
@@ -72,8 +79,8 @@ export function FrappePageBody({
   return (
     <div
       className={cn(
-        "flex-1 overflow-auto bg-[var(--frappe-desk)]",
-        !noPadding && "p-4 lg:p-6",
+        "flex-1 overflow-auto bg-[var(--erp-desk)]",
+        !noPadding && "p-3 sm:p-4 lg:p-6",
         className
       )}
     >
@@ -82,22 +89,35 @@ export function FrappePageBody({
   );
 }
 
+/** Compact search toolbar + optional filter side sheet. */
 export function FrappeFilterBar({
   children,
   className,
+  title = "Filters",
+  description,
+  search,
+  chips,
+  onClearAll,
 }: {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   className?: string;
+  title?: string;
+  description?: string;
+  search?: React.ReactNode;
+  chips?: ListFilterChip[];
+  onClearAll?: () => void;
 }) {
   return (
-    <div
-      className={cn(
-        "mb-4 flex flex-wrap items-center gap-4 rounded-xl border border-[var(--frappe-border)] bg-[var(--frappe-surface)] px-4 py-3 shadow-sm",
-        className
-      )}
+    <ListFilters
+      className={className}
+      title={title}
+      description={description}
+      search={search}
+      chips={chips}
+      onClearAll={onClearAll}
     >
       {children}
-    </div>
+    </ListFilters>
   );
 }
 
@@ -111,13 +131,13 @@ export function FrappeListToolbar({
   return (
     <div
       className={cn(
-        "mb-3 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--frappe-border)]/80 bg-[var(--frappe-surface)]/60 px-3 py-2 text-sm backdrop-blur-sm",
+        "mb-3 flex flex-col gap-2 rounded-lg border border-[var(--erp-border)]/80 bg-[var(--erp-surface)]/70 px-3 py-2 text-sm backdrop-blur-sm sm:flex-row sm:flex-wrap sm:items-center sm:justify-between",
         className
       )}
     >
       {children ?? (
-        <span className="text-[var(--frappe-text-muted)]">
-          Click a row or use actions above
+        <span className="text-[var(--erp-text-muted)]">
+          Use filters and row actions to manage records
         </span>
       )}
     </div>
@@ -134,7 +154,7 @@ export function FrappeFormToolbar({
   return (
     <div
       className={cn(
-        "sticky top-0 z-10 -mx-4 -mt-4 mb-4 flex flex-wrap items-center gap-2 border-b border-[var(--frappe-border)] bg-[var(--frappe-surface)] px-4 py-2.5 shadow-sm lg:-mx-6 lg:-mt-6 lg:px-6",
+        "sticky top-0 z-10 -mx-3 -mt-3 mb-4 flex flex-wrap items-center gap-2 border-b border-[var(--erp-border)] bg-[var(--erp-surface)] px-3 py-2.5 shadow-sm sm:-mx-4 sm:-mt-4 sm:px-4 lg:-mx-6 lg:-mt-6 lg:px-6",
         className
       )}
     >
@@ -153,7 +173,7 @@ export function FrappeDocument({
   return (
     <div
       className={cn(
-        "overflow-hidden rounded-xl border border-[var(--frappe-border)] bg-[var(--frappe-surface)] shadow-sm",
+        "overflow-hidden rounded-xl border border-[var(--erp-border)] bg-[var(--erp-surface)] shadow-sm",
         className
       )}
     >

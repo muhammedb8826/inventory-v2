@@ -47,13 +47,17 @@ export function ReportPaginatedTable<T extends { id: string }>({
 
   return (
     <div className="space-y-3">
-      <FrappeFilterBar>
-        <ListSearchField
-          value={search}
-          onChange={onSearchChange}
-          placeholder={searchPlaceholder}
-          disabled={disabled}
-        />
+      <FrappeFilterBar
+        search={
+          <ListSearchField
+            variant="toolbar"
+            value={search}
+            onChange={onSearchChange}
+            placeholder={searchPlaceholder}
+            disabled={disabled}
+          />
+        }
+      >
         {filters}
       </FrappeFilterBar>
       <FrappeListToolbar>

@@ -1,6 +1,4 @@
-import { Separator } from "@/components/ui/separator";
-import { SidebarTrigger } from "@/components/ui/sidebar";
-import { NotificationBell } from "@/components/notifications/notification-bell";
+"use client";
 
 export function SiteHeader({
   title,
@@ -10,19 +8,17 @@ export function SiteHeader({
   actions?: React.ReactNode;
 }) {
   return (
-    <header className="flex h-(--header-height) shrink-0 items-center gap-2 border-b transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-(--header-height)">
-      <div className="flex w-full items-center gap-1 px-4 lg:gap-2 lg:px-6">
-        <SidebarTrigger className="-ml-1" />
-        <Separator
-          orientation="vertical"
-          className="mx-2 data-[orientation=vertical]:h-4"
-        />
-        <h1 className="font-heading text-base font-medium">{title}</h1>
-        <div className="ml-auto flex items-center gap-2">
-          <NotificationBell />
-          {actions}
-        </div>
+    <div className="shrink-0 border-b border-[var(--erp-border)] bg-[var(--erp-surface)]">
+      <div className="flex flex-col gap-3 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4 sm:py-3.5 lg:px-6">
+        <h1 className="font-heading truncate text-lg font-semibold tracking-tight text-[var(--erp-text)] sm:text-xl">
+          {title}
+        </h1>
+        {actions ? (
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end">
+            {actions}
+          </div>
+        ) : null}
       </div>
-    </header>
+    </div>
   );
 }

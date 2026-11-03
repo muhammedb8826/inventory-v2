@@ -19,11 +19,15 @@ import {
 } from "@/components/ui/table";
 import { DateRangeFilter } from "@/components/shared/date-range-filter";
 import { PageLoading } from "@/components/shared/page-loading";
+import { DashboardCharts } from "@/components/dashboard/dashboard-charts";
 import { api, isForbiddenError } from "@/lib/api";
 import { applyCurrencyFromResponse } from "@/lib/currency";
 import { formatMoney, errorMessage } from "@/lib/format";
-import { buildListPath } from "@/lib/list-query";
-import type { DashboardData } from "@/lib/types";
+import {
+  buildListPath,
+  buildReportsCashFlowPath,
+} from "@/lib/list-query";
+import type { DashboardData, ReportCashFlow } from "@/lib/types";
 import { toast } from "sonner";
 import {
   TrendingUpIcon,
@@ -34,6 +38,7 @@ import {
 
 export function DashboardOverview() {
   const [data, setData] = useState<DashboardData | null>(null);
+  const [cashFlow, setCashFlow] = useState<ReportCashFlow | null>(null);
   const [loading, setLoading] = useState(true);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -52,6 +57,23 @@ export function DashboardOverview() {
         );
         applyCurrencyFromResponse(res);
         setData(res);
+
+        try {
+          const flow = await api<ReportCashFlow>(
+            buildReportsCashFlowPath({
+              from: from || undefined,
+              to: to || undefined,
+            })
+          );
+          setCashFlow(flow);
+        } catch (e) {
+          if (!isForbiddenError(e)) {
+            // Charts still work without cash-flow permission.
+            setCashFlow(null);
+          } else {
+            setCashFlow(null);
+          }
+        }
       } catch (e) {
         if (!isForbiddenError(e)) toast.error(errorMessage(e));
       } finally {
@@ -66,18 +88,26 @@ export function DashboardOverview() {
   const { profitAndLoss: pnl, financialOverview: fin } = data;
 
   return (
-    <div className="flex flex-col gap-6">
-      <DateRangeFilter
-        from={from}
-        to={to}
-        onFromChange={setFrom}
-        onToChange={setTo}
-      />
-      <div className="grid grid-cols-1 gap-4 @xl/main:grid-cols-2 @5xl/main:grid-cols-4">
-        <Card>
-          <CardHeader>
+    <div className="flex flex-col gap-4 sm:gap-6">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <p className="text-sm text-[var(--erp-text-muted)]">
+            Operations snapshot with live KPIs and interactive charts
+          </p>
+        </div>
+        <DateRangeFilter
+          from={from}
+          to={to}
+          onFromChange={setFrom}
+          onToChange={setTo}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Card className="border-[var(--erp-border)] bg-[var(--erp-surface)] shadow-sm">
+          <CardHeader className="pb-2">
             <CardDescription>Total inventory value</CardDescription>
-            <CardTitle className="text-2xl tabular-nums">
+            <CardTitle className="text-2xl tabular-nums tracking-tight">
               {formatMoney(data.totalInventoryValue)}
             </CardTitle>
           </CardHeader>
@@ -86,10 +116,10 @@ export function DashboardOverview() {
             Across all locations
           </CardFooter>
         </Card>
-        <Card>
-          <CardHeader>
+        <Card className="border-[var(--erp-border)] bg-[var(--erp-surface)] shadow-sm">
+          <CardHeader className="pb-2">
             <CardDescription>Daily sales</CardDescription>
-            <CardTitle className="text-2xl tabular-nums">
+            <CardTitle className="text-2xl tabular-nums tracking-tight">
               {formatMoney(data.dailySales)}
             </CardTitle>
           </CardHeader>
@@ -98,10 +128,10 @@ export function DashboardOverview() {
             Today
           </CardFooter>
         </Card>
-        <Card>
-          <CardHeader>
+        <Card className="border-[var(--erp-border)] bg-[var(--erp-surface)] shadow-sm">
+          <CardHeader className="pb-2">
             <CardDescription>Daily purchases</CardDescription>
-            <CardTitle className="text-2xl tabular-nums">
+            <CardTitle className="text-2xl tabular-nums tracking-tight">
               {formatMoney(data.dailyPurchases)}
             </CardTitle>
           </CardHeader>
@@ -110,10 +140,10 @@ export function DashboardOverview() {
             Today
           </CardFooter>
         </Card>
-        <Card>
-          <CardHeader>
+        <Card className="border-[var(--erp-border)] bg-[var(--erp-surface)] shadow-sm">
+          <CardHeader className="pb-2">
             <CardDescription>Net profit</CardDescription>
-            <CardTitle className="text-2xl tabular-nums">
+            <CardTitle className="text-2xl tabular-nums tracking-tight">
               {formatMoney(pnl.netProfit)}
             </CardTitle>
             <Badge variant="outline" className="mt-2 w-fit">
@@ -127,8 +157,10 @@ export function DashboardOverview() {
         </Card>
       </div>
 
+      <DashboardCharts data={data} cashFlow={cashFlow} />
+
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
+        <Card className="border-[var(--erp-border)] bg-[var(--erp-surface)] shadow-sm">
           <CardHeader>
             <CardTitle>Stock by location</CardTitle>
             <CardDescription>
@@ -136,34 +168,34 @@ export function DashboardOverview() {
               {data.showroomCount === 1 ? "" : "s"} tracked
             </CardDescription>
           </CardHeader>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Location</TableHead>
-                <TableHead className="text-right">Value</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {data.stockValueByLocation.map((row) => (
-                <TableRow key={row.locationId}>
-                  <TableCell>{row.locationName}</TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatMoney(row.value)}
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Location</TableHead>
+                  <TableHead className="text-right">Value</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {data.stockValueByLocation.map((row) => (
+                  <TableRow key={row.locationId}>
+                    <TableCell>{row.locationName}</TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatMoney(row.value)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </Card>
 
-        <Card>
+        <Card className="border-[var(--erp-border)] bg-[var(--erp-surface)] shadow-sm">
           <CardHeader>
             <CardTitle>Financial overview</CardTitle>
             <CardDescription>
               Total liquidity:{" "}
-              {formatMoney(
-                fin.totalLiquidity ?? fin.totalBankBalance
-              )}
+              {formatMoney(fin.totalLiquidity ?? fin.totalBankBalance)}
               {fin.cashTotal != null && fin.bankTotal != null ? (
                 <>
                   {" "}
@@ -173,45 +205,47 @@ export function DashboardOverview() {
               ) : null}
             </CardDescription>
           </CardHeader>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Account</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead className="text-right">Balance</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {fin.bankAccounts.map((acc) => (
-                <TableRow key={acc.id}>
-                  <TableCell>
-                    {acc.name}
-                    {acc.bankName ? (
-                      <span className="ml-1 text-muted-foreground">
-                        ({acc.bankName})
-                      </span>
-                    ) : null}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">
-                      {acc.accountType ?? "BANK"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {formatMoney(acc.balance)}
-                  </TableCell>
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Account</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead className="text-right">Balance</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {fin.bankAccounts.map((acc) => (
+                  <TableRow key={acc.id}>
+                    <TableCell>
+                      {acc.name}
+                      {acc.bankName ? (
+                        <span className="ml-1 text-muted-foreground">
+                          ({acc.bankName})
+                        </span>
+                      ) : null}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {acc.accountType ?? "BANK"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums">
+                      {formatMoney(acc.balance)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </Card>
       </div>
 
-      <Card>
+      <Card className="border-[var(--erp-border)] bg-[var(--erp-surface)] shadow-sm">
         <CardHeader>
           <CardTitle>Profit &amp; loss</CardTitle>
         </CardHeader>
-        <div className="grid gap-4 px-6 pb-6 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-3 px-4 pb-4 sm:grid-cols-2 sm:px-6 sm:pb-6 lg:grid-cols-5">
           {[
             ["Revenue", pnl.revenue],
             ["COGS", pnl.costOfGoodsSold],
@@ -219,7 +253,10 @@ export function DashboardOverview() {
             ["Expenses", pnl.totalExpenses],
             ["Net profit", pnl.netProfit],
           ].map(([label, value]) => (
-            <div key={label as string} className="rounded-lg border p-4">
+            <div
+              key={label as string}
+              className="rounded-xl border border-[var(--erp-border)] bg-[var(--erp-section-head)]/50 p-4"
+            >
               <p className="text-sm text-muted-foreground">{label}</p>
               <p className="mt-1 text-xl font-semibold tabular-nums">
                 {formatMoney(value as string)}

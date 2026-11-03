@@ -3,10 +3,10 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
 const frappePrimary =
-  "h-8 rounded border-0 bg-[var(--frappe-primary)] px-3 text-xs font-medium text-white shadow-none hover:bg-[var(--frappe-primary-hover)]";
+  "h-9 rounded-md border-0 bg-[var(--erp-accent)] px-3.5 text-xs font-medium text-white shadow-none hover:bg-[var(--erp-accent-hover)] sm:h-8";
 
 const frappeSecondary =
-  "h-8 rounded border border-[var(--frappe-border)] bg-[var(--frappe-surface)] px-3 text-xs font-medium text-[var(--frappe-text)] shadow-none hover:bg-[var(--frappe-section-head)]";
+  "h-9 rounded-md border border-[var(--erp-border)] bg-[var(--erp-surface)] px-3.5 text-xs font-medium text-[var(--erp-text)] shadow-none hover:bg-[var(--erp-section-head)] sm:h-8";
 
 export function FrappeButtonPrimary({
   className,

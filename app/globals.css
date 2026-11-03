@@ -49,95 +49,113 @@
 }
 
 :root {
-  /* Frappe / ERPNext desk tokens */
-  --frappe-primary: #2490ef;
-  --frappe-primary-hover: #1a7fd4;
-  --frappe-desk: #f4f5f6;
-  --frappe-surface: #ffffff;
-  --frappe-section-head: #f7f7f7;
-  --frappe-border: #d1d8dd;
-  --frappe-text: #36414c;
-  --frappe-text-muted: #6c7680;
-  --frappe-red: #e24c4c;
-  --frappe-sidebar: #2c3e50;
-  --frappe-sidebar-text: #d1d8dd;
-  --frappe-sidebar-active: #2490ef;
+  /* Modern ERP desk tokens (Odoo / NetSuite inspired, not Frappe-only) */
+  --erp-accent: #0f766e;
+  --erp-accent-hover: #0d9488;
+  --erp-desk: #f1f5f9;
+  --erp-surface: #ffffff;
+  --erp-section-head: #f8fafc;
+  --erp-border: #e2e8f0;
+  --erp-text: #0f172a;
+  --erp-text-muted: #64748b;
+  --erp-danger: #dc2626;
+  --erp-sidebar: #0f172a;
+  --erp-sidebar-text: #cbd5e1;
+  --erp-sidebar-active: #0f766e;
 
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
+  /* Legacy aliases so existing pages keep working */
+  --frappe-primary: var(--erp-accent);
+  --frappe-primary-hover: var(--erp-accent-hover);
+  --frappe-desk: var(--erp-desk);
+  --frappe-surface: var(--erp-surface);
+  --frappe-section-head: var(--erp-section-head);
+  --frappe-border: var(--erp-border);
+  --frappe-text: var(--erp-text);
+  --frappe-text-muted: var(--erp-text-muted);
+  --frappe-red: var(--erp-danger);
+  --frappe-sidebar: var(--erp-sidebar);
+  --frappe-sidebar-text: var(--erp-sidebar-text);
+  --frappe-sidebar-active: var(--erp-sidebar-active);
+
+  --background: oklch(0.985 0.004 247);
+  --foreground: oklch(0.21 0.034 256);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
+  --card-foreground: oklch(0.21 0.034 256);
   --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.21 0.034 256);
+  --primary: oklch(0.47 0.08 185);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.96 0.01 247);
+  --secondary-foreground: oklch(0.28 0.03 256);
+  --muted: oklch(0.96 0.01 247);
+  --muted-foreground: oklch(0.52 0.03 256);
+  --accent: oklch(0.96 0.01 185);
+  --accent-foreground: oklch(0.28 0.04 185);
   --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  --border: oklch(0.9 0.01 247);
+  --input: oklch(0.9 0.01 247);
+  --ring: oklch(0.55 0.08 185);
+  --chart-1: oklch(0.55 0.12 185);
+  --chart-2: oklch(0.62 0.14 155);
+  --chart-3: oklch(0.58 0.12 245);
+  --chart-4: oklch(0.72 0.14 75);
+  --chart-5: oklch(0.6 0.16 25);
+  --radius: 0.75rem;
+  --sidebar: oklch(0.99 0.002 247);
+  --sidebar-foreground: oklch(0.28 0.03 256);
+  --sidebar-primary: oklch(0.47 0.08 185);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.95 0.015 185);
+  --sidebar-accent-foreground: oklch(0.28 0.04 185);
+  --sidebar-border: oklch(0.91 0.01 247);
+  --sidebar-ring: oklch(0.55 0.08 185);
 }
 
 .dark {
-  --frappe-desk: #1a1f26;
-  --frappe-surface: #232a33;
-  --frappe-section-head: #2a323d;
-  --frappe-border: #3d4654;
-  --frappe-text: #e8eaed;
-  --frappe-text-muted: #9aa3ad;
-  --frappe-sidebar: #151a21;
-  --frappe-sidebar-text: #c5cdd6;
+  --erp-accent: #2dd4bf;
+  --erp-accent-hover: #5eead4;
+  --erp-desk: #0b1220;
+  --erp-surface: #111827;
+  --erp-section-head: #1a2332;
+  --erp-border: #243044;
+  --erp-text: #e5eef9;
+  --erp-text-muted: #94a3b8;
+  --erp-danger: #f87171;
+  --erp-sidebar: #020617;
+  --erp-sidebar-text: #cbd5e1;
+  --erp-sidebar-active: #2dd4bf;
 
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
+  --background: oklch(0.17 0.02 256);
+  --foreground: oklch(0.97 0.01 247);
+  --card: oklch(0.21 0.025 256);
+  --card-foreground: oklch(0.97 0.01 247);
+  --popover: oklch(0.21 0.025 256);
+  --popover-foreground: oklch(0.97 0.01 247);
+  --primary: oklch(0.78 0.1 185);
+  --primary-foreground: oklch(0.2 0.03 185);
+  --secondary: oklch(0.27 0.03 256);
+  --secondary-foreground: oklch(0.97 0.01 247);
+  --muted: oklch(0.27 0.03 256);
+  --muted-foreground: oklch(0.72 0.02 247);
+  --accent: oklch(0.28 0.04 185);
+  --accent-foreground: oklch(0.95 0.02 185);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --ring: oklch(0.65 0.08 185);
+  --chart-1: oklch(0.75 0.12 185);
+  --chart-2: oklch(0.72 0.14 155);
+  --chart-3: oklch(0.7 0.12 245);
+  --chart-4: oklch(0.78 0.12 75);
+  --chart-5: oklch(0.7 0.14 25);
+  --sidebar: oklch(0.19 0.025 256);
+  --sidebar-foreground: oklch(0.97 0.01 247);
+  --sidebar-primary: oklch(0.75 0.1 185);
+  --sidebar-primary-foreground: oklch(0.2 0.03 185);
+  --sidebar-accent: oklch(0.27 0.03 256);
+  --sidebar-accent-foreground: oklch(0.97 0.01 247);
   --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --sidebar-ring: oklch(0.65 0.08 185);
 }
 
 @layer base {
@@ -145,54 +163,78 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
   }
   html {
     @apply font-sans;
   }
 }
 
-/* Frappe list view */
+/* Shared ERP / list table */
+.erp-list-table,
 .frappe-list-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
+.erp-list-table thead tr,
 .frappe-list-table thead tr {
-  background: var(--frappe-section-head);
-  border-bottom: 1px solid var(--frappe-border);
+  background: var(--erp-section-head);
+  border-bottom: 1px solid var(--erp-border);
 }
+.erp-list-table th,
 .frappe-list-table th {
   padding: 10px 12px;
   font-weight: 600;
-  font-size: 12px;
-  color: var(--frappe-text-muted);
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--erp-text-muted);
   white-space: nowrap;
   vertical-align: middle;
 }
+.erp-list-table td,
 .frappe-list-table td {
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--frappe-border);
-  color: var(--frappe-text);
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--erp-border);
+  color: var(--erp-text);
   vertical-align: middle;
 }
+.erp-list-table tbody tr,
 .frappe-list-table tbody tr {
-  background: var(--frappe-surface);
+  background: var(--erp-surface);
   cursor: default;
+  transition: background-color 120ms ease;
 }
+.erp-list-table tbody tr:hover,
 .frappe-list-table tbody tr:hover {
-  background: var(--frappe-section-head);
+  background: color-mix(in oklab, var(--erp-accent) 6%, var(--erp-surface));
 }
 
+.erp-page-head,
 .frappe-page-head {
   box-shadow: 0 1px 0 oklch(0 0 0 / 4%);
+  backdrop-filter: blur(8px);
 }
+.dark .erp-page-head,
 .dark .frappe-page-head {
   box-shadow: 0 1px 0 oklch(1 0 0 / 6%);
 }
 
-/* Frappe content is scoped to .frappe-page only (sidebar stays shadcn) */
+/* Page chrome uses ERP accent for primary actions */
+.erp-page,
 .frappe-page {
-  --primary: var(--frappe-primary);
+  --primary: var(--erp-accent);
   --primary-foreground: #ffffff;
+}
+
+@media (max-width: 767px) {
+  .erp-list-table th,
+  .frappe-list-table th {
+    padding: 8px 10px;
+  }
+  .erp-list-table td,
+  .frappe-list-table td {
+    padding: 10px;
+  }
 }

@@ -9,6 +9,7 @@ import { PermissionGate } from "@/components/permission-gate";
 import { FrappeFilterBar, FrappeListToolbar } from "@/components/frappe";
 import { DateRangeFilter } from "@/components/shared/date-range-filter";
 import { ListSearchField } from "@/components/shared/list-search-field";
+import { FilterSelect } from "@/components/shared/filter-field";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Button } from "@/components/ui/button";
 import {
@@ -104,6 +105,7 @@ function creditColumns(
     {
       key: "party",
       header: partyKey === "customer" ? "Customer" : "Supplier",
+      primary: true,
       cell: (r: CreditRecord) => {
         const party = partyKey === "customer" ? r.customer : r.supplier;
         if (!party?.name) return "—";
@@ -293,51 +295,78 @@ export default function CreditsPage() {
   return (
     <AppShell title="Credits">
       <PermissionGate permission="credit.read" showDenied>
-        <FrappeFilterBar>
-          <ListSearchField
-            value={search}
-            onChange={setSearch}
-            placeholder="Search credits..."
-          />
+        <FrappeFilterBar
+          search={
+            <ListSearchField
+              variant="toolbar"
+              value={search}
+              onChange={setSearch}
+              placeholder="Search credits..."
+            />
+          }
+          chips={[
+            from
+              ? {
+                  id: "from",
+                  label: `From ${from}`,
+                  onRemove: () => setFrom(""),
+                }
+              : null,
+            to
+              ? { id: "to", label: `To ${to}`, onRemove: () => setTo("") }
+              : null,
+            status
+              ? {
+                  id: "status",
+                  label: status,
+                  onRemove: () => setStatus(""),
+                }
+              : null,
+            source
+              ? {
+                  id: "source",
+                  label: source,
+                  onRemove: () => setSource(""),
+                }
+              : null,
+          ].filter(Boolean) as { id: string; label: string; onRemove: () => void }[]}
+          onClearAll={() => {
+            setFrom("");
+            setTo("");
+            setStatus("");
+            setSource("");
+          }}
+        >
           <DateRangeFilter
             from={from}
             to={to}
             onFromChange={setFrom}
             onToChange={setTo}
           />
-          <Select
-            value={status || "__all__"}
-            onValueChange={(v) =>
-              setStatus(v === "__all__" ? "" : (v as CreditStatus))
-            }
-          >
-            <SelectTrigger className="w-[160px]">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All statuses</SelectItem>
-              <SelectItem value="OPEN">Open</SelectItem>
-              <SelectItem value="PARTIAL">Partial</SelectItem>
-              <SelectItem value="PAID">Paid</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={source || "__all__"}
-            onValueChange={(v) =>
-              setSource(v === "__all__" ? "" : (v as CreditSource))
-            }
-          >
-            <SelectTrigger className="w-[170px]">
-              <SelectValue placeholder="Source" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All sources</SelectItem>
-              <SelectItem value={tab === "customers" ? "SALE" : "PURCHASE"}>
-                {tab === "customers" ? "From sale" : "From purchase"}
-              </SelectItem>
-              <SelectItem value="OPENING">Opening balance</SelectItem>
-            </SelectContent>
-          </Select>
+          <FilterSelect
+            label="Status"
+            value={status}
+            onValueChange={(v) => setStatus(v as CreditStatus | "")}
+            allLabel="All statuses"
+            options={[
+              { value: "OPEN", label: "Open" },
+              { value: "PARTIAL", label: "Partial" },
+              { value: "PAID", label: "Paid" },
+            ]}
+          />
+          <FilterSelect
+            label="Source"
+            value={source}
+            onValueChange={(v) => setSource(v as CreditSource | "")}
+            allLabel="All sources"
+            options={[
+              {
+                value: tab === "customers" ? "SALE" : "PURCHASE",
+                label: tab === "customers" ? "From sale" : "From purchase",
+              },
+              { value: "OPENING", label: "Opening balance" },
+            ]}
+          />
         </FrappeFilterBar>
         <Tabs
           value={tab}

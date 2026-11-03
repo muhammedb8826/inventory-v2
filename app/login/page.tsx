@@ -18,6 +18,10 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
 import { ThemeToggle } from "@/components/theme-toggle";
+import {
+  VendorHelpSheet,
+  VendorPoweredBy,
+} from "@/components/vendor/vendor-help";
 import { useBranding } from "@/components/branding/branding-provider";
 import { Package2 } from "lucide-react";
 import { errorMessage } from "@/lib/format";
@@ -63,19 +67,25 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-svh flex-col items-center justify-center bg-muted/30 p-4">
-      <div className="absolute right-4 top-4">
+    <div className="relative flex min-h-svh flex-col items-center justify-center bg-[var(--erp-desk)] p-4 sm:p-6">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,oklch(0.72_0.08_230_/_0.18),transparent_55%)] dark:bg-[radial-gradient(ellipse_at_top,oklch(0.4_0.06_230_/_0.25),transparent_55%)]" />
+      <div className="absolute right-4 top-4 z-10 flex items-center gap-1">
+        <VendorHelpSheet />
         <ThemeToggle />
       </div>
-      <div className="mb-8 flex items-center gap-2">
-        <Package2 className="size-8" />
-        <span className="font-heading text-xl font-semibold">{appName}</span>
+      <div className="relative z-10 mb-8 flex items-center gap-2.5">
+        <div className="flex size-10 items-center justify-center rounded-xl bg-[var(--erp-accent)] text-white shadow-sm">
+          <Package2 className="size-5" />
+        </div>
+        <span className="font-heading text-xl font-semibold tracking-tight text-[var(--erp-text)]">
+          {appName}
+        </span>
       </div>
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Sign in</CardTitle>
-          <CardDescription>
-            Use your account credentials. Default admin: admin@stock.local
+      <Card className="relative z-10 w-full max-w-md border-[var(--erp-border)] bg-[var(--erp-surface)] shadow-lg">
+        <CardHeader className="space-y-1.5">
+          <CardTitle className="text-xl text-[var(--erp-text)]">Sign in</CardTitle>
+          <CardDescription className="text-[var(--erp-text-muted)]">
+            Enter your work email and password to continue.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -86,7 +96,7 @@ export default function LoginPage() {
                 id="email"
                 type="email"
                 autoComplete="email"
-                placeholder="admin@stock.local"
+                placeholder="you@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -109,12 +119,19 @@ export default function LoginPage() {
             {loginMessage ? (
               <p className="text-sm text-muted-foreground">{loginMessage}</p>
             ) : null}
-            <Button type="submit" disabled={loading} className="w-full">
+            <Button
+              type="submit"
+              disabled={loading}
+              className="mt-1 h-10 w-full bg-[var(--erp-accent)] text-white hover:bg-[var(--erp-accent-hover)]"
+            >
               {loading ? <Spinner className="size-4" /> : "Sign in"}
             </Button>
           </form>
         </CardContent>
       </Card>
+      <div className="relative z-10 mt-8 text-center">
+        <VendorPoweredBy />
+      </div>
     </div>
   );
 }

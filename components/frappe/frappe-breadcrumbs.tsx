@@ -17,7 +17,7 @@ export function FrappeBreadcrumbs({
   return (
     <nav
       className={cn(
-        "flex flex-wrap items-center gap-1 text-[13px] leading-none",
+        "flex min-w-0 flex-wrap items-center gap-0.5 text-[12px] leading-none",
         className
       )}
       aria-label="Breadcrumb"
@@ -29,11 +29,11 @@ export function FrappeBreadcrumbs({
         return (
           <span
             key={`${crumb.label}-${i}`}
-            className="inline-flex items-center gap-1"
+            className="inline-flex min-w-0 items-center gap-0.5"
           >
             {i > 0 ? (
               <ChevronRight
-                className="size-3.5 shrink-0 text-[var(--frappe-text-muted)]/70"
+                className="size-3 shrink-0 text-[var(--erp-text-muted)]/60"
                 aria-hidden
               />
             ) : null}
@@ -41,29 +41,29 @@ export function FrappeBreadcrumbs({
               <Link
                 href={crumb.href}
                 className={cn(
-                  "inline-flex items-center gap-1 rounded-md px-1.5 py-1 font-medium text-[var(--frappe-text-muted)] transition-colors",
-                  "hover:bg-[var(--frappe-section-head)] hover:text-[var(--frappe-primary)]"
+                  "inline-flex max-w-[12rem] items-center gap-1 truncate rounded px-1.5 py-1 font-medium text-[var(--erp-text-muted)] transition-colors",
+                  "hover:bg-[var(--erp-surface)] hover:text-[var(--erp-accent)]"
                 )}
               >
                 {isFirst ? (
-                  <HomeIcon className="size-3.5 shrink-0 opacity-80" />
+                  <HomeIcon className="size-3 shrink-0 opacity-80" />
                 ) : null}
-                <span>{crumb.label}</span>
+                <span className="truncate">{crumb.label}</span>
               </Link>
             ) : (
               <span
                 className={cn(
-                  "inline-flex items-center gap-1 rounded-md px-2 py-1 font-semibold",
+                  "inline-flex max-w-[14rem] items-center gap-1 truncate rounded px-1.5 py-1",
                   isLast
-                    ? "bg-[var(--frappe-primary)]/10 text-[var(--frappe-primary)]"
-                    : "text-[var(--frappe-text)]"
+                    ? "font-semibold text-[var(--erp-text)]"
+                    : "font-medium text-[var(--erp-text-muted)]"
                 )}
                 aria-current={isLast ? "page" : undefined}
               >
                 {isFirst && !crumb.href ? (
-                  <HomeIcon className="size-3.5 shrink-0 opacity-80" />
+                  <HomeIcon className="size-3 shrink-0 opacity-80" />
                 ) : null}
-                <span>{crumb.label}</span>
+                <span className="truncate">{crumb.label}</span>
               </span>
             )}
           </span>

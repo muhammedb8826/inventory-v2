@@ -12,6 +12,11 @@ import {
 } from "@/components/frappe";
 import { DateRangeFilter } from "@/components/shared/date-range-filter";
 import { ListSearchField } from "@/components/shared/list-search-field";
+import {
+  FilterField,
+  FilterSelect,
+  filterControlClass,
+} from "@/components/shared/filter-field";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { formatMoney, formatDate } from "@/lib/format";
 import { documentTotal } from "@/lib/document-utils";
@@ -22,15 +27,8 @@ import { fetchSuppliers } from "@/lib/party-fetch";
 import { useFetch } from "@/hooks/use-fetch";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { cn } from "@/lib/utils";
 import { PlusIcon } from "lucide-react";
 
 import type {
@@ -110,79 +108,122 @@ export default function PurchasesPage() {
       }
     >
       <PermissionGate permission="purchase.read" showDenied>
-        <FrappeFilterBar>
-          <ListSearchField
-            value={search}
-            onChange={setSearch}
-            placeholder="Search purchases..."
-          />
+        <FrappeFilterBar
+          search={
+            <ListSearchField
+              variant="toolbar"
+              value={search}
+              onChange={setSearch}
+              placeholder="Search purchases..."
+            />
+          }
+          chips={[
+            from
+              ? {
+                  id: "from",
+                  label: `From ${from}`,
+                  onRemove: () => setFrom(""),
+                }
+              : null,
+            to
+              ? { id: "to", label: `To ${to}`, onRemove: () => setTo("") }
+              : null,
+            supplierId
+              ? {
+                  id: "supplier",
+                  label:
+                    suppliers?.find((s) => s.id === supplierId)?.name ??
+                    "Supplier",
+                  onRemove: () => setSupplierId(""),
+                }
+              : null,
+            locationId
+              ? {
+                  id: "location",
+                  label:
+                    locations?.find((l) => l.id === locationId)?.name ??
+                    "Location",
+                  onRemove: () => setLocationId(""),
+                }
+              : null,
+            paymentMethod
+              ? {
+                  id: "payment",
+                  label: paymentMethod,
+                  onRemove: () => setPaymentMethod(""),
+                }
+              : null,
+            includeVoided
+              ? {
+                  id: "voided",
+                  label: "Include voided",
+                  onRemove: () => setIncludeVoided(false),
+                }
+              : null,
+          ].filter(Boolean) as { id: string; label: string; onRemove: () => void }[]}
+          onClearAll={() => {
+            setFrom("");
+            setTo("");
+            setSupplierId("");
+            setLocationId("");
+            setPaymentMethod("");
+            setIncludeVoided(false);
+          }}
+        >
           <DateRangeFilter
             from={from}
             to={to}
             onFromChange={setFrom}
             onToChange={setTo}
           />
-          <div className="flex items-center gap-2">
-            <Switch
-              id="purchase-include-voided"
-              checked={includeVoided}
-              onCheckedChange={setIncludeVoided}
-            />
-            <Label
-              htmlFor="purchase-include-voided"
-              className="text-sm font-normal text-[var(--frappe-text)]"
+          <FilterSelect
+            label="Supplier"
+            value={supplierId}
+            onValueChange={setSupplierId}
+            allLabel="All suppliers"
+            options={(suppliers ?? []).map((s) => ({
+              value: s.id,
+              label: s.name,
+            }))}
+          />
+          <FilterSelect
+            label="Location"
+            value={locationId}
+            onValueChange={setLocationId}
+            allLabel="All locations"
+            options={(locations ?? []).map((l) => ({
+              value: l.id,
+              label: l.name,
+            }))}
+          />
+          <FilterSelect
+            label="Payment"
+            value={paymentMethod}
+            onValueChange={(v) => setPaymentMethod(v as PaymentMethod | "")}
+            allLabel="All payments"
+            options={[
+              { value: "CASH", label: "Cash" },
+              { value: "BANK", label: "Bank" },
+              { value: "CREDIT", label: "Credit" },
+            ]}
+          />
+          <FilterField label="Voided docs" htmlFor="purchase-include-voided">
+            <div
+              className={cn(
+                filterControlClass,
+                "flex items-center justify-between gap-2 px-3"
+              )}
             >
-              Include voided
-            </Label>
-          </div>
-          <Select
-            value={supplierId || "__all__"}
-            onValueChange={(v) => setSupplierId(v === "__all__" ? "" : v)}
-          >
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="All suppliers" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All suppliers</SelectItem>
-              {(suppliers ?? []).map((s) => (
-                <SelectItem key={s.id} value={s.id}>
-                  {s.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={locationId || "__all__"}
-            onValueChange={(v) => setLocationId(v === "__all__" ? "" : v)}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All locations" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All locations</SelectItem>
-              {(locations ?? []).map((l) => (
-                <SelectItem key={l.id} value={l.id}>
-                  {l.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={paymentMethod || "__all__"}
-            onValueChange={(v) =>
-              setPaymentMethod(v === "__all__" ? "" : (v as PaymentMethod))
-            }
-          >
-            <SelectTrigger className="w-[150px]">
-              <SelectValue placeholder="Payment" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All payments</SelectItem>
-              <SelectItem value="CASH">Cash</SelectItem>
-              <SelectItem value="BANK">Bank</SelectItem>
-              <SelectItem value="CREDIT">Credit</SelectItem>
-            </SelectContent>
-          </Select>
+              <span className="truncate text-sm text-[var(--erp-text)]">
+                Include voided
+              </span>
+              <Switch
+                id="purchase-include-voided"
+                checked={includeVoided}
+                onCheckedChange={setIncludeVoided}
+              />
+            </div>
+          </FilterField>
         </FrappeFilterBar>
         <FrappeListToolbar>
           <span className="text-[var(--frappe-text-muted)]">
@@ -231,6 +272,7 @@ export default function PurchasesPage() {
               {
                 key: "supplier",
                 header: "Supplier",
+                primary: true,
                 cell: (r) =>
                   r.supplier?.name ? (
                     <Link

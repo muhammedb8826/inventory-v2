@@ -8,6 +8,7 @@ import { PermissionGate } from "@/components/permission-gate";
 import { FrappeFilterBar, FrappeListToolbar } from "@/components/frappe";
 import { DateRangeFilter } from "@/components/shared/date-range-filter";
 import { ListSearchField } from "@/components/shared/list-search-field";
+import { FilterSelect } from "@/components/shared/filter-field";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { EntitySelectField } from "@/components/shared/entity-select-field";
 import { QuickExpenseCategoryDialog } from "@/components/expenses/quick-expense-category-dialog";
@@ -24,13 +25,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { api } from "@/lib/api";
 import { apiList } from "@/lib/list-response";
 import { buildExpensesListPath } from "@/lib/list-query";
@@ -89,50 +83,78 @@ export default function ExpensesPage() {
       }
     >
       <PermissionGate permission="expense.read" showDenied>
-        <FrappeFilterBar>
-          <ListSearchField
-            value={search}
-            onChange={setSearch}
-            placeholder="Search expenses..."
-          />
+        <FrappeFilterBar
+          search={
+            <ListSearchField
+              variant="toolbar"
+              value={search}
+              onChange={setSearch}
+              placeholder="Search expenses..."
+            />
+          }
+          chips={[
+            from
+              ? {
+                  id: "from",
+                  label: `From ${from}`,
+                  onRemove: () => setFrom(""),
+                }
+              : null,
+            to
+              ? { id: "to", label: `To ${to}`, onRemove: () => setTo("") }
+              : null,
+            categoryId
+              ? {
+                  id: "category",
+                  label:
+                    categories?.find((c) => c.id === categoryId)?.name ??
+                    "Category",
+                  onRemove: () => setCategoryId(""),
+                }
+              : null,
+            bankAccountId
+              ? {
+                  id: "account",
+                  label:
+                    banks?.find((b) => b.id === bankAccountId)?.name ??
+                    "Account",
+                  onRemove: () => setBankAccountId(""),
+                }
+              : null,
+          ].filter(Boolean) as { id: string; label: string; onRemove: () => void }[]}
+          onClearAll={() => {
+            setFrom("");
+            setTo("");
+            setCategoryId("");
+            setBankAccountId("");
+          }}
+        >
           <DateRangeFilter
             from={from}
             to={to}
             onFromChange={setFrom}
             onToChange={setTo}
           />
-          <Select
-            value={categoryId || "__all__"}
-            onValueChange={(v) => setCategoryId(v === "__all__" ? "" : v)}
-          >
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="All categories" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All categories</SelectItem>
-              {(categories ?? []).map((c) => (
-                <SelectItem key={c.id} value={c.id}>
-                  {c.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={bankAccountId || "__all__"}
-            onValueChange={(v) => setBankAccountId(v === "__all__" ? "" : v)}
-          >
-            <SelectTrigger className="w-[190px]">
-              <SelectValue placeholder="All accounts" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All accounts</SelectItem>
-              {bankAccountsForSelect(banks ?? []).map((b) => (
-                <SelectItem key={b.id} value={b.id}>
-                  {formatBankAccountLabel(b)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <FilterSelect
+            label="Category"
+            value={categoryId}
+            onValueChange={setCategoryId}
+            allLabel="All categories"
+            options={(categories ?? []).map((c) => ({
+              value: c.id,
+              label: c.name,
+            }))}
+          />
+          <FilterSelect
+            label="Account"
+            value={bankAccountId}
+            onValueChange={setBankAccountId}
+            allLabel="All accounts"
+            options={bankAccountsForSelect(banks ?? []).map((b) => ({
+              value: b.id,
+              label: formatBankAccountLabel(b),
+            }))}
+          />
         </FrappeFilterBar>
         <FrappeListToolbar>
           <span className="text-[var(--frappe-text-muted)]">

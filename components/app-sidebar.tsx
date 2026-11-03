@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { NavUser } from "@/components/nav-user";
+import { UserMenu } from "@/components/user-menu";
+import { VendorPoweredBy } from "@/components/vendor/vendor-help";
 import {
   Sidebar,
   SidebarContent,
@@ -111,16 +112,9 @@ export function AppSidebar({
           </SidebarGroup>
         ) : null}
       </SidebarContent>
-      <SidebarFooter>
-        {user ? (
-          <NavUser
-            user={{
-              name: user.fullName,
-              email: user.email,
-              role: user.role.name,
-            }}
-          />
-        ) : null}
+      <SidebarFooter className="gap-2">
+        {user ? <UserMenu /> : null}
+        <VendorPoweredBy className="px-2 pb-1" />
       </SidebarFooter>
     </Sidebar>
   );

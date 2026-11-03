@@ -44,18 +44,18 @@ export function TablePagination({
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 border-t border-[var(--frappe-border)] bg-[var(--frappe-section-head)]/40 px-4 py-3 sm:flex-row sm:items-center sm:justify-between",
+        "flex flex-col gap-3 border-t border-[var(--erp-border)] bg-[var(--erp-section-head)]/50 px-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-4",
         className
       )}
     >
-      <p className="text-sm text-[var(--frappe-text-muted)]">
+      <p className="text-sm text-[var(--erp-text-muted)]">
         {paginationLabel(meta)}
       </p>
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end sm:gap-4">
         <div className="flex items-center gap-2">
           <Label
             htmlFor="rows-per-page"
-            className="text-sm font-normal text-[var(--frappe-text-muted)]"
+            className="text-sm font-normal text-[var(--erp-text-muted)]"
           >
             Rows
           </Label>
@@ -67,7 +67,7 @@ export function TablePagination({
             <SelectTrigger
               id="rows-per-page"
               size="sm"
-              className="h-8 w-[72px] border-[var(--frappe-border)] bg-[var(--frappe-surface)]"
+              className="h-8 w-[72px] border-[var(--erp-border)] bg-[var(--erp-surface)]"
             >
               <SelectValue />
             </SelectTrigger>
@@ -85,7 +85,7 @@ export function TablePagination({
             type="button"
             variant="outline"
             size="icon"
-            className="size-8 border-[var(--frappe-border)] bg-[var(--frappe-surface)]"
+            className="hidden size-8 border-[var(--erp-border)] bg-[var(--erp-surface)] sm:inline-flex"
             onClick={() => onPageChange(1)}
             disabled={disabled || !canPrev || total === 0}
             aria-label="First page"
@@ -96,21 +96,21 @@ export function TablePagination({
             type="button"
             variant="outline"
             size="icon"
-            className="size-8 border-[var(--frappe-border)] bg-[var(--frappe-surface)]"
+            className="size-8 border-[var(--erp-border)] bg-[var(--erp-surface)]"
             onClick={() => onPageChange(page - 1)}
             disabled={disabled || !canPrev || total === 0}
             aria-label="Previous page"
           >
             <ChevronLeftIcon className="size-4" />
           </Button>
-          <span className="min-w-[88px] px-2 text-center text-sm tabular-nums text-[var(--frappe-text)]">
+          <span className="min-w-[72px] px-1 text-center text-sm tabular-nums text-[var(--erp-text)] sm:min-w-[88px] sm:px-2">
             {total === 0 ? "0 / 0" : `${page} / ${totalPages}`}
           </span>
           <Button
             type="button"
             variant="outline"
             size="icon"
-            className="size-8 border-[var(--frappe-border)] bg-[var(--frappe-surface)]"
+            className="size-8 border-[var(--erp-border)] bg-[var(--erp-surface)]"
             onClick={() => onPageChange(page + 1)}
             disabled={disabled || !canNext || total === 0}
             aria-label="Next page"
@@ -121,7 +121,7 @@ export function TablePagination({
             type="button"
             variant="outline"
             size="icon"
-            className="size-8 border-[var(--frappe-border)] bg-[var(--frappe-surface)]"
+            className="hidden size-8 border-[var(--erp-border)] bg-[var(--erp-surface)] sm:inline-flex"
             onClick={() => onPageChange(totalPages)}
             disabled={disabled || !canNext || total === 0}
             aria-label="Last page"

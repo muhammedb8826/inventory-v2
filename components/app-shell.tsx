@@ -1,6 +1,7 @@
 "use client";
 
 import { AppSidebar } from "@/components/app-sidebar";
+import { AppTopBar } from "@/components/app-top-bar";
 import { SiteHeader } from "@/components/site-header";
 import {
   FrappePageBody,
@@ -27,31 +28,38 @@ export function AppShell({
   children: React.ReactNode;
   actions?: React.ReactNode;
   variant?: "list" | "form" | "plain";
-  /** frappe = ERP-style page content; default = shadcn dashboard-style page */
-  layout?: "frappe" | "default";
+  /** erp/frappe = shared ERP page chrome; default = compact dashboard header */
+  layout?: "frappe" | "erp" | "default";
   className?: string;
 }) {
-  const isFrappe = layout === "frappe";
+  const useErpChrome = layout === "frappe" || layout === "erp";
+  const resolvedBreadcrumbs =
+    breadcrumbs ??
+    ([
+      { label: "Home", href: "/dashboard" },
+      { label: title },
+    ] satisfies FrappeBreadcrumb[]);
 
   return (
     <SidebarProvider
       style={
         {
           "--sidebar-width": "calc(var(--spacing) * 72)",
-          "--header-height": "calc(var(--spacing) * 12)",
+          "--header-height": "3rem",
         } as React.CSSProperties
       }
     >
       <TooltipProvider>
         <AppSidebar variant="inset" />
-        <SidebarInset className="flex flex-col bg-background">
-          {isFrappe ? (
-            <div className="frappe-page flex min-h-0 flex-1 flex-col">
+        <SidebarInset className="flex min-w-0 flex-col bg-[var(--erp-desk)]">
+          <AppTopBar />
+          {useErpChrome ? (
+            <div className="erp-page frappe-page flex min-h-0 min-w-0 flex-1 flex-col">
               {variant !== "plain" ? (
                 <FrappePageHead
                   title={title}
                   subtitle={subtitle}
-                  breadcrumbs={breadcrumbs}
+                  breadcrumbs={resolvedBreadcrumbs}
                   actions={actions}
                 />
               ) : null}
@@ -68,7 +76,7 @@ export function AppShell({
               ) : null}
               <div
                 className={cn(
-                  "flex flex-1 flex-col gap-4 p-4 md:gap-6 md:p-6",
+                  "flex min-w-0 flex-1 flex-col gap-4 overflow-auto p-3 sm:p-4 md:gap-6 md:p-6",
                   className
                 )}
               >

@@ -16,6 +16,7 @@ import {
 import { FrappeFilterBar } from "@/components/frappe";
 import { DateRangeFilter } from "@/components/shared/date-range-filter";
 import { ListSearchField } from "@/components/shared/list-search-field";
+import { FilterSelect } from "@/components/shared/filter-field";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Input } from "@/components/ui/input";
 import { PasswordInput } from "@/components/ui/password-input";
@@ -102,49 +103,74 @@ function UsersPageContent() {
         canWrite ? <UserDialog mode="create" onSuccess={reload} /> : null
       }
     >
-      <FrappeFilterBar>
-        <ListSearchField
-          value={search}
-          onChange={setSearch}
-          placeholder="Search users..."
-        />
+      <FrappeFilterBar
+        search={
+          <ListSearchField
+            variant="toolbar"
+            value={search}
+            onChange={setSearch}
+            placeholder="Search users..."
+          />
+        }
+        chips={[
+          from
+            ? {
+                id: "from",
+                label: `From ${from}`,
+                onRemove: () => setFrom(""),
+              }
+            : null,
+          to
+            ? { id: "to", label: `To ${to}`, onRemove: () => setTo("") }
+            : null,
+          roleId
+            ? {
+                id: "role",
+                label: roles?.find((r) => r.id === roleId)?.name ?? "Role",
+                onRemove: () => setRoleId(""),
+              }
+            : null,
+          activeFilter
+            ? {
+                id: "active",
+                label: activeFilter === "true" ? "Active" : "Inactive",
+                onRemove: () => setActiveFilter(""),
+              }
+            : null,
+        ].filter(Boolean) as { id: string; label: string; onRemove: () => void }[]}
+        onClearAll={() => {
+          setFrom("");
+          setTo("");
+          setRoleId("");
+          setActiveFilter("");
+        }}
+      >
         <DateRangeFilter
           from={from}
           to={to}
           onFromChange={setFrom}
           onToChange={setTo}
         />
-        <Select
-          value={roleId || "__all__"}
-          onValueChange={(v) => setRoleId(v === "__all__" ? "" : v)}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="All roles" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All roles</SelectItem>
-            {(roles ?? []).map((r) => (
-              <SelectItem key={r.id} value={r.id}>
-                {r.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={activeFilter || "__all__"}
-          onValueChange={(v) =>
-            setActiveFilter(v === "__all__" ? "" : (v as "true" | "false"))
-          }
-        >
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All users</SelectItem>
-            <SelectItem value="true">Active</SelectItem>
-            <SelectItem value="false">Inactive</SelectItem>
-          </SelectContent>
-        </Select>
+        <FilterSelect
+          label="Role"
+          value={roleId}
+          onValueChange={setRoleId}
+          allLabel="All roles"
+          options={(roles ?? []).map((r) => ({
+            value: r.id,
+            label: r.name,
+          }))}
+        />
+        <FilterSelect
+          label="Status"
+          value={activeFilter}
+          onValueChange={(v) => setActiveFilter(v as "true" | "false" | "")}
+          allLabel="All users"
+          options={[
+            { value: "true", label: "Active" },
+            { value: "false", label: "Inactive" },
+          ]}
+        />
       </FrappeFilterBar>
       {loading ? (
         <PageLoading />

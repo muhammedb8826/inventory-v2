@@ -1,7 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FilterField, filterControlClass } from "@/components/shared/filter-field";
 import { cn } from "@/lib/utils";
 import { SearchIcon } from "lucide-react";
 
@@ -13,6 +13,9 @@ export function ListSearchField({
   placeholder = "Search…",
   className,
   disabled,
+  wide = true,
+  /** toolbar = compact bar search (no label); field = labeled form control */
+  variant = "field",
 }: {
   id?: string;
   label?: string;
@@ -21,24 +24,31 @@ export function ListSearchField({
   placeholder?: string;
   className?: string;
   disabled?: boolean;
+  wide?: boolean;
+  variant?: "field" | "toolbar";
 }) {
-  return (
-    <div className={cn("grid gap-2", className)}>
-      <Label htmlFor={id} className="text-sm text-[var(--frappe-text-muted)]">
-        {label}
-      </Label>
-      <div className="relative">
-        <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-[var(--frappe-text-muted)]" />
-        <Input
-          id={id}
-          type="search"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          disabled={disabled}
-          className="h-9 w-full min-w-[200px] border-[var(--frappe-border)] bg-[var(--frappe-surface)] pl-9 sm:w-[240px]"
-        />
-      </div>
+  const input = (
+    <div className={cn("relative w-full", className)}>
+      <SearchIcon className="pointer-events-none absolute left-2.5 top-1/2 size-4 -translate-y-1/2 text-[var(--erp-text-muted)]" />
+      <Input
+        id={id}
+        type="search"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+        className={cn(filterControlClass, "pl-9")}
+      />
     </div>
+  );
+
+  if (variant === "toolbar") {
+    return input;
+  }
+
+  return (
+    <FilterField label={label} htmlFor={id} wide={wide}>
+      {input}
+    </FilterField>
   );
 }

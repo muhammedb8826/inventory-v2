@@ -9,6 +9,11 @@ import { BankAccountFormFields } from "@/components/banks/bank-account-form-fiel
 import { FrappeFilterBar } from "@/components/frappe";
 import { DateRangeFilter } from "@/components/shared/date-range-filter";
 import { ListSearchField } from "@/components/shared/list-search-field";
+import {
+  FilterField,
+  FilterSelect,
+  filterControlClass,
+} from "@/components/shared/filter-field";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -37,6 +42,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 import { api } from "@/lib/api";
 import { apiList } from "@/lib/list-response";
 import {
@@ -162,42 +168,72 @@ export default function BanksPage() {
               <TabsTrigger value="transactions">Transactions</TabsTrigger>
             </TabsList>
             <TabsContent value="accounts" className="mt-4 space-y-4">
-              <FrappeFilterBar>
-                <ListSearchField
-                  value={accountSearch}
-                  onChange={setAccountSearch}
-                  placeholder="Search accounts…"
-                />
-                <Select
-                  value={accountTypeFilter || "__all__"}
-                  onValueChange={(v) =>
-                    setAccountTypeFilter(
-                      v === "__all__" ? "" : (v as BankAccountType)
-                    )
-                  }
-                >
-                  <SelectTrigger className="w-[170px]">
-                    <SelectValue placeholder="All types" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all__">All types</SelectItem>
-                    <SelectItem value="CASH">Cash</SelectItem>
-                    <SelectItem value="BANK">Bank</SelectItem>
-                  </SelectContent>
-                </Select>
-                <div className="flex items-center gap-2 self-end">
-                  <Switch
-                    id="banks-show-inactive"
-                    checked={showInactive}
-                    onCheckedChange={setShowInactive}
+              <FrappeFilterBar
+                search={
+                  <ListSearchField
+                    variant="toolbar"
+                    value={accountSearch}
+                    onChange={setAccountSearch}
+                    placeholder="Search accounts…"
                   />
-                  <Label
-                    htmlFor="banks-show-inactive"
-                    className="text-sm font-normal text-[var(--frappe-text)]"
+                }
+                chips={[
+                  accountTypeFilter
+                    ? {
+                        id: "type",
+                        label: accountTypeFilter,
+                        onRemove: () => setAccountTypeFilter(""),
+                      }
+                    : null,
+                  showInactive
+                    ? {
+                        id: "inactive",
+                        label: "Include inactive",
+                        onRemove: () => setShowInactive(false),
+                      }
+                    : null,
+                ].filter(Boolean) as {
+                  id: string;
+                  label: string;
+                  onRemove: () => void;
+                }[]}
+                onClearAll={() => {
+                  setAccountTypeFilter("");
+                  setShowInactive(false);
+                }}
+              >
+                <FilterSelect
+                  label="Type"
+                  value={accountTypeFilter}
+                  onValueChange={(v) =>
+                    setAccountTypeFilter(v as BankAccountType | "")
+                  }
+                  allLabel="All types"
+                  options={[
+                    { value: "CASH", label: "Cash" },
+                    { value: "BANK", label: "Bank" },
+                  ]}
+                />
+                <FilterField
+                  label="Inactive accounts"
+                  htmlFor="banks-show-inactive"
+                >
+                  <div
+                    className={cn(
+                      filterControlClass,
+                      "flex items-center justify-between gap-2 px-3"
+                    )}
                   >
-                    Include inactive
-                  </Label>
-                </div>
+                    <span className="truncate text-sm text-[var(--erp-text)]">
+                      Include inactive
+                    </span>
+                    <Switch
+                      id="banks-show-inactive"
+                      checked={showInactive}
+                      onCheckedChange={setShowInactive}
+                    />
+                  </div>
+                </FilterField>
               </FrappeFilterBar>
               {liquidity?.totals ? (
                 <div className="grid gap-4 sm:grid-cols-3">
@@ -292,87 +328,103 @@ export default function BanksPage() {
               />
             </TabsContent>
             <TabsContent value="transactions" className="mt-4 space-y-4">
-              <FrappeFilterBar>
-                <ListSearchField
-                  value={search}
-                  onChange={setSearch}
-                  placeholder="Search description…"
+              <FrappeFilterBar
+                search={
+                  <ListSearchField
+                    variant="toolbar"
+                    value={search}
+                    onChange={setSearch}
+                    placeholder="Search description…"
+                  />
+                }
+                chips={[
+                  from
+                    ? {
+                        id: "from",
+                        label: `From ${from}`,
+                        onRemove: () => setFrom(""),
+                      }
+                    : null,
+                  to
+                    ? {
+                        id: "to",
+                        label: `To ${to}`,
+                        onRemove: () => setTo(""),
+                      }
+                    : null,
+                  transactionType
+                    ? {
+                        id: "type",
+                        label:
+                          BANK_TRANSACTION_TYPE_OPTIONS.find(
+                            (o) => o.value === transactionType
+                          )?.label ?? transactionType,
+                        onRemove: () => setTransactionType(""),
+                      }
+                    : null,
+                  direction
+                    ? {
+                        id: "direction",
+                        label:
+                          BANK_TRANSACTION_DIRECTION_OPTIONS.find(
+                            (o) => o.value === direction
+                          )?.label ?? direction,
+                        onRemove: () => setDirection(""),
+                      }
+                    : null,
+                ].filter(Boolean) as {
+                  id: string;
+                  label: string;
+                  onRemove: () => void;
+                }[]}
+                onClearAll={() => {
+                  setFrom("");
+                  setTo("");
+                  setTransactionType("");
+                  setDirection("");
+                }}
+              >
+                <FilterSelect
+                  label="Account"
+                  value={effectiveId}
+                  onValueChange={setAccountId}
+                  options={(accounts ?? [])
+                    .filter((a) => a.isActive !== false)
+                    .map((a) => ({
+                      value: a.id,
+                      label: formatBankAccountLabel(a),
+                    }))}
                 />
-                <div className="grid gap-2">
-                  <Label className="text-sm text-[var(--frappe-text-muted)]">
-                    Account
-                  </Label>
-                  <Select value={effectiveId} onValueChange={setAccountId}>
-                    <SelectTrigger className="w-[280px]">
-                      <SelectValue placeholder="Account" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {(accounts ?? [])
-                        .filter((a) => a.isActive !== false)
-                        .map((a) => (
-                          <SelectItem key={a.id} value={a.id}>
-                            {formatBankAccountLabel(a)}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                </div>
                 <DateRangeFilter
                   from={from}
                   to={to}
                   onFromChange={setFrom}
                   onToChange={setTo}
                 />
-                <div className="grid gap-2">
-                  <Label className="text-sm text-[var(--frappe-text-muted)]">
-                    Type
-                  </Label>
-                  <Select
-                    value={transactionType || "__all__"}
-                    onValueChange={(v) =>
-                      setTransactionType(
-                        v === "__all__" ? "" : (v as BankTransactionType)
-                      )
-                    }
-                  >
-                    <SelectTrigger className="w-[180px]">
-                      <SelectValue placeholder="All types" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__all__">All types</SelectItem>
-                      {BANK_TRANSACTION_TYPE_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label className="text-sm text-[var(--frappe-text-muted)]">
-                    Direction
-                  </Label>
-                  <Select
-                    value={direction || "__all__"}
-                    onValueChange={(v) =>
-                      setDirection(
-                        v === "__all__" ? "" : (v as BankTransactionDirection)
-                      )
-                    }
-                  >
-                    <SelectTrigger className="w-[140px]">
-                      <SelectValue placeholder="All" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__all__">All</SelectItem>
-                      {BANK_TRANSACTION_DIRECTION_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                <FilterSelect
+                  label="Type"
+                  value={transactionType}
+                  onValueChange={(v) =>
+                    setTransactionType(v as BankTransactionType | "")
+                  }
+                  allLabel="All types"
+                  options={BANK_TRANSACTION_TYPE_OPTIONS.map((option) => ({
+                    value: option.value,
+                    label: option.label,
+                  }))}
+                />
+                <FilterSelect
+                  label="Direction"
+                  value={direction}
+                  onValueChange={(v) =>
+                    setDirection(v as BankTransactionDirection | "")
+                  }
+                  allLabel="All"
+                  options={BANK_TRANSACTION_DIRECTION_OPTIONS.map((option) => ({
+                    value: option.value,
+                    label: option.label,
+                  }))}
+                />
               </FrappeFilterBar>
               {transactionList.loading ? (
                 <PageLoading />

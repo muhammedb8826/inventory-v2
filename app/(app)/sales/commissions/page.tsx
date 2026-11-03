@@ -101,37 +101,56 @@ export default function SalesCommissionsPage() {
       }
     >
       <PermissionGate permission="sales.read" showDenied>
-        <FrappeFilterBar className="items-end">
-          <div className="grid gap-2">
-            <Label htmlFor="comm-from">From</Label>
-            <Input
-              id="comm-from"
-              type="date"
-              value={from}
-              onChange={(e) => setFrom(e.target.value)}
-              className="w-[160px]"
-            />
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="comm-to">To</Label>
-            <Input
-              id="comm-to"
-              type="date"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              className="w-[160px]"
-            />
-          </div>
+        <FrappeFilterBar
+          search={
+            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+              <Input
+                id="comm-from"
+                type="date"
+                value={from}
+                onChange={(e) => setFrom(e.target.value)}
+                className="h-9 w-full sm:w-[160px]"
+                aria-label="From"
+              />
+              <Input
+                id="comm-to"
+                type="date"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                className="h-9 w-full sm:w-[160px]"
+                aria-label="To"
+              />
+            </div>
+          }
+          chips={
+            soldByUserId
+              ? [
+                  {
+                    id: "rep",
+                    label:
+                      activeUsers.find((u) => u.id === soldByUserId)
+                        ?.fullName ?? "Sales rep",
+                    onRemove: () => setSoldByUserId(""),
+                  },
+                ]
+              : []
+          }
+          onClearAll={
+            canFilterRep ? () => setSoldByUserId("") : undefined
+          }
+        >
           {canFilterRep ? (
-            <div className="grid gap-2">
-              <Label>Sales rep</Label>
+            <div className="grid gap-1.5">
+              <Label className="text-xs font-medium text-[var(--erp-text-muted)]">
+                Sales rep
+              </Label>
               <Select
                 value={soldByUserId || "__all__"}
                 onValueChange={(v) =>
                   setSoldByUserId(v === "__all__" ? "" : v)
                 }
               >
-                <SelectTrigger className="w-[220px]">
+                <SelectTrigger className="h-9 w-full">
                   <SelectValue placeholder="All reps" />
                 </SelectTrigger>
                 <SelectContent>

@@ -82,18 +82,58 @@ export default function ProductionOrdersPage() {
       }
     >
       <PermissionGate permission="production.read" showDenied>
-        <FrappeFilterBar>
-          <ListSearchField
-            value={search}
-            onChange={setSearch}
-            placeholder="Search orders…"
-          />
-          <div className="grid gap-2">
-            <Label className="text-sm text-[var(--frappe-text-muted)]">
+        <FrappeFilterBar
+          search={
+            <ListSearchField
+              variant="toolbar"
+              value={search}
+              onChange={setSearch}
+              placeholder="Search orders…"
+            />
+          }
+          chips={[
+            locationId !== ALL
+              ? {
+                  id: "location",
+                  label:
+                    locations?.find((l) => l.id === locationId)?.name ??
+                    "Location",
+                  onRemove: () => setLocationId(ALL),
+                }
+              : null,
+            status
+              ? {
+                  id: "status",
+                  label:
+                    PRODUCTION_STATUS_OPTIONS.find((o) => o.value === status)
+                      ?.label ?? status,
+                  onRemove: () => setStatus(""),
+                }
+              : null,
+            from
+              ? {
+                  id: "from",
+                  label: `From ${from}`,
+                  onRemove: () => setFrom(""),
+                }
+              : null,
+            to
+              ? { id: "to", label: `To ${to}`, onRemove: () => setTo("") }
+              : null,
+          ].filter(Boolean) as { id: string; label: string; onRemove: () => void }[]}
+          onClearAll={() => {
+            setLocationId(ALL);
+            setStatus("");
+            setFrom("");
+            setTo("");
+          }}
+        >
+          <div className="grid gap-1.5">
+            <Label className="text-xs font-medium text-[var(--erp-text-muted)]">
               Location
             </Label>
             <Select value={locationId} onValueChange={setLocationId}>
-              <SelectTrigger className="w-[220px]">
+              <SelectTrigger className="h-9 w-full">
                 <SelectValue placeholder="All locations" />
               </SelectTrigger>
               <SelectContent>
@@ -106,8 +146,8 @@ export default function ProductionOrdersPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="grid gap-2">
-            <Label className="text-sm text-[var(--frappe-text-muted)]">
+          <div className="grid gap-1.5">
+            <Label className="text-xs font-medium text-[var(--erp-text-muted)]">
               Status
             </Label>
             <Select
@@ -116,7 +156,7 @@ export default function ProductionOrdersPage() {
                 setStatus(v === ALL ? "" : (v as ProductionOrderStatus))
               }
             >
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="h-9 w-full">
                 <SelectValue placeholder="All statuses" />
               </SelectTrigger>
               <SelectContent>

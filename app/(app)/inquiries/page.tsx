@@ -169,12 +169,16 @@ export default function InquiriesPage() {
       }
     >
       <>
-        <FrappeFilterBar>
-          <ListSearchField
-            value={search}
-            onChange={setSearch}
-            placeholder="Search name, phone, email, subject…"
-          />
+        <FrappeFilterBar
+          search={
+            <ListSearchField
+              variant="toolbar"
+              value={search}
+              onChange={setSearch}
+              placeholder="Search name, phone, email, subject…"
+            />
+          }
+        >
           <DateRangeFilter
             from={from}
             to={to}
@@ -187,7 +191,7 @@ export default function InquiriesPage() {
               setStatus(v === "__all__" ? "" : (v as InquiryStatus))
             }
           >
-            <SelectTrigger className="w-[160px]">
+            <SelectTrigger className="h-9 w-full">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -205,7 +209,7 @@ export default function InquiriesPage() {
               setSource(v === "__all__" ? "" : (v as InquirySource))
             }
           >
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="h-9 w-full">
               <SelectValue placeholder="Source" />
             </SelectTrigger>
             <SelectContent>
@@ -220,7 +224,7 @@ export default function InquiriesPage() {
               setPriority(v === "__all__" ? "" : (v as InquiryPriority))
             }
           >
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="h-9 w-full">
               <SelectValue placeholder="Priority" />
             </SelectTrigger>
             <SelectContent>
@@ -240,7 +244,7 @@ export default function InquiriesPage() {
               )
             }
           >
-            <SelectTrigger className="w-[170px]">
+            <SelectTrigger className="h-9 w-full">
               <SelectValue placeholder="Assignment" />
             </SelectTrigger>
             <SelectContent>
@@ -256,7 +260,7 @@ export default function InquiriesPage() {
             value={customerId || "__all__"}
             onValueChange={(v) => setCustomerId(v === "__all__" ? "" : v)}
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="h-9 w-full">
               <SelectValue placeholder="All customers" />
             </SelectTrigger>
             <SelectContent>
@@ -274,7 +278,7 @@ export default function InquiriesPage() {
               setAssignedToUserId(v === "__all__" ? "" : v)
             }
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="h-9 w-full">
               <SelectValue placeholder="Anyone assigned" />
             </SelectTrigger>
             <SelectContent>

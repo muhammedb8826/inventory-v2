@@ -73,7 +73,14 @@ export function MasterDataPage<
   readPermission: string;
   writePermission: string;
   fields: MasterField[];
-  columns: { key: string; header: string; cell: (row: T) => React.ReactNode }[];
+  columns: {
+    key: string;
+    header: string;
+    cell: (row: T) => React.ReactNode;
+    primary?: boolean;
+    hideOnMobile?: boolean;
+    className?: string;
+  }[];
   emptyDescription?: string;
   supportsActive?: boolean;
   listParams?: ListQueryParams;
@@ -157,12 +164,16 @@ export function MasterDataPage<
       }
     >
       <>
-        <FrappeFilterBar>
-          <ListSearchField
-            value={search}
-            onChange={setSearch}
-            placeholder={`Search ${title.toLowerCase()}...`}
-          />
+        <FrappeFilterBar
+          search={
+            <ListSearchField
+              variant="toolbar"
+              value={search}
+              onChange={setSearch}
+              placeholder={`Search ${title.toLowerCase()}...`}
+            />
+          }
+        >
           {filterExtras}
         </FrappeFilterBar>
         <FrappeListToolbar>

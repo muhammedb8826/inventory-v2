@@ -1,7 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { FilterField, filterControlClass } from "@/components/shared/filter-field";
 import { cn } from "@/lib/utils";
 
 export function DateRangeFilter({
@@ -20,39 +20,31 @@ export function DateRangeFilter({
   disabled?: boolean;
 }) {
   return (
-    <div className={cn("flex flex-wrap items-end gap-2", className)}>
-      <div className="grid gap-2">
-        <Label
-          htmlFor="date-from"
-          className="text-sm text-[var(--frappe-text-muted)]"
-        >
-          From
-        </Label>
+    <>
+      <FilterField
+        label="From"
+        htmlFor="date-from"
+        className={className}
+      >
         <Input
           id="date-from"
           type="date"
           value={from}
           onChange={(e) => onFromChange(e.target.value)}
           disabled={disabled}
-          className="h-9 w-[150px] border-[var(--frappe-border)] bg-[var(--frappe-surface)]"
+          className={cn(filterControlClass)}
         />
-      </div>
-      <div className="grid gap-2">
-        <Label
-          htmlFor="date-to"
-          className="text-sm text-[var(--frappe-text-muted)]"
-        >
-          To
-        </Label>
+      </FilterField>
+      <FilterField label="To" htmlFor="date-to" className={className}>
         <Input
           id="date-to"
           type="date"
           value={to}
           onChange={(e) => onToChange(e.target.value)}
           disabled={disabled}
-          className="h-9 w-[150px] border-[var(--frappe-border)] bg-[var(--frappe-surface)]"
+          className={cn(filterControlClass)}
         />
-      </div>
-    </div>
+      </FilterField>
+    </>
   );
 }

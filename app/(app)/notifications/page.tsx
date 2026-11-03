@@ -13,17 +13,11 @@ import {
 } from "@/components/frappe";
 import { DateRangeFilter } from "@/components/shared/date-range-filter";
 import { ListSearchField } from "@/components/shared/list-search-field";
+import { FilterSelect } from "@/components/shared/filter-field";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { buildNotificationsListPath } from "@/lib/list-query";
 import {
   dismissNotification,
@@ -128,51 +122,76 @@ export default function NotificationsPage() {
         </FrappeButtonPrimary>
       }
     >
-      <FrappeFilterBar>
-        <ListSearchField
-          value={search}
-          onChange={setSearch}
-          placeholder="Search title or message…"
-        />
+      <FrappeFilterBar
+        search={
+          <ListSearchField
+            variant="toolbar"
+            value={search}
+            onChange={setSearch}
+            placeholder="Search title or message…"
+          />
+        }
+        chips={[
+          from
+            ? {
+                id: "from",
+                label: `From ${from}`,
+                onRemove: () => setFrom(""),
+              }
+            : null,
+          to
+            ? { id: "to", label: `To ${to}`, onRemove: () => setTo("") }
+            : null,
+          readFilter
+            ? {
+                id: "read",
+                label: readFilter === "false" ? "Unread" : "Read",
+                onRemove: () => setReadFilter(""),
+              }
+            : null,
+          moduleFilter
+            ? {
+                id: "module",
+                label:
+                  NOTIFICATION_MODULES.find((m) => m.value === moduleFilter)
+                    ?.label ?? moduleFilter,
+                onRemove: () => setModuleFilter(""),
+              }
+            : null,
+        ].filter(Boolean) as { id: string; label: string; onRemove: () => void }[]}
+        onClearAll={() => {
+          setFrom("");
+          setTo("");
+          setReadFilter("");
+          setModuleFilter("");
+        }}
+      >
         <DateRangeFilter
           from={from}
           to={to}
           onFromChange={setFrom}
           onToChange={setTo}
         />
-        <Select
-          value={readFilter || "__all__"}
-          onValueChange={(v) =>
-            setReadFilter(v === "__all__" ? "" : (v as ReadFilter))
-          }
-        >
-          <SelectTrigger className="w-[160px]">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All</SelectItem>
-            <SelectItem value="false">Unread</SelectItem>
-            <SelectItem value="true">Read</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select
-          value={moduleFilter || "__all__"}
-          onValueChange={(v) =>
-            setModuleFilter(v === "__all__" ? "" : v)
-          }
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Module" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All modules</SelectItem>
-            {NOTIFICATION_MODULES.map((m) => (
-              <SelectItem key={m.value} value={m.value}>
-                {m.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <FilterSelect
+          label="Status"
+          value={readFilter}
+          onValueChange={(v) => setReadFilter(v as ReadFilter)}
+          allLabel="All"
+          options={[
+            { value: "false", label: "Unread" },
+            { value: "true", label: "Read" },
+          ]}
+        />
+        <FilterSelect
+          label="Module"
+          value={moduleFilter}
+          onValueChange={setModuleFilter}
+          allLabel="All modules"
+          options={NOTIFICATION_MODULES.map((m) => ({
+            value: m.value,
+            label: m.label,
+          }))}
+        />
       </FrappeFilterBar>
 
       <FrappeListToolbar>

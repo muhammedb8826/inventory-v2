@@ -8,6 +8,7 @@ import { PermissionGate } from "@/components/permission-gate";
 import { FrappeFilterBar, FrappeListToolbar } from "@/components/frappe";
 import { DateRangeFilter } from "@/components/shared/date-range-filter";
 import { ListSearchField } from "@/components/shared/list-search-field";
+import { FilterSelect } from "@/components/shared/filter-field";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Button } from "@/components/ui/button";
 import {
@@ -168,50 +169,74 @@ export default function InventoryPage() {
             <TabsTrigger value="adjustments">Adjustments</TabsTrigger>
           </TabsList>
           <TabsContent value="stock" className="mt-0 space-y-0">
-        <FrappeFilterBar>
-          <div className="grid gap-2">
-            <Label className="text-sm text-[var(--frappe-text-muted)]">
-              Location
-            </Label>
-            <Select value={locationFilter} onValueChange={setLocationFilter}>
-              <SelectTrigger className="h-9 w-full min-w-[200px] border-[var(--frappe-border)] bg-[var(--frappe-surface)] sm:w-[240px]">
-                <SelectValue placeholder="All locations" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_LOCATIONS}>All locations</SelectItem>
-                {(locations ?? []).map((loc) => (
-                  <SelectItem key={loc.id} value={loc.id}>
-                    {loc.name} ({loc.type})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid gap-2">
-            <Label className="text-sm text-[var(--frappe-text-muted)]">
-              View
-            </Label>
-            <Select
-              value={viewMode}
-              onValueChange={(v) =>
-                setViewMode(v as typeof VIEW_ALL | typeof VIEW_LOW_STOCK)
-              }
-            >
-              <SelectTrigger className="h-9 w-full min-w-[180px] border-[var(--frappe-border)] bg-[var(--frappe-surface)] sm:w-[200px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={VIEW_ALL}>All stock</SelectItem>
-                <SelectItem value={VIEW_LOW_STOCK}>Low stock only</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <ListSearchField
-            value={search}
-            onChange={setSearch}
-            placeholder="Search stock..."
-            disabled={isLowStockView}
-            className={isLowStockView ? "opacity-60" : undefined}
+        <FrappeFilterBar
+          search={
+            <ListSearchField
+              variant="toolbar"
+              value={search}
+              onChange={setSearch}
+              placeholder="Search stock..."
+              disabled={isLowStockView}
+              className={isLowStockView ? "opacity-60" : undefined}
+            />
+          }
+          chips={[
+            !isAllLocations
+              ? {
+                  id: "location",
+                  label:
+                    locations?.find((l) => l.id === locationFilter)?.name ??
+                    "Location",
+                  onRemove: () => setLocationFilter(ALL_LOCATIONS),
+                }
+              : null,
+            isLowStockView
+              ? {
+                  id: "view",
+                  label: "Low stock",
+                  onRemove: () => setViewMode(VIEW_ALL),
+                }
+              : null,
+            from
+              ? {
+                  id: "from",
+                  label: `From ${from}`,
+                  onRemove: () => setFrom(""),
+                }
+              : null,
+            to
+              ? { id: "to", label: `To ${to}`, onRemove: () => setTo("") }
+              : null,
+          ].filter(Boolean) as { id: string; label: string; onRemove: () => void }[]}
+          onClearAll={() => {
+            setLocationFilter(ALL_LOCATIONS);
+            setViewMode(VIEW_ALL);
+            setFrom("");
+            setTo("");
+          }}
+        >
+          <FilterSelect
+            label="Location"
+            value={locationFilter}
+            onValueChange={setLocationFilter}
+            allLabel="All locations"
+            allValue={ALL_LOCATIONS}
+            keepAllValue
+            options={(locations ?? []).map((loc) => ({
+              value: loc.id,
+              label: `${loc.name} (${loc.type})`,
+            }))}
+          />
+          <FilterSelect
+            label="View"
+            value={viewMode}
+            onValueChange={(v) =>
+              setViewMode(v as typeof VIEW_ALL | typeof VIEW_LOW_STOCK)
+            }
+            options={[
+              { value: VIEW_ALL, label: "All stock" },
+              { value: VIEW_LOW_STOCK, label: "Low stock only" },
+            ]}
           />
           <DateRangeFilter
             from={from}

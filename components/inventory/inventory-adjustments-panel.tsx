@@ -4,17 +4,10 @@ import { useState } from "react";
 import { DataCardTable } from "@/components/shared/data-card-table";
 import { DateRangeFilter } from "@/components/shared/date-range-filter";
 import { ListSearchField } from "@/components/shared/list-search-field";
+import { FilterSelect } from "@/components/shared/filter-field";
 import { PageLoading } from "@/components/shared/page-loading";
 import { FrappeFilterBar, FrappeListToolbar } from "@/components/frappe";
 import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
 import { useLocations } from "@/hooks/use-locations";
@@ -64,72 +57,95 @@ export function InventoryAdjustmentsPanel() {
 
   return (
     <div className="space-y-3">
-      <FrappeFilterBar>
-        <div className="grid gap-2">
-          <Label className="text-sm text-[var(--frappe-text-muted)]">
-            Location
-          </Label>
-          <Select value={locationId} onValueChange={setLocationId}>
-            <SelectTrigger className="h-9 w-full min-w-[200px] border-[var(--frappe-border)] bg-[var(--frappe-surface)] sm:w-[240px]">
-              <SelectValue placeholder="All locations" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All locations</SelectItem>
-              {(locations ?? []).map((loc) => (
-                <SelectItem key={loc.id} value={loc.id}>
-                  {loc.name} ({loc.type})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid gap-2">
-          <Label className="text-sm text-[var(--frappe-text-muted)]">
-            Direction
-          </Label>
-          <Select
-            value={direction || ALL}
-            onValueChange={(v) =>
-              setDirection(v === ALL ? "" : (v as StockAdjustmentDirection))
-            }
-          >
-            <SelectTrigger className="h-9 w-[140px] border-[var(--frappe-border)] bg-[var(--frappe-surface)]">
-              <SelectValue placeholder="All" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All</SelectItem>
-              <SelectItem value="in">In</SelectItem>
-              <SelectItem value="out">Out</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="grid gap-2">
-          <Label className="text-sm text-[var(--frappe-text-muted)]">
-            Reason
-          </Label>
-          <Select
-            value={reason || ALL}
-            onValueChange={(v) =>
-              setReason(v === ALL ? "" : (v as StockAdjustmentReason))
-            }
-          >
-            <SelectTrigger className="h-9 w-[180px] border-[var(--frappe-border)] bg-[var(--frappe-surface)]">
-              <SelectValue placeholder="All reasons" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value={ALL}>All reasons</SelectItem>
-              {STOCK_ADJUSTMENT_REASON_OPTIONS.map((option) => (
-                <SelectItem key={option.value} value={option.value}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <ListSearchField
-          value={search}
-          onChange={setSearch}
-          placeholder="Search notes or reference…"
+      <FrappeFilterBar
+        search={
+          <ListSearchField
+            variant="toolbar"
+            value={search}
+            onChange={setSearch}
+            placeholder="Search notes or reference…"
+          />
+        }
+        chips={[
+          locationId !== ALL
+            ? {
+                id: "location",
+                label:
+                  locations?.find((l) => l.id === locationId)?.name ??
+                  "Location",
+                onRemove: () => setLocationId(ALL),
+              }
+            : null,
+          direction
+            ? {
+                id: "direction",
+                label: direction === "in" ? "In" : "Out",
+                onRemove: () => setDirection(""),
+              }
+            : null,
+          reason
+            ? {
+                id: "reason",
+                label: stockAdjustmentReasonLabel(reason),
+                onRemove: () => setReason(""),
+              }
+            : null,
+          from
+            ? {
+                id: "from",
+                label: `From ${from}`,
+                onRemove: () => setFrom(""),
+              }
+            : null,
+          to
+            ? { id: "to", label: `To ${to}`, onRemove: () => setTo("") }
+            : null,
+        ].filter(Boolean) as {
+          id: string;
+          label: string;
+          onRemove: () => void;
+        }[]}
+        onClearAll={() => {
+          setLocationId(ALL);
+          setDirection("");
+          setReason("");
+          setFrom("");
+          setTo("");
+        }}
+      >
+        <FilterSelect
+          label="Location"
+          value={locationId}
+          onValueChange={setLocationId}
+          allLabel="All locations"
+          allValue={ALL}
+          keepAllValue
+          options={(locations ?? []).map((loc) => ({
+            value: loc.id,
+            label: `${loc.name} (${loc.type})`,
+          }))}
+        />
+        <FilterSelect
+          label="Direction"
+          value={direction}
+          onValueChange={(v) =>
+            setDirection(v as StockAdjustmentDirection | "")
+          }
+          allLabel="All"
+          options={[
+            { value: "in", label: "In" },
+            { value: "out", label: "Out" },
+          ]}
+        />
+        <FilterSelect
+          label="Reason"
+          value={reason}
+          onValueChange={(v) => setReason(v as StockAdjustmentReason | "")}
+          allLabel="All reasons"
+          options={STOCK_ADJUSTMENT_REASON_OPTIONS.map((option) => ({
+            value: option.value,
+            label: option.label,
+          }))}
         />
         <DateRangeFilter
           from={from}
@@ -165,6 +181,7 @@ export function InventoryAdjustmentsPanel() {
             {
               key: "item",
               header: "Item",
+              primary: true,
               cell: (r) =>
                 r.item?.description ??
                 (r.itemId ? `${r.itemId.slice(0, 8)}…` : "—"),
@@ -178,29 +195,10 @@ export function InventoryAdjustmentsPanel() {
               key: "direction",
               header: "Direction",
               cell: (r) => (
-                <Badge variant={r.direction === "in" ? "outline" : "secondary"}>
+                <Badge variant="outline">
                   {r.direction === "in" ? "In" : "Out"}
                 </Badge>
               ),
-            },
-            {
-              key: "qty",
-              header: "Qty",
-              className: "text-right tabular-nums",
-              cell: (r) =>
-                `${r.direction === "out" ? "−" : "+"}${formatQty(r.quantity)}`,
-            },
-            {
-              key: "before",
-              header: "Before",
-              className: "text-right tabular-nums",
-              cell: (r) => formatQty(r.quantityBefore),
-            },
-            {
-              key: "after",
-              header: "After",
-              className: "text-right tabular-nums",
-              cell: (r) => formatQty(r.quantityAfter),
             },
             {
               key: "reason",
@@ -208,19 +206,15 @@ export function InventoryAdjustmentsPanel() {
               cell: (r) => stockAdjustmentReasonLabel(r.reason),
             },
             {
-              key: "ref",
-              header: "Reference",
-              cell: (r) => r.reference || "—",
+              key: "qty",
+              header: "Qty",
+              className: "text-right tabular-nums",
+              cell: (r) => formatQty(r.quantity),
             },
             {
               key: "notes",
               header: "Notes",
-              cell: (r) => r.notes || "—",
-            },
-            {
-              key: "by",
-              header: "By",
-              cell: (r) => r.createdBy?.fullName ?? "—",
+              cell: (r) => r.notes ?? r.reference ?? "—",
             },
           ]}
         />
