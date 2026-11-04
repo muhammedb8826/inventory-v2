@@ -6,17 +6,19 @@ export function FrappeSection({
   children,
   className,
   collapsible = false,
+  actions,
 }: {
   title: string;
   description?: string;
   children: React.ReactNode;
   className?: string;
   collapsible?: boolean;
+  actions?: React.ReactNode;
 }) {
   return (
     <section className={cn("border-b border-[var(--frappe-border)] last:border-b-0", className)}>
-      <div className="frappe-section-head flex items-center justify-between border-b border-[var(--frappe-border)] bg-[var(--frappe-section-head)] px-4 py-2.5">
-        <div>
+      <div className="frappe-section-head flex flex-wrap items-center justify-between gap-2 border-b border-[var(--frappe-border)] bg-[var(--frappe-section-head)] px-4 py-2.5">
+        <div className="min-w-0">
           <h3 className="text-sm font-semibold text-[var(--frappe-text)]">
             {title}
           </h3>
@@ -26,7 +28,9 @@ export function FrappeSection({
             </p>
           ) : null}
         </div>
-        {collapsible ? (
+        {actions ? (
+          <div className="flex flex-wrap items-center gap-2">{actions}</div>
+        ) : collapsible ? (
           <span className="text-xs text-[var(--frappe-text-muted)]">Section</span>
         ) : null}
       </div>

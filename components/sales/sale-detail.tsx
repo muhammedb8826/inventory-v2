@@ -9,6 +9,7 @@ import {
   FrappeButtonLink,
 } from "@/components/frappe";
 import { SaleDocumentActions } from "@/components/transactions/document-actions";
+import { CreditPaymentsPanel } from "@/components/credits/credit-payments-panel";
 import { formatMoney, formatDate, formatQty } from "@/lib/format";
 import { documentTotal } from "@/lib/document-utils";
 import {
@@ -57,11 +58,18 @@ function lineAmount(line: SaleLine) {
   return "0";
 }
 
-export function SaleDetail({ sale }: { sale: Sale }) {
+export function SaleDetail({
+  sale,
+  onRefresh,
+}: {
+  sale: Sale;
+  onRefresh?: () => void;
+}) {
   const lines = sale.lines ?? [];
   const paymentLabel = sale.paymentMethod.replace("_", " ");
   const isVoided = sale.status === "VOIDED";
   const soldBy = saleRepUser(sale);
+  const credit = sale.credit ?? null;
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
@@ -106,12 +114,19 @@ export function SaleDetail({ sale }: { sale: Sale }) {
               <DetailField
                 label="Credit due date"
                 value={
-                  sale.creditDueDate
-                    ? formatDate(sale.creditDueDate)
+                  sale.creditDueDate || credit?.dueDate
+                    ? formatDate(sale.creditDueDate ?? credit?.dueDate)
                     : "—"
                 }
               />
             )}
+            {credit ? (
+              <DetailField
+                label="Credit balance"
+                value={formatMoney(credit.balance ?? credit.amount)}
+                href={`/credits/customers/${credit.id}`}
+              />
+            ) : null}
             <DetailField
               label="Total amount"
               value={formatMoney(documentTotal(sale))}
@@ -222,6 +237,15 @@ export function SaleDetail({ sale }: { sale: Sale }) {
             </div>
           )}
         </FrappeSection>
+
+        {credit && !isVoided ? (
+          <CreditPaymentsPanel
+            type="customer"
+            credit={credit}
+            onCreditChange={onRefresh}
+            detailHref={`/credits/customers/${credit.id}`}
+          />
+        ) : null}
       </FrappeDocument>
     </div>
   );

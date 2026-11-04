@@ -9,6 +9,7 @@ import {
   FrappeButtonLink,
 } from "@/components/frappe";
 import { PurchaseDocumentActions } from "@/components/transactions/document-actions";
+import { CreditPaymentsPanel } from "@/components/credits/credit-payments-panel";
 import { formatMoney, formatDate, formatQty } from "@/lib/format";
 import { documentTotal } from "@/lib/document-utils";
 import type { Purchase, PurchaseLine } from "@/lib/types";
@@ -52,10 +53,17 @@ function lineAmount(line: PurchaseLine) {
   return "0";
 }
 
-export function PurchaseDetail({ purchase }: { purchase: Purchase }) {
+export function PurchaseDetail({
+  purchase,
+  onRefresh,
+}: {
+  purchase: Purchase;
+  onRefresh?: () => void;
+}) {
   const lines = purchase.lines ?? [];
   const paymentLabel = purchase.paymentMethod.replace("_", " ");
   const isVoided = purchase.status === "VOIDED";
+  const credit = purchase.credit ?? null;
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
@@ -103,12 +111,19 @@ export function PurchaseDetail({ purchase }: { purchase: Purchase }) {
               <DetailField
                 label="Credit due date"
                 value={
-                  purchase.creditDueDate
-                    ? formatDate(purchase.creditDueDate)
+                  purchase.creditDueDate || credit?.dueDate
+                    ? formatDate(purchase.creditDueDate ?? credit?.dueDate)
                     : "—"
                 }
               />
             )}
+            {credit ? (
+              <DetailField
+                label="Credit balance"
+                value={formatMoney(credit.balance ?? credit.amount)}
+                href={`/credits/suppliers/${credit.id}`}
+              />
+            ) : null}
             <DetailField
               label="Total amount"
               value={formatMoney(documentTotal(purchase))}
@@ -184,6 +199,15 @@ export function PurchaseDetail({ purchase }: { purchase: Purchase }) {
             </div>
           )}
         </FrappeSection>
+
+        {credit && !isVoided ? (
+          <CreditPaymentsPanel
+            type="supplier"
+            credit={credit}
+            onCreditChange={onRefresh}
+            detailHref={`/credits/suppliers/${credit.id}`}
+          />
+        ) : null}
       </FrappeDocument>
     </div>
   );

@@ -261,6 +261,25 @@ export interface CreditRecord {
   updatedAt?: string;
 }
 
+/** Individual installment / remittance against a credit (bank ledger row). */
+export interface CreditPayment {
+  id: string;
+  sequence: number;
+  amount: string;
+  bankAccountId: string;
+  bankAccountName: string | null;
+  description: string | null;
+  notes: string | null;
+  status: "POSTED" | "VOIDED";
+  createdAt: string;
+  createdById: string | null;
+}
+
+export interface CreditPaymentListResponse {
+  data: CreditPayment[];
+  totals: { paid: string; voided: string };
+}
+
 export interface DashboardData {
   totalInventoryValue: string;
   stockValueByLocation: {
@@ -338,6 +357,9 @@ export interface Purchase {
   supplier?: Supplier;
   location?: Location;
   bankAccount?: BankAccount;
+  /** Linked AP credit when paymentMethod is CREDIT (API field: `credit`). */
+  credit?: CreditRecord | null;
+  /** @deprecated Prefer `credit` */
   supplierCredit?: LinkedCredit;
   lines?: PurchaseLine[];
 }
@@ -384,6 +406,9 @@ export interface Sale {
   customer?: Customer;
   location?: Location;
   bankAccount?: BankAccount;
+  /** Linked AR credit when paymentMethod is CREDIT (API field: `credit`). */
+  credit?: CreditRecord | null;
+  /** @deprecated Prefer `credit` */
   customerCredit?: LinkedCredit;
   lines?: SaleLine[];
 }

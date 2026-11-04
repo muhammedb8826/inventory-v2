@@ -20,7 +20,9 @@ export function notificationHref(
     case "stock_transfer":
       return `/stock-transfers/${entityId}`;
     case "customer_credit":
+      return `/credits/customers/${entityId}`;
     case "supplier_credit":
+      return `/credits/suppliers/${entityId}`;
     case "credit":
       return "/credits";
     case "expense":

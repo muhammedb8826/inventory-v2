@@ -13,6 +13,17 @@ import { FilterSelect } from "@/components/shared/filter-field";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogFooter,
@@ -24,22 +35,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SearchSelect } from "@/components/shared/search-select";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
-import { apiList } from "@/lib/list-response";
 import { fetchCustomers, fetchSuppliers } from "@/lib/party-fetch";
-import {
-  bankAccountsForSelect,
-  formatBankAccountLabel,
-} from "@/lib/bank-accounts";
 import { creditBalance } from "@/lib/document-utils";
 import {
   buildCreditsCustomersListPath,
@@ -47,7 +46,6 @@ import {
 } from "@/lib/list-query";
 import { formatMoney, formatDate, errorMessage } from "@/lib/format";
 import type {
-  BankAccount,
   CreditListTotals,
   CreditRecord,
   CreditSource,
@@ -58,6 +56,7 @@ import { useFetch } from "@/hooks/use-fetch";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { CreditPaymentDialog } from "@/components/credits/credit-payment-dialog";
 import { PlusIcon, RotateCcwIcon, Trash2Icon } from "lucide-react";
 
 function creditSourceLabel(r: CreditRecord, partyKey: "customer" | "supplier") {
@@ -86,6 +85,15 @@ function isCreditOverdue(record: CreditRecord): boolean {
   return due < today;
 }
 
+function creditDetailHref(
+  partyKey: "customer" | "supplier",
+  id: string
+) {
+  return partyKey === "customer"
+    ? `/credits/customers/${id}`
+    : `/credits/suppliers/${id}`;
+}
+
 function creditColumns(
   partyKey: "customer" | "supplier",
   onSuccess: () => void
@@ -111,9 +119,12 @@ function creditColumns(
         if (!party?.name) return "—";
         return (
           <div className="min-w-0">
-            <div className="font-medium text-[var(--frappe-text)]">
+            <Link
+              href={creditDetailHref(partyKey, r.id)}
+              className="font-medium text-[var(--frappe-primary)] hover:underline"
+            >
               {party.name}
-            </div>
+            </Link>
             {party.phone ? (
               <div className="text-xs text-[var(--frappe-text-muted)]">
                 {party.phone}
@@ -129,21 +140,49 @@ function creditColumns(
       cell: (r: CreditRecord) => {
         const href = sourceHref(r);
         const doc = partyKey === "customer" ? r.sale : r.purchase;
-        if (!href) return "—";
+        if (r.source === "OPENING" || !href) {
+          return (
+            <Link
+              href={creditDetailHref(partyKey, r.id)}
+              className="font-medium text-[var(--frappe-primary)] hover:underline"
+            >
+              {r.source === "OPENING" ? "Opening" : "View"}
+            </Link>
+          );
+        }
         return (
-          <Link
-            href={href}
-            className="font-medium text-[var(--frappe-primary)] hover:underline"
-          >
-            {doc?.createdAt ? formatDate(doc.createdAt) : href.split("/").pop()?.slice(0, 8) + "…"}
-          </Link>
+          <div className="min-w-0">
+            <Link
+              href={creditDetailHref(partyKey, r.id)}
+              className="font-medium text-[var(--frappe-primary)] hover:underline"
+            >
+              {doc?.createdAt
+                ? formatDate(doc.createdAt)
+                : href.split("/").pop()?.slice(0, 8) + "…"}
+            </Link>
+            <div>
+              <Link
+                href={href}
+                className="text-xs text-[var(--frappe-text-muted)] hover:underline"
+              >
+                Invoice
+              </Link>
+            </div>
+          </div>
         );
       },
     },
     {
       key: "createdAt",
       header: "Credit date",
-      cell: (r: CreditRecord) => formatDate(r.createdAt),
+      cell: (r: CreditRecord) => (
+        <Link
+          href={creditDetailHref(partyKey, r.id)}
+          className="hover:underline"
+        >
+          {formatDate(r.createdAt)}
+        </Link>
+      ),
     },
     {
       key: "source",
@@ -204,7 +243,7 @@ function creditColumns(
         <div className="flex items-center justify-end gap-1">
           {r.status === "PAID" ? null : (
             <PermissionGate permission="credit.write">
-              <PaymentButton
+              <CreditPaymentDialog
                 type={partyKey}
                 credit={r}
                 onSuccess={onSuccess}
@@ -470,143 +509,6 @@ export default function CreditsPage() {
   );
 }
 
-function PaymentButton({
-  type,
-  credit,
-  onSuccess,
-}: {
-  type: "customer" | "supplier";
-  credit: CreditRecord;
-  onSuccess: () => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [amount, setAmount] = useState("");
-  const [bankAccountId, setBankAccountId] = useState("");
-  const [saving, setSaving] = useState(false);
-  const outstanding = creditBalance(credit);
-  const party =
-    type === "customer" ? credit.customer?.name : credit.supplier?.name;
-  const { data: banks } = useFetch(
-    () => apiList<BankAccount>("/banks/accounts"),
-    []
-  );
-
-  function handleOpen() {
-    setAmount(outstanding);
-    setOpen(true);
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const path =
-        type === "customer"
-          ? `/credits/customers/${credit.id}/payments`
-          : `/credits/suppliers/${credit.id}/payments`;
-      await api(path, {
-        method: "POST",
-        body: { amount: parseFloat(amount), bankAccountId },
-      });
-      toast.success("Payment recorded");
-      setOpen(false);
-      setAmount("");
-      onSuccess();
-    } catch (err) {
-      toast.error(errorMessage(err));
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <>
-      <Button size="sm" variant="outline" onClick={handleOpen}>
-        Pay
-      </Button>
-      <Dialog
-        open={open}
-        onOpenChange={(next) => {
-          setOpen(next);
-          if (!next) setAmount("");
-        }}
-      >
-        <DialogContent>
-          <form onSubmit={handleSubmit}>
-            <DialogHeader>
-              <DialogTitle>Record payment</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              {party ? (
-                <p className="text-sm text-[var(--frappe-text-muted)]">
-                  {type === "customer" ? "Customer" : "Supplier"}:{" "}
-                  <span className="font-medium text-[var(--frappe-text)]">
-                    {party}
-                  </span>
-                </p>
-              ) : null}
-              <p className="text-sm text-[var(--frappe-text-muted)]">
-                Outstanding balance:{" "}
-                <span className="font-medium tabular-nums text-[var(--frappe-text)]">
-                  {formatMoney(outstanding)}
-                </span>
-                {credit.dueDate ? (
-                  <>
-                    {" "}
-                    · Due {formatDate(credit.dueDate)}
-                  </>
-                ) : null}
-              </p>
-              <div className="grid gap-2">
-                <Label>Amount</Label>
-                <Input
-                  type="number"
-                  step="any"
-                  min="0"
-                  max={outstanding}
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label>Bank / cash account</Label>
-                <Select value={bankAccountId} onValueChange={setBankAccountId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select account" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {bankAccountsForSelect(banks ?? [], bankAccountId).map(
-                      (b) => (
-                        <SelectItem key={b.id} value={b.id}>
-                          {formatBankAccountLabel(b)}
-                        </SelectItem>
-                      )
-                    )}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-[var(--frappe-text-muted)]">
-                  {type === "customer"
-                    ? "Customer payment increases this account balance."
-                    : "Supplier payment deducts from this account balance."}
-                  {credit.source === "OPENING"
-                    ? " Opening balances use the same bank ledger as sale/purchase credits."
-                    : null}
-                </p>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit" disabled={saving || !bankAccountId}>
-                Submit
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-}
-
 function OpeningCreditDialog({
   type,
   onSuccess,
@@ -791,14 +693,9 @@ function VoidPaymentsButton({
   onSuccess: () => void;
 }) {
   const [voiding, setVoiding] = useState(false);
+  const [open, setOpen] = useState(false);
 
   async function handleVoid() {
-    const ok = confirm(
-      type === "customer"
-        ? "Void all payments on this receivable? Bank receipts will be reversed and the balance reopened."
-        : "Void all payments on this payable? Bank deductions will be reversed and the balance reopened."
-    );
-    if (!ok) return;
     setVoiding(true);
     try {
       const path =
@@ -807,6 +704,7 @@ function VoidPaymentsButton({
           : `/credits/suppliers/${credit.id}/payments`;
       await api(path, { method: "DELETE" });
       toast.success("Payments voided");
+      setOpen(false);
       onSuccess();
     } catch (err) {
       toast.error(errorMessage(err));
@@ -816,18 +714,43 @@ function VoidPaymentsButton({
   }
 
   return (
-    <Button
-      type="button"
-      size="icon"
-      variant="ghost"
-      className="size-8"
-      disabled={voiding}
-      onClick={handleVoid}
-      aria-label="Void payments"
-      title="Void payments"
-    >
-      <RotateCcwIcon className="size-4" />
-    </Button>
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="size-8"
+          disabled={voiding}
+          aria-label="Void payments"
+          title="Void payments"
+        >
+          <RotateCcwIcon className="size-4" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Void payments?</AlertDialogTitle>
+          <AlertDialogDescription>
+            {type === "customer"
+              ? "Bank receipts for this receivable will be reversed and the balance reopened."
+              : "Bank deductions for this payable will be reversed and the balance reopened."}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={voiding}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={voiding}
+            onClick={(e) => {
+              e.preventDefault();
+              void handleVoid();
+            }}
+          >
+            {voiding ? "Voiding…" : "Void payments"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }
 
@@ -841,17 +764,15 @@ function DeleteOpeningCreditButton({
   onSuccess: () => void;
 }) {
   const [deleting, setDeleting] = useState(false);
+  const [open, setOpen] = useState(false);
   const hasPayments = parseFloat(credit.paidAmount) > 0;
 
   async function handleDelete() {
     if (hasPayments) {
       toast.error("Void payments first, then delete this opening credit.");
+      setOpen(false);
       return;
     }
-    const ok = confirm(
-      "Delete this opening credit? Only unpaid opening balances can be removed."
-    );
-    if (!ok) return;
     setDeleting(true);
     try {
       const path =
@@ -860,6 +781,7 @@ function DeleteOpeningCreditButton({
           : `/credits/suppliers/${credit.id}`;
       await api(path, { method: "DELETE" });
       toast.success("Opening credit deleted");
+      setOpen(false);
       onSuccess();
     } catch (err) {
       toast.error(errorMessage(err));
@@ -869,21 +791,45 @@ function DeleteOpeningCreditButton({
   }
 
   return (
-    <Button
-      type="button"
-      size="icon"
-      variant="ghost"
-      className="size-8 text-destructive"
-      disabled={deleting || hasPayments}
-      onClick={handleDelete}
-      aria-label="Delete opening credit"
-      title={
-        hasPayments
-          ? "Void payments before deleting"
-          : "Delete opening credit"
-      }
-    >
-      <Trash2Icon className="size-4" />
-    </Button>
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <AlertDialogTrigger asChild>
+        <Button
+          type="button"
+          size="icon"
+          variant="ghost"
+          className="size-8 text-destructive"
+          disabled={deleting || hasPayments}
+          aria-label="Delete opening credit"
+          title={
+            hasPayments
+              ? "Void payments before deleting"
+              : "Delete opening credit"
+          }
+        >
+          <Trash2Icon className="size-4" />
+        </Button>
+      </AlertDialogTrigger>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Delete opening credit?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Only unpaid opening balances can be removed. This cannot be undone.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={deleting}
+            className="bg-destructive text-white hover:bg-destructive/90"
+            onClick={(e) => {
+              e.preventDefault();
+              void handleDelete();
+            }}
+          >
+            {deleting ? "Deleting…" : "Delete"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

@@ -13,7 +13,7 @@ export default function PurchaseDetailPage() {
   const params = useParams();
   const id = typeof params.id === "string" ? params.id : "";
 
-  const { data: purchase, loading, error } = useFetch(
+  const { data: purchase, loading, error, reload } = useFetch(
     () =>
       id
         ? api<Purchase>(`/purchases/${id}`)
@@ -52,7 +52,10 @@ export default function PurchaseDetailPage() {
             </FrappeButtonLink>
           </div>
         ) : (
-          <PurchaseDetail purchase={purchase} />
+          <PurchaseDetail
+            purchase={purchase}
+            onRefresh={() => void reload()}
+          />
         )}
       </PermissionGate>
     </AppShell>
