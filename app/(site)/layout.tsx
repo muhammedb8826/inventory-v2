@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Fraunces, Outfit } from "next/font/google";
 import { SiteFooter, SiteHeader } from "@/components/site/site-chrome";
+import { fetchPublicBrandingServer } from "@/lib/branding-server";
 import "../site.css";
 
 const fraunces = Fraunces({
@@ -17,14 +18,18 @@ const outfit = Outfit({
   display: "swap",
 });
 
-export const metadata: Metadata = {
-  title: {
-    default: "Request a quote",
-    template: "%s",
-  },
-  description:
-    "Ask about products, availability, and custom quotes. Our team will follow up shortly.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const branding = await fetchPublicBrandingServer();
+  return {
+    title: {
+      default: branding.appName,
+      template: `%s · ${branding.appName}`,
+    },
+    description:
+      branding.supportingText ||
+      "Ask about products, availability, and custom quotes. Our team will follow up shortly.",
+  };
+}
 
 export default function SiteLayout({
   children,

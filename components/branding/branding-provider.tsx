@@ -12,7 +12,9 @@ import {
   DEFAULT_BRANDING,
   DEFAULT_HERO_IMAGE,
   fetchPublicBranding,
+  readBrandingCache,
   resolveBrandingAssetUrl,
+  writeBrandingCache,
 } from "@/lib/branding";
 import type { BrandingSettings } from "@/lib/types";
 
@@ -29,11 +31,35 @@ interface BrandingContextValue {
 
 const BrandingContext = createContext<BrandingContextValue | null>(null);
 
-export function BrandingProvider({ children }: { children: React.ReactNode }) {
-  const [branding, setBranding] = useState<BrandingSettings>(DEFAULT_BRANDING);
-  const [loading, setLoading] = useState(true);
+function isDefaultBranding(b: BrandingSettings) {
+  return (
+    b.appName === DEFAULT_BRANDING.appName &&
+    !b.heroImageUrl &&
+    (b.headline ?? null) === (DEFAULT_BRANDING.headline ?? null) &&
+    (b.supportingText ?? null) === (DEFAULT_BRANDING.supportingText ?? null)
+  );
+}
+
+export function BrandingProvider({
+  children,
+  initialBranding,
+}: {
+  children: React.ReactNode;
+  /** From root layout SSR — prevents default → custom flash. */
+  initialBranding?: BrandingSettings | null;
+}) {
+  const [branding, setBrandingState] = useState<BrandingSettings>(
+    () => initialBranding ?? DEFAULT_BRANDING
+  );
+  const [loading, setLoading] = useState(!initialBranding);
+
+  const setBranding = useCallback((next: BrandingSettings) => {
+    setBrandingState(next);
+    writeBrandingCache(next);
+  }, []);
 
   const reload = useCallback(async () => {
+    // Soft refresh: keep current brand visible; never snap back to defaults.
     setLoading(true);
     try {
       const next = await fetchPublicBranding();
@@ -41,11 +67,23 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [setBranding]);
 
   useEffect(() => {
+    // Prefer SSR payload; only hydrate from cache when SSR fell back to defaults
+    // (e.g. API briefly unreachable during render).
+    if (!initialBranding || isDefaultBranding(initialBranding)) {
+      const cached = readBrandingCache();
+      if (cached && !isDefaultBranding(cached)) {
+        setBrandingState(cached);
+        setLoading(false);
+      }
+    } else {
+      writeBrandingCache(initialBranding);
+    }
+
     void reload();
-  }, [reload]);
+  }, [initialBranding, reload]);
 
   const value = useMemo<BrandingContextValue>(
     () => ({
@@ -62,7 +100,7 @@ export function BrandingProvider({ children }: { children: React.ReactNode }) {
       reload,
       setBranding,
     }),
-    [branding, loading, reload]
+    [branding, loading, reload, setBranding]
   );
 
   return (

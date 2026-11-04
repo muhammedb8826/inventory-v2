@@ -15,6 +15,9 @@ export const DEFAULT_BRANDING: BrandingSettings = {
   supportingText: DEFAULT_SUPPORTING_TEXT,
 };
 
+/** localStorage key so soft client navigations / reloads keep the last known brand. */
+export const BRANDING_CACHE_KEY = "stock_branding_v1";
+
 /** API origin without trailing `/api` (for uploaded asset URLs). */
 export function getApiOrigin(): string {
   const base =
@@ -62,6 +65,26 @@ export async function fetchPublicBranding(): Promise<BrandingSettings> {
     return normalizeBranding(data);
   } catch {
     return { ...DEFAULT_BRANDING };
+  }
+}
+
+export function readBrandingCache(): BrandingSettings | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(BRANDING_CACHE_KEY);
+    if (!raw) return null;
+    return normalizeBranding(JSON.parse(raw) as Partial<BrandingSettings>);
+  } catch {
+    return null;
+  }
+}
+
+export function writeBrandingCache(branding: BrandingSettings) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(BRANDING_CACHE_KEY, JSON.stringify(branding));
+  } catch {
+    /* ignore quota / private mode */
   }
 }
 
