@@ -10,6 +10,7 @@ import { QuickStockItemDialog } from "@/components/inventory/quick-stock-item-di
 import { EntitySelectField } from "@/components/shared/entity-select-field";
 import { ItemSearchSelect } from "@/components/shared/item-search-select";
 import { SearchSelect } from "@/components/shared/search-select";
+import { LineUomSelect } from "@/components/uom/line-uom-select";
 import { Input } from "@/components/ui/input";
 import {
   FrappeDocument,
@@ -41,6 +42,7 @@ import {
   useAutoPaymentAccount,
 } from "@/hooks/use-payment-bank-account";
 import { buildItemOptionMap, itemOptionsFromMap, parseDocumentLines, productItemId, resolveItem, type DocumentLineBody } from "@/lib/inventory-items";
+import { defaultUomIdForItem, fetchUoms } from "@/lib/uom";
 import { errorMessage } from "@/lib/format";
 import { PAYMENT_METHOD_OPTIONS } from "@/lib/form-select-options";
 import { fetchSuppliers, partySelectOptions } from "@/lib/party-fetch";
@@ -63,22 +65,27 @@ interface LineRow {
   itemId: string;
   quantity: string;
   unitPrice: string;
+  uomId: string;
   item?: Item;
+}
+
+function emptyLine(): LineRow {
+  return { itemId: "", quantity: "1", unitPrice: "", uomId: "" };
 }
 
 function linesFromPurchase(purchase: Purchase): LineRow[] {
   const rows = (purchase.lines ?? []).map((l) => {
     const itemId = productItemId({ itemId: l.itemId, item: l.item });
+    const item = l.item ? resolveItem(itemId, l.item) : undefined;
     return {
       itemId,
       quantity: l.quantity,
       unitPrice: l.unitPrice,
-      item: l.item ? resolveItem(itemId, l.item) : undefined,
+      uomId: l.uomId ?? defaultUomIdForItem(item, "purchase") ?? "",
+      item,
     };
   });
-  return rows.length > 0
-    ? rows
-    : [{ itemId: "", quantity: "1", unitPrice: "" }];
+  return rows.length > 0 ? rows : [emptyLine()];
 }
 
 export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
@@ -99,9 +106,14 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
   );
   const [notes, setNotes] = useState(purchase?.notes ?? "");
   const [lines, setLines] = useState<LineRow[]>(() =>
-    purchase ? linesFromPurchase(purchase) : [{ itemId: "", quantity: "1", unitPrice: "" }]
+    purchase ? linesFromPurchase(purchase) : [emptyLine()]
   );
   const [saving, setSaving] = useState(false);
+  const { data: uomsData, loading: uomsLoading } = useFetch(
+    () => fetchUoms(undefined, false),
+    []
+  );
+  const uoms = uomsData ?? [];
 
   const {
     data: suppliers,
@@ -190,10 +202,12 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
     reloadStock();
     const emptyIdx = lines.findIndex((l) => !l.itemId);
     const idx = emptyIdx >= 0 ? emptyIdx : 0;
+    const item = resolveItem(productItemId(record), record.item);
     updateLine(idx, {
       itemId: productItemId(record),
       unitPrice: record.purchasePrice,
-      item: resolveItem(productItemId(record), record.item),
+      uomId: defaultUomIdForItem(item, "purchase") ?? "",
+      item,
     });
   }
 
@@ -437,15 +451,11 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
             <FrappeGridTable
               columns={[
                 { key: "item", label: "Item" },
-                { key: "qty", label: "Qty", className: "w-28" },
-                { key: "rate", label: "Rate", className: "w-32" },
+                { key: "uom", label: "UOM", className: "w-28" },
+                { key: "qty", label: "Qty", className: "w-24" },
+                { key: "rate", label: "Rate", className: "w-28" },
               ]}
-              onAddRow={() =>
-                setLines((prev) => [
-                  ...prev,
-                  { itemId: "", quantity: "1", unitPrice: "" },
-                ])
-              }
+              onAddRow={() => setLines((prev) => [...prev, emptyLine()])}
               addLabel="Add Row"
             >
               {lines.map((line, i) => (
@@ -461,11 +471,27 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                       value={line.itemId}
                       onValueChange={(v) => {
                         const item = itemMap.get(v);
-                        updateLine(i, { itemId: v, item });
+                        updateLine(i, {
+                          itemId: v,
+                          item,
+                          uomId: defaultUomIdForItem(item, "purchase") ?? "",
+                        });
                       }}
                       options={itemOptions}
                       disabled={!locationId || stockLoading}
                       placeholder="Item"
+                    />
+                  </FrappeGridCell>
+                  <FrappeGridCell>
+                    <LineUomSelect
+                      value={line.uomId || null}
+                      onValueChange={(uomId) =>
+                        updateLine(i, { uomId: uomId ?? "" })
+                      }
+                      item={line.item}
+                      uoms={uoms}
+                      loading={uomsLoading}
+                      disabled={!locationId}
                     />
                   </FrappeGridCell>
                   <FrappeGridCell>

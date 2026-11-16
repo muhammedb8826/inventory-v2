@@ -10,6 +10,7 @@ import { QuickStockItemDialog } from "@/components/inventory/quick-stock-item-di
 import { EntitySelectField } from "@/components/shared/entity-select-field";
 import { ItemSearchSelect } from "@/components/shared/item-search-select";
 import { SearchSelect } from "@/components/shared/search-select";
+import { LineUomSelect } from "@/components/uom/line-uom-select";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -43,6 +44,7 @@ import {
 } from "@/hooks/use-payment-bank-account";
 import { fetchInventoryForLocation } from "@/lib/inventory-fetch";
 import { buildItemOptionMap, itemOptionsFromMap, parseDocumentLines, productItemId, resolveItem, type DocumentLineBody } from "@/lib/inventory-items";
+import { defaultUomIdForItem, fetchUoms } from "@/lib/uom";
 import { saleRepUser } from "@/lib/sale-utils";
 import { errorMessage } from "@/lib/format";
 import {
@@ -74,22 +76,27 @@ interface LineRow {
   itemId: string;
   quantity: string;
   unitPrice: string;
+  uomId: string;
   item?: Item;
+}
+
+function emptyLine(): LineRow {
+  return { itemId: "", quantity: "1", unitPrice: "", uomId: "" };
 }
 
 function linesFromSale(sale: Sale): LineRow[] {
   const rows = (sale.lines ?? []).map((l) => {
     const itemId = productItemId({ itemId: l.itemId, item: l.item });
+    const item = l.item ? resolveItem(itemId, l.item) : undefined;
     return {
       itemId,
       quantity: l.quantity,
       unitPrice: l.unitPrice,
-      item: l.item ? resolveItem(itemId, l.item) : undefined,
+      uomId: l.uomId ?? defaultUomIdForItem(item, "sales") ?? "",
+      item,
     };
   });
-  return rows.length > 0
-    ? rows
-    : [{ itemId: "", quantity: "1", unitPrice: "" }];
+  return rows.length > 0 ? rows : [emptyLine()];
 }
 
 export function SaleForm({ sale }: { sale?: Sale }) {
@@ -137,8 +144,13 @@ export function SaleForm({ sale }: { sale?: Sale }) {
     (!isEdit && !notesOnly && user?.id ? user.id : "");
 
   const [lines, setLines] = useState<LineRow[]>(() =>
-    sale ? linesFromSale(sale) : [{ itemId: "", quantity: "1", unitPrice: "" }]
+    sale ? linesFromSale(sale) : [emptyLine()]
   );
+  const { data: uomsData, loading: uomsLoading } = useFetch(
+    () => fetchUoms(undefined, false),
+    []
+  );
+  const uoms = uomsData ?? [];
   const [saving, setSaving] = useState(false);
 
   const {
@@ -261,10 +273,12 @@ export function SaleForm({ sale }: { sale?: Sale }) {
     reloadStock();
     const emptyIdx = lines.findIndex((l) => !l.itemId);
     const idx = emptyIdx >= 0 ? emptyIdx : 0;
+    const item = resolveItem(productItemId(record), record.item);
     updateLine(idx, {
       itemId: productItemId(record),
       unitPrice: record.purchasePrice,
-      item: resolveItem(productItemId(record), record.item),
+      uomId: defaultUomIdForItem(item, "sales") ?? "",
+      item,
     });
   }
 
@@ -599,15 +613,11 @@ export function SaleForm({ sale }: { sale?: Sale }) {
             <FrappeGridTable
               columns={[
                 { key: "item", label: "Item" },
-                { key: "qty", label: "Qty", className: "w-28" },
-                { key: "rate", label: "Rate", className: "w-32" },
+                { key: "uom", label: "UOM", className: "w-28" },
+                { key: "qty", label: "Qty", className: "w-24" },
+                { key: "rate", label: "Rate", className: "w-28" },
               ]}
-              onAddRow={() =>
-                setLines((prev) => [
-                  ...prev,
-                  { itemId: "", quantity: "1", unitPrice: "" },
-                ])
-              }
+              onAddRow={() => setLines((prev) => [...prev, emptyLine()])}
               addLabel="Add Row"
             >
               {lines.map((line, i) => (
@@ -623,7 +633,11 @@ export function SaleForm({ sale }: { sale?: Sale }) {
                       value={line.itemId}
                       onValueChange={(v) => {
                         const item = itemMap.get(v);
-                        updateLine(i, { itemId: v, item });
+                        updateLine(i, {
+                          itemId: v,
+                          item,
+                          uomId: defaultUomIdForItem(item, "sales") ?? "",
+                        });
                       }}
                       options={itemOptions}
                       disabled={!locationId}
@@ -631,6 +645,18 @@ export function SaleForm({ sale }: { sale?: Sale }) {
                       filterLocally={false}
                       onQueryChange={setItemQuery}
                       placeholder="Item"
+                    />
+                  </FrappeGridCell>
+                  <FrappeGridCell>
+                    <LineUomSelect
+                      value={line.uomId || null}
+                      onValueChange={(uomId) =>
+                        updateLine(i, { uomId: uomId ?? "" })
+                      }
+                      item={line.item}
+                      uoms={uoms}
+                      loading={uomsLoading}
+                      disabled={!locationId}
                     />
                   </FrappeGridCell>
                   <FrappeGridCell>

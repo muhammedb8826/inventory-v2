@@ -1,5 +1,5 @@
 import { api } from "@/lib/api";
-import type { Uom, UomCategory } from "@/lib/types";
+import type { Item, ItemUom, Uom, UomCategory } from "@/lib/types";
 
 export async function fetchUomCategories(
   includeInactive = false
@@ -43,6 +43,14 @@ export async function updateUomCategory(
   return api<UomCategory>(`/uom/categories/${id}`, { method: "PATCH", body });
 }
 
+export async function deleteUomCategory(
+  id: string
+): Promise<{ success: boolean }> {
+  return api<{ success: boolean }>(`/uom/categories/${id}`, {
+    method: "DELETE",
+  });
+}
+
 export async function createUom(body: {
   categoryId: string;
   code: string;
@@ -72,6 +80,30 @@ export async function updateUom(
 
 export async function deleteUom(id: string): Promise<{ success: boolean }> {
   return api<{ success: boolean }>(`/uom/units/${id}`, { method: "DELETE" });
+}
+
+export async function fetchItemUoms(itemId: string): Promise<ItemUom[]> {
+  return api<ItemUom[]>(`/uom/items/${itemId}`);
+}
+
+/** Default transaction UOM for a document line. */
+export function defaultUomIdForItem(
+  item: Item | undefined | null,
+  preferred: "purchase" | "sales" | "stock" = "stock"
+): string | null {
+  if (!item) return null;
+  if (preferred === "purchase") {
+    return item.purchaseUomId ?? item.stockUomId ?? null;
+  }
+  if (preferred === "sales") {
+    return item.salesUomId ?? item.stockUomId ?? null;
+  }
+  return item.stockUomId ?? null;
+}
+
+/** Compact label for line grids. */
+export function formatUomSymbol(uom: Uom): string {
+  return uom.symbol || uom.name || uom.code;
 }
 
 export function formatUomLabel(uom: Uom): string {

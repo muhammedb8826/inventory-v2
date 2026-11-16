@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ItemSearchSelect } from "@/components/shared/item-search-select";
+import { LineUomSelect } from "@/components/uom/line-uom-select";
 import {
   FrappeButtonLink,
   FrappeButtonPrimary,
@@ -23,8 +24,9 @@ import {
   fetchAllInventory,
   uniqueItemsFromStock,
 } from "@/lib/inventory-fetch";
+import { defaultUomIdForItem, fetchUoms } from "@/lib/uom";
 import { errorMessage } from "@/lib/format";
-import type { Bom } from "@/lib/types";
+import type { Bom, Item } from "@/lib/types";
 import { useFetch } from "@/hooks/use-fetch";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
@@ -33,6 +35,11 @@ interface BomLineRow {
   componentItemId: string;
   quantity: string;
   scrapPercent: string;
+  uomId: string;
+}
+
+function emptyBomLine(): BomLineRow {
+  return { componentItemId: "", quantity: "1", scrapPercent: "", uomId: "" };
 }
 
 function linesFromBom(bom: Bom): BomLineRow[] {
@@ -43,10 +50,12 @@ function linesFromBom(bom: Bom): BomLineRow[] {
       line.scrapPercent != null && line.scrapPercent !== ""
         ? String(line.scrapPercent)
         : "",
+    uomId:
+      line.uomId ??
+      defaultUomIdForItem(line.componentItem, "stock") ??
+      "",
   }));
-  return rows.length > 0
-    ? rows
-    : [{ componentItemId: "", quantity: "1", scrapPercent: "" }];
+  return rows.length > 0 ? rows : [emptyBomLine()];
 }
 
 export function BomForm({ bom }: { bom?: Bom }) {
@@ -60,11 +69,31 @@ export function BomForm({ bom }: { bom?: Bom }) {
   const [notes, setNotes] = useState(bom?.notes ?? "");
   const [isActive, setIsActive] = useState(bom?.isActive !== false);
   const [lines, setLines] = useState<BomLineRow[]>(() =>
-    bom ? linesFromBom(bom) : [{ componentItemId: "", quantity: "1", scrapPercent: "" }]
+    bom ? linesFromBom(bom) : [emptyBomLine()]
   );
   const [saving, setSaving] = useState(false);
 
   const { data: stock, loading } = useFetch(() => fetchAllInventory(), []);
+  const { data: uomsData, loading: uomsLoading } = useFetch(
+    () => fetchUoms(undefined, false),
+    []
+  );
+  const uoms = uomsData ?? [];
+
+  const itemById = useMemo(() => {
+    const map = new Map<string, Item>();
+    for (const item of uniqueItemsFromStock(stock ?? [])) {
+      map.set(item.id, item);
+    }
+    if (bom?.finishedItem) map.set(bom.finishedItemId, bom.finishedItem);
+    for (const line of bom?.lines ?? []) {
+      if (line.componentItem) {
+        map.set(line.componentItemId, line.componentItem);
+      }
+    }
+    return map;
+  }, [stock, bom]);
+
   const itemOptions = (() => {
     const items = uniqueItemsFromStock(stock ?? []);
     const options = items.map((item) => ({
@@ -117,6 +146,7 @@ export function BomForm({ bom }: { bom?: Bom }) {
       componentItemId: string;
       quantity: number;
       scrapPercent?: number;
+      uomId?: string;
     }[] = [];
     for (const line of lines) {
       if (!line.componentItemId) continue;
@@ -133,10 +163,12 @@ export function BomForm({ bom }: { bom?: Bom }) {
         componentItemId: string;
         quantity: number;
         scrapPercent?: number;
+        uomId?: string;
       } = {
         componentItemId: line.componentItemId,
         quantity,
       };
+      if (line.uomId) entry.uomId = line.uomId;
       if (line.scrapPercent.trim()) {
         const scrap = parseFloat(line.scrapPercent);
         if (Number.isNaN(scrap) || scrap < 0) {
@@ -148,21 +180,20 @@ export function BomForm({ bom }: { bom?: Bom }) {
       parsedLines.push(entry);
     }
     if (parsedLines.length === 0) {
-      toast.error("Add at least one component line");
+      toast.error("Add at least one component");
       return;
     }
 
     setSaving(true);
     try {
-      const body: Record<string, unknown> = {
+      const body = {
         finishedItemId,
         name: name.trim(),
-        version: version.trim() || undefined,
+        version: version.trim() || "1.0",
         notes: notes.trim() || undefined,
+        isActive,
         lines: parsedLines,
       };
-      if (isEdit) body.isActive = isActive;
-
       if (isEdit && bom) {
         await api(`/boms/${bom.id}`, { method: "PATCH", body });
         toast.success("BOM updated");
@@ -179,37 +210,37 @@ export function BomForm({ bom }: { bom?: Bom }) {
     }
   }
 
-  if (loading) {
+  if (loading && !stock) {
     return (
       <div className="flex justify-center py-16">
-        <Spinner className="size-8" />
+        <Spinner />
       </div>
     );
   }
 
-  const cancelHref = isEdit && bom ? `/boms/${bom.id}` : "/boms";
-
   return (
-    <form onSubmit={handleSubmit} className="mx-auto max-w-5xl">
-      <FrappeFormToolbar>
-        <FrappeButtonPrimary type="submit" disabled={saving}>
-          {saving ? <Spinner className="size-4" /> : "Save"}
-        </FrappeButtonPrimary>
-        <FrappeButtonLink href={cancelHref}>Cancel</FrappeButtonLink>
-      </FrappeFormToolbar>
-
+    <form onSubmit={handleSubmit}>
       <FrappeDocument>
-        <FrappeSection
-          title="BOM header"
-          description="Finished good and version identity"
-        >
+        <FrappeFormToolbar>
+          <FrappeButtonLink href="/boms">Cancel</FrappeButtonLink>
+          <FrappeButtonPrimary type="submit" disabled={saving}>
+            {saving ? "Saving…" : isEdit ? "Update" : "Save"}
+          </FrappeButtonPrimary>
+        </FrappeFormToolbar>
+
+        <FrappeSection title="BOM">
           <FrappeFormGrid columns={2}>
-            <FrappeField label="Name" required fullWidth>
+            <FrappeField label="Name" required>
               <Input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="e.g. Standard chair"
                 required
+              />
+            </FrappeField>
+            <FrappeField label="Version">
+              <Input
+                value={version}
+                onChange={(e) => setVersion(e.target.value)}
               />
             </FrappeField>
             <FrappeField label="Finished item" required>
@@ -218,29 +249,17 @@ export function BomForm({ bom }: { bom?: Bom }) {
                 onValueChange={setFinishedItemId}
                 options={itemOptions}
                 placeholder="Select finished item…"
-                searchPlaceholder="Search item…"
-                disabled={isEdit}
+                searchPlaceholder="Search finished item…"
               />
             </FrappeField>
-            <FrappeField label="Version">
-              <Input
-                value={version}
-                onChange={(e) => setVersion(e.target.value)}
-                placeholder="1.0"
-              />
+            <FrappeField label="Active">
+              <div className="flex h-9 items-center gap-2">
+                <Switch checked={isActive} onCheckedChange={setIsActive} />
+                <Label className="text-sm text-[var(--erp-text-muted)]">
+                  {isActive ? "Active" : "Inactive"}
+                </Label>
+              </div>
             </FrappeField>
-            {isEdit ? (
-              <FrappeField label="Active">
-                <div className="flex h-8 items-center gap-2">
-                  <Switch checked={isActive} onCheckedChange={setIsActive} />
-                  <Label className="text-sm font-normal">
-                    {isActive ? "Active" : "Inactive"}
-                  </Label>
-                </div>
-              </FrappeField>
-            ) : (
-              <div className="hidden md:block" />
-            )}
             <FrappeField label="Notes" fullWidth>
               <Input
                 value={notes}
@@ -253,72 +272,86 @@ export function BomForm({ bom }: { bom?: Bom }) {
 
         <FrappeSection
           title="Components"
-          description="Quantities are per 1 finished unit. Scrap % increases required material."
+          description="Quantities are per 1 finished unit (in the selected UOM). Scrap % increases required material."
         >
           <FrappeGridTable
             columns={[
               { key: "component", label: "Component" },
-              { key: "qty", label: "Qty / FG", className: "w-28" },
-              { key: "scrap", label: "Scrap %", className: "w-28" },
+              { key: "uom", label: "UOM", className: "w-28" },
+              { key: "qty", label: "Qty / FG", className: "w-24" },
+              { key: "scrap", label: "Scrap %", className: "w-24" },
             ]}
-            onAddRow={() =>
-              setLines((prev) => [
-                ...prev,
-                { componentItemId: "", quantity: "1", scrapPercent: "" },
-              ])
-            }
+            onAddRow={() => setLines((prev) => [...prev, emptyBomLine()])}
             addLabel="Add component"
           >
-            {lines.map((line, index) => (
-              <FrappeGridRow
-                key={index}
-                canRemove={lines.length > 1}
-                onRemove={() =>
-                  setLines((prev) =>
-                    prev.length <= 1
-                      ? prev
-                      : prev.filter((_, i) => i !== index)
-                  )
-                }
-              >
-                <FrappeGridCell>
-                  <ItemSearchSelect
-                    value={line.componentItemId}
-                    onValueChange={(componentItemId) =>
-                      updateLine(index, { componentItemId })
-                    }
-                    options={itemOptions}
-                    placeholder="Select component…"
-                    searchPlaceholder="Search component…"
-                  />
-                </FrappeGridCell>
-                <FrappeGridCell>
-                  <Input
-                    type="number"
-                    step="any"
-                    min="0"
-                    value={line.quantity}
-                    onChange={(e) =>
-                      updateLine(index, { quantity: e.target.value })
-                    }
-                    className="h-8"
-                  />
-                </FrappeGridCell>
-                <FrappeGridCell>
-                  <Input
-                    type="number"
-                    step="any"
-                    min="0"
-                    value={line.scrapPercent}
-                    onChange={(e) =>
-                      updateLine(index, { scrapPercent: e.target.value })
-                    }
-                    placeholder="0"
-                    className="h-8"
-                  />
-                </FrappeGridCell>
-              </FrappeGridRow>
-            ))}
+            {lines.map((line, index) => {
+              const item = itemById.get(line.componentItemId);
+              return (
+                <FrappeGridRow
+                  key={index}
+                  canRemove={lines.length > 1}
+                  onRemove={() =>
+                    setLines((prev) =>
+                      prev.length <= 1
+                        ? prev
+                        : prev.filter((_, i) => i !== index)
+                    )
+                  }
+                >
+                  <FrappeGridCell>
+                    <ItemSearchSelect
+                      value={line.componentItemId}
+                      onValueChange={(componentItemId) => {
+                        const next = itemById.get(componentItemId);
+                        updateLine(index, {
+                          componentItemId,
+                          uomId: defaultUomIdForItem(next, "stock") ?? "",
+                        });
+                      }}
+                      options={itemOptions}
+                      placeholder="Select component…"
+                      searchPlaceholder="Search component…"
+                    />
+                  </FrappeGridCell>
+                  <FrappeGridCell>
+                    <LineUomSelect
+                      value={line.uomId || null}
+                      onValueChange={(uomId) =>
+                        updateLine(index, { uomId: uomId ?? "" })
+                      }
+                      item={item}
+                      uoms={uoms}
+                      loading={uomsLoading}
+                    />
+                  </FrappeGridCell>
+                  <FrappeGridCell>
+                    <Input
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={line.quantity}
+                      onChange={(e) =>
+                        updateLine(index, { quantity: e.target.value })
+                      }
+                      className="h-8"
+                    />
+                  </FrappeGridCell>
+                  <FrappeGridCell>
+                    <Input
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={line.scrapPercent}
+                      onChange={(e) =>
+                        updateLine(index, { scrapPercent: e.target.value })
+                      }
+                      placeholder="0"
+                      className="h-8"
+                    />
+                  </FrappeGridCell>
+                </FrappeGridRow>
+              );
+            })}
           </FrappeGridTable>
         </FrappeSection>
       </FrappeDocument>

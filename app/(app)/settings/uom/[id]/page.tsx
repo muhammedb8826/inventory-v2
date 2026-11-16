@@ -2,10 +2,21 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { PermissionGate } from "@/components/permission-gate";
 import { PageLoading } from "@/components/shared/page-loading";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -16,6 +27,7 @@ import { errorMessage } from "@/lib/format";
 import {
   createUom,
   deleteUom,
+  deleteUomCategory,
   fetchUomCategory,
   updateUom,
   updateUomCategory,
@@ -40,12 +52,14 @@ type DraftLine = {
 
 export default function UomCategoryDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const id = String(params.id);
   const { user } = useAuth();
   const canWrite = hasPermission(user, "uom.write");
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
@@ -140,6 +154,20 @@ export default function UomCategoryDetailPage() {
     setSelectedKey((cur) => (cur === key ? null : cur));
   }
 
+  async function handleDelete() {
+    if (!canWrite || deleting) return;
+    setDeleting(true);
+    try {
+      await deleteUomCategory(id);
+      toast.success("Category deleted");
+      router.replace("/settings/uom");
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   async function handleSave() {
     if (!canWrite || !dirty) return;
     if (!name.trim() || !code.trim()) {
@@ -227,14 +255,47 @@ export default function UomCategoryDetailPage() {
             <Link href="/settings/uom">Back</Link>
           </Button>
           {canWrite ? (
-            <Button
-              type="button"
-              size="sm"
-              disabled={!dirty || saving}
-              onClick={() => void handleSave()}
-            >
-              {saving ? "Saving…" : "Save"}
-            </Button>
+            <>
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="text-destructive hover:text-destructive"
+                    disabled={deleting}
+                  >
+                    Delete
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete category?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      This permanently removes {name || "this category"} and its
+                      units. Blocked if any unit is used on items or documents.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => void handleDelete()}
+                      disabled={deleting}
+                    >
+                      {deleting ? "Deleting…" : "Delete"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <Button
+                type="button"
+                size="sm"
+                disabled={!dirty || saving}
+                onClick={() => void handleSave()}
+              >
+                {saving ? "Saving…" : "Save"}
+              </Button>
+            </>
           ) : null}
         </div>
       }

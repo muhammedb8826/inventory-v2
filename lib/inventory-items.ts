@@ -64,12 +64,14 @@ export interface DocumentLineInput {
   itemId: string;
   quantity: string | number;
   unitPrice?: string | number;
+  uomId?: string | null;
 }
 
 export interface DocumentLineBody {
   itemId: string;
   quantity: number;
   unitPrice: number;
+  uomId?: string;
 }
 
 export function parseDocumentLines(
@@ -101,7 +103,9 @@ export function parseDocumentLines(
     if (Number.isNaN(unitPrice) || unitPrice < 0) {
       return { error: "Enter a valid unit price for each line." };
     }
-    parsed.push({ itemId, quantity, unitPrice });
+    const entry: DocumentLineBody = { itemId, quantity, unitPrice };
+    if (line.uomId) entry.uomId = line.uomId;
+    parsed.push(entry);
   }
 
   if (parsed.length === 0) {

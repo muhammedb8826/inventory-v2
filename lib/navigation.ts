@@ -20,6 +20,7 @@ import {
   MessageSquare,
   Palette,
   Ruler,
+  Tags,
 } from "lucide-react";
 
 export interface NavItem {
@@ -138,6 +139,12 @@ export const adminNav: NavItem[] = [
     href: "/settings/uom",
     icon: Ruler,
     permissions: ["uom.read", "uom.write"],
+  },
+  {
+    title: "Attributes",
+    href: "/settings/attributes",
+    icon: Tags,
+    permissions: ["attributes.read", "attributes.write"],
   },
   {
     title: "Branding",

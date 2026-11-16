@@ -143,6 +143,28 @@ export interface ItemUom {
   uom?: Uom;
 }
 
+export interface ProductAttribute {
+  id: string;
+  code: string;
+  name: string;
+  description?: string | null;
+  displayType?: string;
+  sequence?: number;
+  isActive?: boolean;
+  values?: ProductAttributeValue[];
+}
+
+export interface ProductAttributeValue {
+  id: string;
+  attributeId: string;
+  code: string;
+  name: string;
+  colorHex?: string | null;
+  sequence?: number;
+  isActive?: boolean;
+  attribute?: ProductAttribute;
+}
+
 export interface Item {
   id: string;
   sku?: string | null;
@@ -723,8 +745,10 @@ export interface BomLine {
   id?: string;
   componentItemId: string;
   quantity: string | number;
+  uomId?: string | null;
   scrapPercent?: string | number | null;
   componentItem?: Item;
+  uom?: Uom | null;
 }
 
 export interface Bom {
