@@ -35,17 +35,22 @@ import { ITEM_TYPE_OPTIONS } from "@/lib/item-types";
 import { formatQty, errorMessage } from "@/lib/format";
 import { requestNotificationsRefresh } from "@/lib/notification-events";
 import type { ItemType, StockRecord } from "@/lib/types";
+import { UomSelect } from "@/components/uom/uom-select";
+import { EntitySelectField } from "@/components/shared/entity-select-field";
+import { QuickLocationDialog } from "@/components/locations/quick-location-dialog";
+import { useLocations } from "@/hooks/use-locations";
 import { toast } from "sonner";
 import { ImageIcon, PlusIcon, Trash2Icon, UploadIcon } from "lucide-react";
 
 export function StockFormDialog({
-  locationId,
+  locationId: defaultLocationId,
   record,
   onSuccess,
   trigger,
   disabled,
 }: {
-  locationId: string;
+  /** Prefill for create (e.g. current list filter). Location is chosen inside the form. */
+  locationId?: string;
   record?: StockRecord;
   onSuccess: () => void;
   trigger?: React.ReactNode;
@@ -53,11 +58,28 @@ export function StockFormDialog({
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [open, setOpen] = useState(false);
+  const {
+    data: locations,
+    loading: locationsLoading,
+    setData: setLocations,
+  } = useLocations();
+  const [formLocationId, setFormLocationId] = useState(
+    record?.locationId ?? defaultLocationId ?? ""
+  );
   const [description, setDescription] = useState(
     record?.item.description ?? ""
   );
   const [sku, setSku] = useState(record?.item.sku ?? "");
-  const [unit, setUnit] = useState(record?.item.unit ?? "pcs");
+  const [stockUomId, setStockUomId] = useState<string | null>(
+    record?.item.stockUomId ?? null
+  );
+  const [salesUomId, setSalesUomId] = useState<string | null>(
+    record?.item.salesUomId ?? null
+  );
+  const [purchaseUomId, setPurchaseUomId] = useState<string | null>(
+    record?.item.purchaseUomId ?? null
+  );
+  const [uomWidth, setUomWidth] = useState(record?.item.uomWidth ?? "");
   const [itemType, setItemType] = useState<ItemType | "">(
     record?.item.itemType ?? ""
   );
@@ -92,9 +114,13 @@ export function StockFormDialog({
   function handleOpenChange(nextOpen: boolean) {
     setOpen(nextOpen);
     if (nextOpen) {
+      setFormLocationId(record?.locationId ?? defaultLocationId ?? "");
       setDescription(record?.item.description ?? "");
       setSku(record?.item.sku ?? "");
-      setUnit(record?.item.unit ?? "pcs");
+      setStockUomId(record?.item.stockUomId ?? null);
+      setSalesUomId(record?.item.salesUomId ?? null);
+      setPurchaseUomId(record?.item.purchaseUomId ?? null);
+      setUomWidth(record?.item.uomWidth ?? "");
       setItemType(record?.item.itemType ?? "");
       setQuantity(record?.quantity ?? "");
       setPurchasePrice(record?.purchasePrice ?? "");
@@ -121,9 +147,9 @@ export function StockFormDialog({
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const targetLocationId = record?.locationId ?? locationId;
+    const targetLocationId = record?.locationId ?? formLocationId;
     if (!record && !targetLocationId) {
-      toast.error("Select a location first");
+      toast.error("Select a location");
       return;
     }
     setSaving(true);
@@ -147,7 +173,12 @@ export function StockFormDialog({
           body: {
             description: description.trim(),
             sku: optionalStringBodyValue(sku),
-            unit: optionalStringBodyValue(unit),
+            stockUomId,
+            salesUomId,
+            purchaseUomId,
+            uomWidth: uomWidth.trim()
+              ? parseFloat(uomWidth)
+              : null,
             itemType: itemType || null,
             purchasePrice: parseFloat(purchasePrice),
             reorderPoint: reorderValue,
@@ -166,8 +197,11 @@ export function StockFormDialog({
           quantity: parseFloat(quantity),
           purchasePrice: parseFloat(purchasePrice),
           sku: optionalStringBodyValue(sku) ?? undefined,
-          unit: optionalStringBodyValue(unit) ?? undefined,
+          stockUomId: stockUomId ?? undefined,
+          salesUomId: salesUomId ?? undefined,
+          purchaseUomId: purchaseUomId ?? undefined,
         };
+        if (uomWidth.trim()) body.uomWidth = parseFloat(uomWidth);
         if (itemType) body.itemType = itemType;
         if (reorderValue !== null) {
           body.reorderPoint = reorderValue;
@@ -216,6 +250,41 @@ export function StockFormDialog({
             </DialogTitle>
           </DialogHeader>
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden p-4">
+            {!record ? (
+              <EntitySelectField
+                label="Location"
+                required
+                value={formLocationId}
+                onValueChange={setFormLocationId}
+                options={(locations ?? []).map((l) => ({
+                  id: l.id,
+                  label: `${l.name} (${l.type})`,
+                }))}
+                placeholder={
+                  locationsLoading ? "Loading locations…" : "Select location"
+                }
+                listHref="/locations"
+                listLabel="All locations"
+                emptyMessage="Add a location to stock items."
+                quickCreate={
+                  <QuickLocationDialog
+                    onCreated={(location) => {
+                      setLocations((prev) => [...(prev ?? []), location]);
+                      setFormLocationId(location.id);
+                    }}
+                  />
+                }
+                disabled={locationsLoading}
+                stackedActions
+              />
+            ) : (
+              <div className="grid gap-1">
+                <Label>Location</Label>
+                <p className="text-sm text-[var(--frappe-text)]">
+                  {record.location?.name ?? "—"}
+                </p>
+              </div>
+            )}
             <div className="grid gap-2">
               <Label>Item image (optional)</Label>
               <div className="flex items-start gap-3">
@@ -283,15 +352,58 @@ export function StockFormDialog({
                 required
               />
             </div>
+            <div className="grid gap-2">
+              <Label>SKU (optional)</Label>
+              <Input value={sku} onChange={(e) => setSku(e.target.value)} />
+            </div>
+            <div className="grid gap-2">
+              <Label>Stock UOM</Label>
+              <UomSelect
+                value={stockUomId}
+                onValueChange={setStockUomId}
+                placeholder="Default pcs"
+                allowEmpty
+                emptyLabel="Default (pcs)"
+              />
+              <p className="text-xs text-muted-foreground">
+                Inventory is always stored in this unit. Pack/box conversions
+                and Length→Area use it as the base.
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label>SKU (optional)</Label>
-                <Input value={sku} onChange={(e) => setSku(e.target.value)} />
+                <Label>Sales UOM</Label>
+                <UomSelect
+                  value={salesUomId}
+                  onValueChange={setSalesUomId}
+                  allowEmpty
+                  emptyLabel="Same as stock"
+                />
               </div>
               <div className="grid gap-2">
-                <Label>Unit</Label>
-                <Input value={unit} onChange={(e) => setUnit(e.target.value)} />
+                <Label>Purchase UOM</Label>
+                <UomSelect
+                  value={purchaseUomId}
+                  onValueChange={setPurchaseUomId}
+                  allowEmpty
+                  emptyLabel="Same as stock"
+                />
               </div>
+            </div>
+            <div className="grid gap-2">
+              <Label>Width (Length → Area)</Label>
+              <Input
+                type="number"
+                step="any"
+                min="0"
+                value={uomWidth}
+                onChange={(e) => setUomWidth(e.target.value)}
+                placeholder="e.g. 1.5 for fabric"
+              />
+              <p className="text-xs text-muted-foreground">
+                When stock is Area (sqm) and you sell/buy by Length (m): area =
+                length × width.
+              </p>
             </div>
             <div className="grid gap-2">
               <Label>Item type (optional)</Label>
@@ -316,9 +428,9 @@ export function StockFormDialog({
             </div>
             {record ? (
               <p className="text-xs text-muted-foreground">
-                Description, SKU, unit, item type, and image update this item
-                everywhere it is stocked. Clear SKU or unit to remove them.
-                Quantity cannot be edited here — use Adjust on the stock row.
+                Description, SKU, UOMs, item type, and image update this item
+                everywhere it is stocked. Quantity cannot be edited here — use
+                Adjust on the stock row.
               </p>
             ) : null}
             {!record ? (

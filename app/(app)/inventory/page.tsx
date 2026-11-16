@@ -150,8 +150,7 @@ export default function InventoryPage() {
         <div className="flex flex-wrap items-center gap-2">
           <PermissionGate permission="inventory.write">
             <StockFormDialog
-              locationId={listLocationId ?? ""}
-              disabled={isAllLocations}
+              locationId={listLocationId}
               onSuccess={reload}
             />
           </PermissionGate>

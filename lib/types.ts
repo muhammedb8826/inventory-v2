@@ -114,11 +114,50 @@ export interface Location {
   isActive?: boolean;
 }
 
+export interface UomCategory {
+  id: string;
+  code: string;
+  name: string;
+  description?: string | null;
+  isActive?: boolean;
+  uoms?: Uom[];
+}
+
+export interface Uom {
+  id: string;
+  categoryId: string;
+  code: string;
+  name: string;
+  symbol: string;
+  conversionFactor: string;
+  isBase?: boolean;
+  isActive?: boolean;
+  category?: UomCategory;
+}
+
+export interface ItemUom {
+  id: string;
+  itemId: string;
+  uomId: string;
+  conversionFactor: string;
+  uom?: Uom;
+}
+
 export interface Item {
   id: string;
   sku?: string | null;
   description: string;
+  /** Legacy label; prefer stockUom.symbol */
   unit?: string | null;
+  stockUomId?: string | null;
+  salesUomId?: string | null;
+  purchaseUomId?: string | null;
+  /** Length→Area width (area per 1 length-base unit) */
+  uomWidth?: string | null;
+  stockUom?: Uom | null;
+  salesUom?: Uom | null;
+  purchaseUom?: Uom | null;
+  itemUoms?: ItemUom[];
   itemType?: ItemType | null;
   /** Relative path from API, e.g. `/uploads/items/...` */
   imagePath?: string | null;
@@ -333,10 +372,13 @@ export interface PurchaseLine {
   id?: string;
   itemId: string;
   quantity: string;
+  uomId?: string | null;
+  stockQuantity?: string | null;
   unitPrice: string;
   lineTotal?: string;
   amount?: string;
   item?: Item;
+  uom?: Uom | null;
 }
 
 export interface Purchase {
@@ -368,10 +410,13 @@ export interface SaleLine {
   id?: string;
   itemId: string;
   quantity: string;
+  uomId?: string | null;
+  stockQuantity?: string | null;
   unitPrice: string;
   lineTotal?: string;
   amount?: string;
   item?: Item;
+  uom?: Uom | null;
 }
 
 export interface SaleUserRef {

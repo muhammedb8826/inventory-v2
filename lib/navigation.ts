@@ -19,6 +19,7 @@ import {
   Factory,
   MessageSquare,
   Palette,
+  Ruler,
 } from "lucide-react";
 
 export interface NavItem {
@@ -132,6 +133,12 @@ export const masterNav: NavItem[] = [
 ];
 
 export const adminNav: NavItem[] = [
+  {
+    title: "Units of measure",
+    href: "/settings/uom",
+    icon: Ruler,
+    permissions: ["uom.read", "uom.write"],
+  },
   {
     title: "Branding",
     href: "/settings/branding",

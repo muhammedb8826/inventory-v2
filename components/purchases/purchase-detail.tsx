@@ -171,7 +171,13 @@ export function PurchaseDetail({
                       </td>
                       <td className="text-right tabular-nums">
                         {formatQty(line.quantity)}
-                        {line.item?.unit ? ` ${line.item.unit}` : ""}
+                        {line.uom?.symbol
+                          ? ` ${line.uom.symbol}`
+                          : line.item?.stockUom?.symbol
+                            ? ` ${line.item.stockUom.symbol}`
+                            : line.item?.unit
+                              ? ` ${line.item.unit}`
+                              : ""}
                       </td>
                       <td className="text-right tabular-nums">
                         {formatMoney(line.unitPrice)}
