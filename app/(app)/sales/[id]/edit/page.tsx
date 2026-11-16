@@ -30,7 +30,7 @@ export default function EditSalePage() {
       subtitle={isVoided ? "Voided" : "Amend document"}
       variant="form"
       breadcrumbs={[
-        { label: "Stock", href: "/dashboard" },
+        { label: "Qenenia ERP", href: "/dashboard" },
         { label: "Sales Invoice", href: "/sales" },
         { label: id ? id.slice(0, 8) : "…", href: `/sales/${id}` },
         { label: "Edit" },

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { DataCardTable } from "@/components/shared/data-card-table";
+import { ItemCardGrid } from "@/components/shared/item-card-grid";
+import { ListGridViewToggle } from "@/components/shared/list-grid-view-toggle";
 import { PageLoading } from "@/components/shared/page-loading";
 import { PermissionGate } from "@/components/permission-gate";
 import { FrappeFilterBar, FrappeListToolbar } from "@/components/frappe";
@@ -10,6 +12,7 @@ import { DateRangeFilter } from "@/components/shared/date-range-filter";
 import { ListSearchField } from "@/components/shared/list-search-field";
 import { FilterSelect } from "@/components/shared/filter-field";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useListViewMode } from "@/hooks/use-list-view-mode";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -78,6 +81,13 @@ export default function InventoryPage() {
   const [search, setSearch] = useState("");
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [displayMode, setDisplayMode] = useListViewMode(
+    "inventory-list-view",
+    "list"
+  );
+  const [detailRecord, setDetailRecord] = useState<
+    StockRecord | LowStockRecord | null
+  >(null);
   const debouncedSearch = useDebouncedValue(search);
 
   const { data: locations } = useLocations();
@@ -133,7 +143,7 @@ export default function InventoryPage() {
       title="Stock Ledger"
       subtitle="Warehouse and showroom quantities"
       breadcrumbs={[
-        { label: "Stock", href: "/dashboard" },
+        { label: "Qenenia ERP", href: "/dashboard" },
         { label: "Stock Ledger" },
       ]}
       actions={
@@ -252,20 +262,153 @@ export default function InventoryPage() {
             {meta.total} {isLowStockView ? "low-stock item" : "item"}
             {meta.total === 1 ? "" : "s"}
           </span>
-          {!isLowStockView && totals ? (
-            <ListPageTotals
-              items={[
-                { label: "Total qty", value: formatQty(totals.quantity) },
-                {
-                  label: "Stock value",
-                  value: formatMoney(totals.inventoryValue),
-                },
-              ]}
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            {!isLowStockView && totals ? (
+              <ListPageTotals
+                items={[
+                  { label: "Total qty", value: formatQty(totals.quantity) },
+                  {
+                    label: "Stock value",
+                    value: formatMoney(totals.inventoryValue),
+                  },
+                ]}
+              />
+            ) : null}
+            <ListGridViewToggle
+              value={displayMode}
+              onValueChange={setDisplayMode}
             />
-          ) : null}
+          </div>
         </FrappeListToolbar>
         {loading ? (
           <PageLoading />
+        ) : displayMode === "grid" ? (
+          <>
+            <ItemCardGrid
+              rows={rows}
+              emptyTitle={
+                isLowStockView
+                  ? "No low-stock items"
+                  : isAllLocations
+                    ? "No stock found"
+                    : "No stock at this location"
+              }
+              emptyDescription={
+                isLowStockView
+                  ? "Items at or below their reorder point will appear here."
+                  : undefined
+              }
+              pagination={{
+                meta,
+                onPageChange: setPage,
+                onLimitChange: setLimit,
+                disabled: loading,
+              }}
+              getImage={(r) =>
+                resolveItemImageUrl(r.item.imageUrl ?? r.item.imagePath)
+              }
+              getTitle={(r) => r.item.description}
+              getSubtitle={(r) =>
+                [
+                  isAllLocations ? r.location?.name : null,
+                  r.item.sku ? `SKU: ${r.item.sku}` : null,
+                  r.item.itemType ? itemTypeLabel(r.item.itemType) : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || null
+              }
+              renderBadges={(r) => {
+                const lowRow = r as LowStockRecord;
+                const showLowBadge =
+                  isLowStockView || isLowStockRow(r as StockRecord);
+                if (!showLowBadge) return null;
+                const out =
+                  lowRow.status === "OUT_OF_STOCK" ||
+                  parseFloat(r.quantity) <= 0;
+                return (
+                  <Badge
+                    variant={out ? "destructive" : "secondary"}
+                    className="text-[10px] font-normal shadow-sm"
+                  >
+                    {out ? "Out of stock" : "Low stock"}
+                  </Badge>
+                );
+              }}
+              renderMeta={(r) => (
+                <div className="space-y-1">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-xs text-[var(--erp-text-muted)]">
+                      Qty
+                    </span>
+                    <span className="font-semibold tabular-nums">
+                      {formatQty(r.quantity)}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-xs text-[var(--erp-text-muted)]">
+                      Price
+                    </span>
+                    <span className="tabular-nums">
+                      {formatMoney(r.purchasePrice)}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-xs text-[var(--erp-text-muted)]">
+                      Value
+                    </span>
+                    <span className="font-medium tabular-nums text-[var(--qenenia-navy)]">
+                      {formatMoney(
+                        parseFloat(r.quantity) * parseFloat(r.purchasePrice)
+                      )}
+                    </span>
+                  </div>
+                  {isLowStockView ? (
+                    <div className="flex items-baseline justify-between gap-2">
+                      <span className="text-xs text-[var(--erp-text-muted)]">
+                        Shortage
+                      </span>
+                      <span className="tabular-nums">
+                        {formatQty((r as LowStockRecord).shortage)}
+                      </span>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+              renderActions={(r) => (
+                <>
+                  <StockDetailDialog record={r} />
+                  {hasPermission(user, "inventory.adjust") ? (
+                    <StockAdjustDialog record={r} onSuccess={reload} />
+                  ) : null}
+                  {hasPermission(user, "inventory.write") ? (
+                    <StockFormDialog
+                      locationId={r.locationId ?? listLocationId ?? ""}
+                      record={r}
+                      onSuccess={reload}
+                      trigger={
+                        <Button size="icon" variant="ghost">
+                          <PencilIcon className="size-4" />
+                        </Button>
+                      }
+                    />
+                  ) : null}
+                  {hasPermission(user, "inventory.delete") ? (
+                    <DeleteStockButton id={r.id} onSuccess={reload} />
+                  ) : null}
+                </>
+              )}
+              onCardClick={(r) => setDetailRecord(r)}
+            />
+            {detailRecord ? (
+              <StockDetailDialog
+                record={detailRecord}
+                open={Boolean(detailRecord)}
+                onOpenChange={(next) => {
+                  if (!next) setDetailRecord(null);
+                }}
+              />
+            ) : null}
+          </>
         ) : (
           <DataCardTable
             rows={rows}
@@ -300,6 +443,7 @@ export default function InventoryPage() {
               {
                 key: "item",
                 header: "Item",
+                primary: true,
                 cell: (r) => {
                   const imageSrc = resolveItemImageUrl(
                     r.item.imageUrl ?? r.item.imagePath
@@ -344,7 +488,8 @@ export default function InventoryPage() {
                     />
                   );
                 },
-              },              {
+              },
+              {
                 key: "qty",
                 header: "Quantity",
                 className: "w-28 text-right tabular-nums",
@@ -415,31 +560,28 @@ export default function InventoryPage() {
                 header: "",
                 className: "w-40 text-right",
                 cell: (r) => (
-                    <div className="flex justify-end gap-1">
-                      <StockDetailDialog record={r} />
-                      {hasPermission(user, "inventory.adjust") ? (
-                        <StockAdjustDialog
-                          record={r}
-                          onSuccess={reload}
-                        />
-                      ) : null}
-                      {hasPermission(user, "inventory.write") ? (
-                        <StockFormDialog
-                          locationId={r.locationId ?? listLocationId ?? ""}
-                          record={r}
-                          onSuccess={reload}
-                          trigger={
-                            <Button size="icon" variant="ghost">
-                              <PencilIcon className="size-4" />
-                            </Button>
-                          }
-                        />
-                      ) : null}
-                      {hasPermission(user, "inventory.delete") ? (
-                        <DeleteStockButton id={r.id} onSuccess={reload} />
-                      ) : null}
-                    </div>
-                  ),
+                  <div className="flex justify-end gap-1">
+                    <StockDetailDialog record={r} />
+                    {hasPermission(user, "inventory.adjust") ? (
+                      <StockAdjustDialog record={r} onSuccess={reload} />
+                    ) : null}
+                    {hasPermission(user, "inventory.write") ? (
+                      <StockFormDialog
+                        locationId={r.locationId ?? listLocationId ?? ""}
+                        record={r}
+                        onSuccess={reload}
+                        trigger={
+                          <Button size="icon" variant="ghost">
+                            <PencilIcon className="size-4" />
+                          </Button>
+                        }
+                      />
+                    ) : null}
+                    {hasPermission(user, "inventory.delete") ? (
+                      <DeleteStockButton id={r.id} onSuccess={reload} />
+                    ) : null}
+                  </div>
+                ),
               },
             ]}
           />

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { DataCardTable } from "@/components/shared/data-card-table";
+import { ListGridViewToggle } from "@/components/shared/list-grid-view-toggle";
 import { PageLoading } from "@/components/shared/page-loading";
 import { PermissionGate } from "@/components/permission-gate";
 import {
@@ -13,6 +14,7 @@ import {
   FrappeButtonPrimary,
   FrappeButtonLink,
 } from "@/components/frappe";
+import { useListViewMode } from "@/hooks/use-list-view-mode";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -78,6 +80,10 @@ export default function SalesPage() {
   const [from, setFrom] = useState(initialFrom);
   const [to, setTo] = useState(initialTo);
   const [search, setSearch] = useState("");
+  const [displayMode, setDisplayMode] = useListViewMode(
+    "sales-list-view",
+    "list"
+  );
   const debouncedSearch = useDebouncedValue(search);
 
   const { data: users } = useFetch(
@@ -128,7 +134,7 @@ export default function SalesPage() {
       title="Sales Invoice"
       subtitle="List of sales transactions"
       breadcrumbs={[
-        { label: "Stock", href: "/dashboard" },
+        { label: "Qenenia ERP", href: "/dashboard" },
         { label: "Sales Invoice" },
       ]}
       actions={
@@ -292,21 +298,31 @@ export default function SalesPage() {
           <span className="text-[var(--frappe-text-muted)]">
             {meta.total} record{meta.total === 1 ? "" : "s"}
           </span>
-          {totals ? (
-            <ListPageTotals
-              items={[
-                { label: "Subtotal", value: formatMoney(totals.subtotal) },
-                { label: "Total", value: formatMoney(totals.total) },
-                { label: "Commission", value: formatMoney(totals.commission) },
-              ]}
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            {totals ? (
+              <ListPageTotals
+                items={[
+                  { label: "Subtotal", value: formatMoney(totals.subtotal) },
+                  { label: "Total", value: formatMoney(totals.total) },
+                  {
+                    label: "Commission",
+                    value: formatMoney(totals.commission),
+                  },
+                ]}
+              />
+            ) : null}
+            <ListGridViewToggle
+              value={displayMode}
+              onValueChange={setDisplayMode}
             />
-          ) : null}
+          </div>
         </FrappeListToolbar>
         {loading ? (
           <PageLoading />
         ) : (
           <DataCardTable
             rows={rows}
+            viewMode={displayMode}
             emptyTitle="Nothing to show"
             emptyDescription="Create your first sale invoice."
             pagination={{
@@ -319,6 +335,7 @@ export default function SalesPage() {
               {
                 key: "id",
                 header: "ID",
+                primary: true,
                 cell: (r) => (
                   <Link
                     href={`/sales/${r.id}`}

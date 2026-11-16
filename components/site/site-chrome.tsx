@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { BrandLogo } from "@/components/branding/brand-logo";
 import { useBranding } from "@/components/branding/branding-provider";
 import { VENDOR } from "@/lib/vendor";
 import { cn } from "@/lib/utils";
@@ -22,14 +23,16 @@ export function SiteHeader() {
       )}
     >
       <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-5 sm:px-8">
-        <Link
-          href="/"
-          className={cn(
-            "site-display text-2xl font-semibold tracking-tight sm:text-3xl",
-            onHero ? "text-white drop-shadow-sm" : "text-[var(--site-ink)]"
-          )}
-        >
-          {appName}
+        <Link href="/" aria-label={appName} className="shrink-0">
+          <BrandLogo
+            className={cn(
+              "rounded-lg px-2.5 py-1.5",
+              onHero ? "bg-white/95 shadow-sm" : "bg-transparent"
+            )}
+            imgClassName="h-9 w-auto sm:h-10"
+            priority
+            alt={appName}
+          />
         </Link>
         <nav
           className={cn(
@@ -82,9 +85,11 @@ export function SiteFooter() {
     >
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-12 sm:px-8 md:grid-cols-[1.2fr_1fr_1fr]">
         <div>
-          <p className="site-display text-xl text-[var(--site-ink)]">
-            {appName}
-          </p>
+          <BrandLogo
+            className="mb-3"
+            imgClassName="h-9 w-auto"
+            alt={appName}
+          />
           <p className="mt-2 max-w-sm text-sm leading-relaxed text-[var(--site-ink-soft)]">
             Questions about products, availability, or custom quotes — we are
             here to help.

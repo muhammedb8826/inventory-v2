@@ -36,16 +36,22 @@ function DetailValue({ children }: { children: React.ReactNode }) {
 export function StockDetailDialog({
   record,
   trigger,
+  open: openProp,
+  onOpenChange,
 }: {
   record: StockRecord;
   trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = openProp ?? uncontrolledOpen;
   const [detail, setDetail] = useState<StockRecord | null>(null);
   const [loading, setLoading] = useState(false);
 
   async function handleOpenChange(nextOpen: boolean) {
-    setOpen(nextOpen);
+    if (onOpenChange) onOpenChange(nextOpen);
+    else setUncontrolledOpen(nextOpen);
     if (!nextOpen) {
       setDetail(null);
       return;
@@ -74,15 +80,19 @@ export function StockDetailDialog({
     lowRow.status === "OUT_OF_STOCK" || (!Number.isNaN(qty) && qty <= 0);
   const lowStock = isLowStockRow(shown);
 
+  const showTrigger = openProp === undefined || trigger != null;
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button size="icon" variant="ghost" aria-label="View stock">
-            <EyeIcon className="size-4" />
-          </Button>
-        )}
-      </DialogTrigger>
+      {showTrigger ? (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button size="icon" variant="ghost" aria-label="View stock">
+              <EyeIcon className="size-4" />
+            </Button>
+          )}
+        </DialogTrigger>
+      ) : null}
       <DialogContent className="flex max-h-[min(90vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
         <DialogHeader className="shrink-0 border-b border-[var(--frappe-border)] bg-[var(--frappe-section-head)] px-4 py-3">
           <DialogTitle className="text-base">Stock details</DialogTitle>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { DataCardTable } from "@/components/shared/data-card-table";
+import { ListGridViewToggle } from "@/components/shared/list-grid-view-toggle";
 import { PageLoading } from "@/components/shared/page-loading";
 import { PermissionGate } from "@/components/permission-gate";
 import {
@@ -14,6 +15,7 @@ import {
 import { DateRangeFilter } from "@/components/shared/date-range-filter";
 import { ListSearchField } from "@/components/shared/list-search-field";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useListViewMode } from "@/hooks/use-list-view-mode";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import {
@@ -42,6 +44,10 @@ export default function ProductionOrdersPage() {
   const [locationId, setLocationId] = useState(ALL);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
+  const [displayMode, setDisplayMode] = useListViewMode(
+    "production-orders-list-view",
+    "list"
+  );
   const debouncedSearch = useDebouncedValue(search);
   const { data: locations } = useLocations();
 
@@ -67,7 +73,7 @@ export default function ProductionOrdersPage() {
       title="Production Orders"
       subtitle="Release, issue materials, and receive finished goods"
       breadcrumbs={[
-        { label: "Stock", href: "/dashboard" },
+        { label: "Qenenia ERP", href: "/dashboard" },
         { label: "Production" },
       ]}
       actions={
@@ -180,12 +186,17 @@ export default function ProductionOrdersPage() {
           <span className="text-[var(--frappe-text-muted)]">
             {meta.total} order{meta.total === 1 ? "" : "s"}
           </span>
+          <ListGridViewToggle
+            value={displayMode}
+            onValueChange={setDisplayMode}
+          />
         </FrappeListToolbar>
         {loading ? (
           <PageLoading />
         ) : (
           <DataCardTable
             rows={rows}
+            viewMode={displayMode}
             emptyTitle="No production orders"
             emptyDescription="Create an order from an active BOM."
             pagination={{

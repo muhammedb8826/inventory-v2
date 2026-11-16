@@ -27,7 +27,7 @@ export default function BomDetailPage() {
       title={loading ? "BOM" : (bom?.name ?? "BOM")}
       variant="form"
       breadcrumbs={[
-        { label: "Stock", href: "/dashboard" },
+        { label: "Qenenia ERP", href: "/dashboard" },
         { label: "BOMs", href: "/boms" },
         { label: id ? id.slice(0, 8) : "…" },
       ]}

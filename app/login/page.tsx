@@ -22,8 +22,8 @@ import {
   VendorHelpSheet,
   VendorPoweredBy,
 } from "@/components/vendor/vendor-help";
+import { BrandLogo } from "@/components/branding/brand-logo";
 import { useBranding } from "@/components/branding/branding-provider";
-import { Package2 } from "lucide-react";
 import { errorMessage } from "@/lib/format";
 
 export default function LoginPage() {
@@ -73,13 +73,13 @@ export default function LoginPage() {
         <VendorHelpSheet />
         <ThemeToggle />
       </div>
-      <div className="relative z-10 mb-8 flex items-center gap-2.5">
-        <div className="flex size-10 items-center justify-center rounded-xl bg-[var(--erp-accent)] text-white shadow-sm">
-          <Package2 className="size-5" />
-        </div>
-        <span className="font-heading text-xl font-semibold tracking-tight text-[var(--erp-text)]">
-          {appName}
-        </span>
+      <div className="relative z-10 mb-8 flex items-center justify-center">
+        <BrandLogo
+          className="rounded-xl bg-white px-3 py-2 shadow-sm ring-1 ring-[var(--erp-border)]"
+          imgClassName="h-12 w-auto sm:h-14"
+          priority
+          alt={appName}
+        />
       </div>
       <Card className="relative z-10 w-full max-w-md border-[var(--erp-border)] bg-[var(--erp-surface)] shadow-lg">
         <CardHeader className="space-y-1.5">

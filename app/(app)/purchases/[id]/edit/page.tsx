@@ -30,7 +30,7 @@ export default function EditPurchasePage() {
       subtitle={isVoided ? "Voided" : "Amend document"}
       variant="form"
       breadcrumbs={[
-        { label: "Stock", href: "/dashboard" },
+        { label: "Qenenia ERP", href: "/dashboard" },
         { label: "Purchase", href: "/purchases" },
         { label: id ? id.slice(0, 8) : "…", href: `/purchases/${id}` },
         { label: "Edit" },

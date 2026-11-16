@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { DataCardTable } from "@/components/shared/data-card-table";
+import { ListGridViewToggle } from "@/components/shared/list-grid-view-toggle";
 import { PageLoading } from "@/components/shared/page-loading";
 import { PermissionGate } from "@/components/permission-gate";
 import {
@@ -13,6 +14,7 @@ import {
 } from "@/components/frappe";
 import { ListSearchField } from "@/components/shared/list-search-field";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useListViewMode } from "@/hooks/use-list-view-mode";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
 import {
@@ -31,6 +33,7 @@ import { PlusIcon } from "lucide-react";
 export default function BomsPage() {
   const [search, setSearch] = useState("");
   const [isActive, setIsActive] = useState<"all" | "true" | "false">("true");
+  const [displayMode, setDisplayMode] = useListViewMode("boms-list-view", "list");
   const debouncedSearch = useDebouncedValue(search);
 
   const { rows, meta, setPage, setLimit, loading } = usePaginatedList<Bom>(
@@ -52,7 +55,7 @@ export default function BomsPage() {
       title="Bills of Materials"
       subtitle="Recipes for finished goods"
       breadcrumbs={[
-        { label: "Stock", href: "/dashboard" },
+        { label: "Qenenia ERP", href: "/dashboard" },
         { label: "BOMs" },
       ]}
       actions={
@@ -119,12 +122,17 @@ export default function BomsPage() {
           <span className="text-[var(--frappe-text-muted)]">
             {meta.total} BOM{meta.total === 1 ? "" : "s"}
           </span>
+          <ListGridViewToggle
+            value={displayMode}
+            onValueChange={setDisplayMode}
+          />
         </FrappeListToolbar>
         {loading ? (
           <PageLoading />
         ) : (
           <DataCardTable
             rows={rows}
+            viewMode={displayMode}
             emptyTitle="No BOMs"
             emptyDescription="Create a bill of materials for a finished item."
             pagination={{

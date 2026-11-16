@@ -31,7 +31,7 @@ export default function SaleDetailPage() {
       title={loading ? "Sales Invoice" : title}
       variant="form"
       breadcrumbs={[
-        { label: "Stock", href: "/dashboard" },
+        { label: "Qenenia ERP", href: "/dashboard" },
         { label: "Sales Invoice", href: "/sales" },
         { label: id ? id.slice(0, 8) : "…" },
       ]}

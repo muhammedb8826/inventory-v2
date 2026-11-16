@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { DataCardTable } from "@/components/shared/data-card-table";
+import { ListGridViewToggle } from "@/components/shared/list-grid-view-toggle";
 import { PageLoading } from "@/components/shared/page-loading";
 import { AccessDenied } from "@/components/shared/access-denied";
 import { PermissionGate } from "@/components/permission-gate";
@@ -17,6 +18,7 @@ import {
 } from "@/components/frappe";
 import { ListSearchField } from "@/components/shared/list-search-field";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useListViewMode } from "@/hooks/use-list-view-mode";
 import {
   Dialog,
   DialogContent,
@@ -89,6 +91,10 @@ export function MasterDataPage<
   const { user, loading: authLoading } = useAuth();
   const canRead = hasPermission(user, readPermission);
   const [search, setSearch] = useState("");
+  const [displayMode, setDisplayMode] = useListViewMode(
+    `master-${endpoint}-list-view`,
+    "list"
+  );
   const debouncedSearch = useDebouncedValue(search);
   const listParamsKey = JSON.stringify(listParams ?? {});
 
@@ -149,7 +155,7 @@ export function MasterDataPage<
       title={title}
       subtitle={`Manage ${title.toLowerCase()}`}
       breadcrumbs={[
-        { label: "Stock", href: "/dashboard" },
+        { label: "Qenenia ERP", href: "/dashboard" },
         { label: title },
       ]}
       actions={
@@ -180,12 +186,17 @@ export function MasterDataPage<
           <span className="text-[var(--frappe-text-muted)]">
             {meta.total} record{meta.total === 1 ? "" : "s"}
           </span>
+          <ListGridViewToggle
+            value={displayMode}
+            onValueChange={setDisplayMode}
+          />
         </FrappeListToolbar>
         {loading ? (
           <PageLoading />
         ) : (
           <DataCardTable
             rows={rows}
+            viewMode={displayMode}
             emptyTitle="Nothing to show"
             emptyDescription={emptyDescription}
             pagination={{

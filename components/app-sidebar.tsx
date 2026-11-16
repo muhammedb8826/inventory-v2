@@ -19,8 +19,8 @@ import {
 import { useAuth } from "@/lib/auth";
 import { hasAnyPermission, hasPermission } from "@/lib/permissions";
 import { adminNav, mainNav, masterNav, type NavItem } from "@/lib/navigation";
+import { BrandLogo } from "@/components/branding/brand-logo";
 import { useBranding } from "@/components/branding/branding-provider";
-import { CommandIcon } from "lucide-react";
 
 function filterNav(
   items: NavItem[],
@@ -53,7 +53,16 @@ function NavItems({
           pathname === item.href || pathname.startsWith(`${item.href}/`);
         return (
           <SidebarMenuItem key={item.href}>
-            <SidebarMenuButton asChild isActive={active} tooltip={item.title}>
+            <SidebarMenuButton
+              asChild
+              isActive={active}
+              tooltip={item.title}
+              className={
+                active
+                  ? "data-active:bg-[var(--sidebar-accent)] data-active:text-white [&_svg]:text-[var(--qenenia-orange)]"
+                  : "text-sidebar-foreground/85 hover:text-white"
+              }
+            >
               <Link href={item.href}>
                 <Icon />
                 <span>{item.title}</span>
@@ -75,20 +84,18 @@ export function AppSidebar({
 
   return (
     <Sidebar collapsible="offcanvas" {...props}>
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton
-              asChild
-              className="data-[slot=sidebar-menu-button]:p-1.5!"
-            >
-              <Link href="/dashboard">
-                <CommandIcon className="size-5!" />
-                <span className="text-base font-semibold">{appName}</span>
-              </Link>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarHeader className="border-b border-sidebar-border/60 p-3">
+        <Link
+          href="/dashboard"
+          aria-label={appName}
+          className="flex items-center rounded-xl bg-white px-2.5 py-2 shadow-sm"
+        >
+          <BrandLogo
+            className="w-full"
+            imgClassName="h-10 w-auto max-w-full"
+            priority
+          />
+        </Link>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>

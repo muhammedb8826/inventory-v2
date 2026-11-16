@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AppShell } from "@/components/app-shell";
 import { DataCardTable } from "@/components/shared/data-card-table";
+import { ListGridViewToggle } from "@/components/shared/list-grid-view-toggle";
 import { PageLoading } from "@/components/shared/page-loading";
 import { PermissionGate } from "@/components/permission-gate";
 import {
@@ -18,6 +19,7 @@ import {
   filterControlClass,
 } from "@/components/shared/filter-field";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
+import { useListViewMode } from "@/hooks/use-list-view-mode";
 import { formatMoney, formatDate } from "@/lib/format";
 import { documentTotal } from "@/lib/document-utils";
 import { buildPurchasesListPath } from "@/lib/list-query";
@@ -53,6 +55,10 @@ type PurchaseRow = Pick<
 
 export default function PurchasesPage() {
   const [search, setSearch] = useState("");
+  const [displayMode, setDisplayMode] = useListViewMode(
+    "purchases-list-view",
+    "list"
+  );
   const [includeVoided, setIncludeVoided] = useState(false);
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
@@ -95,7 +101,7 @@ export default function PurchasesPage() {
     <AppShell
       title="Purchase"
       subtitle="List of all purchase transactions"
-      breadcrumbs={[{ label: "Stock", href: "/dashboard" }, { label: "Purchase" }]}
+      breadcrumbs={[{ label: "Qenenia ERP", href: "/dashboard" }, { label: "Purchase" }]}
       actions={
         <PermissionGate permission="purchase.write">
           <FrappeButtonPrimary asChild>
@@ -229,20 +235,27 @@ export default function PurchasesPage() {
           <span className="text-[var(--frappe-text-muted)]">
             {meta.total} record{meta.total === 1 ? "" : "s"}
           </span>
-          {totals ? (
-            <ListPageTotals
-              items={[
-                { label: "Subtotal", value: formatMoney(totals.subtotal) },
-                { label: "Total", value: formatMoney(totals.total) },
-              ]}
+          <div className="flex flex-wrap items-center gap-2 sm:ml-auto">
+            {totals ? (
+              <ListPageTotals
+                items={[
+                  { label: "Subtotal", value: formatMoney(totals.subtotal) },
+                  { label: "Total", value: formatMoney(totals.total) },
+                ]}
+              />
+            ) : null}
+            <ListGridViewToggle
+              value={displayMode}
+              onValueChange={setDisplayMode}
             />
-          ) : null}
+          </div>
         </FrappeListToolbar>
         {loading ? (
           <PageLoading />
         ) : (
           <DataCardTable
             rows={rows}
+            viewMode={displayMode}
             emptyTitle="Nothing to show"
             emptyDescription="Create your first purchase to receive stock."
             pagination={{

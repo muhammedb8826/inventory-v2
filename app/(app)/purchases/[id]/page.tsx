@@ -31,7 +31,7 @@ export default function PurchaseDetailPage() {
       subtitle={purchase?.createdAt ? undefined : "Loading…"}
       variant="form"
       breadcrumbs={[
-        { label: "Stock", href: "/dashboard" },
+        { label: "Qenenia ERP", href: "/dashboard" },
         { label: "Purchase", href: "/purchases" },
         { label: id ? id.slice(0, 8) : "…" },
       ]}

@@ -27,7 +27,7 @@ export default function EditBomPage() {
       title={loading ? "Edit BOM" : `Edit ${bom?.name ?? "BOM"}`}
       variant="form"
       breadcrumbs={[
-        { label: "Stock", href: "/dashboard" },
+        { label: "Qenenia ERP", href: "/dashboard" },
         { label: "BOMs", href: "/boms" },
         { label: id ? id.slice(0, 8) : "…", href: id ? `/boms/${id}` : undefined },
         { label: "Edit" },

@@ -14,7 +14,7 @@ export default function SupplierCreditDetailPage() {
       title="Supplier payable"
       variant="form"
       breadcrumbs={[
-        { label: "Stock", href: "/dashboard" },
+        { label: "Qenenia ERP", href: "/dashboard" },
         { label: "Credits", href: "/credits" },
         { label: id ? id.slice(0, 8) : "…" },
       ]}

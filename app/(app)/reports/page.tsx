@@ -426,7 +426,7 @@ export default function ReportsPage() {
     <AppShell
       title="Reports"
       subtitle="Financial, inventory, customer, supplier, and cash movement reports"
-      breadcrumbs={[{ label: "Stock", href: "/dashboard" }, { label: "Reports" }]}
+      breadcrumbs={[{ label: "Qenenia ERP", href: "/dashboard" }, { label: "Reports" }]}
     >
       <PermissionGate permission="reports.read" showDenied>
         <div className="mb-4">

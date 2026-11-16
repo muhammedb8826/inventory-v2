@@ -11,7 +11,7 @@ export default function NewSalePage() {
       subtitle="Not Saved"
       variant="form"
       breadcrumbs={[
-        { label: "Stock", href: "/dashboard" },
+        { label: "Qenenia ERP", href: "/dashboard" },
         { label: "Sales Invoice", href: "/sales" },
         { label: "New" },
       ]}

@@ -10,7 +10,7 @@ export default function NewBomPage() {
       title="New BOM"
       variant="form"
       breadcrumbs={[
-        { label: "Stock", href: "/dashboard" },
+        { label: "Qenenia ERP", href: "/dashboard" },
         { label: "BOMs", href: "/boms" },
         { label: "New" },
       ]}

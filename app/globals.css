@@ -1,3 +1,4 @@
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -7,9 +8,11 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+
   --font-sans: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-ibm-plex-mono), ui-monospace, monospace;
   --font-heading: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
+
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -18,11 +21,13 @@
   --color-sidebar-primary: var(--sidebar-primary);
   --color-sidebar-foreground: var(--sidebar-foreground);
   --color-sidebar: var(--sidebar);
+
   --color-chart-5: var(--chart-5);
   --color-chart-4: var(--chart-4);
   --color-chart-3: var(--chart-3);
   --color-chart-2: var(--chart-2);
   --color-chart-1: var(--chart-1);
+
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -39,6 +44,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -48,22 +54,40 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* ========================================
+   QENENIA ERP - LIGHT THEME
+======================================== */
+
 :root {
-  /* Modern ERP desk tokens (Odoo / NetSuite inspired, not Frappe-only) */
-  --erp-accent: #0f766e;
-  --erp-accent-hover: #0d9488;
-  --erp-desk: #f1f5f9;
+  /* Official brand palette */
+  --qenenia-navy: #082b60;
+  --qenenia-navy-hover: #0b397b;
+  --qenenia-navy-deep: #061b3b;
+  --qenenia-orange: #ff7900;
+  --qenenia-orange-hover: #e86d00;
+  --qenenia-orange-light: #fff3e8;
+  --qenenia-blue-light: #eff5fc;
+
+  /* ERP desk */
+  --erp-accent: var(--qenenia-navy);
+  --erp-accent-hover: var(--qenenia-navy-hover);
+  --erp-highlight: var(--qenenia-orange);
+  --erp-highlight-hover: var(--qenenia-orange-hover);
+
+  --erp-desk: #f4f7fb;
   --erp-surface: #ffffff;
-  --erp-section-head: #f8fafc;
+  --erp-section-head: #f8fafd;
   --erp-border: #e2e8f0;
-  --erp-text: #0f172a;
+  --erp-text: #172b4d;
   --erp-text-muted: #64748b;
   --erp-danger: #dc2626;
-  --erp-sidebar: #0f172a;
-  --erp-sidebar-text: #cbd5e1;
-  --erp-sidebar-active: #0f766e;
 
-  /* Legacy aliases so existing pages keep working */
+  /* Sidebar */
+  --erp-sidebar: #082b60;
+  --erp-sidebar-text: #cbdaf0;
+  --erp-sidebar-active: #ff7900;
+
+  /* Legacy aliases */
   --frappe-primary: var(--erp-accent);
   --frappe-primary-hover: var(--erp-accent-hover);
   --frappe-desk: var(--erp-desk);
@@ -77,111 +101,165 @@
   --frappe-sidebar-text: var(--erp-sidebar-text);
   --frappe-sidebar-active: var(--erp-sidebar-active);
 
-  --background: oklch(0.985 0.004 247);
-  --foreground: oklch(0.21 0.034 256);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.21 0.034 256);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.21 0.034 256);
-  --primary: oklch(0.47 0.08 185);
-  --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.96 0.01 247);
-  --secondary-foreground: oklch(0.28 0.03 256);
-  --muted: oklch(0.96 0.01 247);
-  --muted-foreground: oklch(0.52 0.03 256);
-  --accent: oklch(0.96 0.01 185);
-  --accent-foreground: oklch(0.28 0.04 185);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.9 0.01 247);
-  --input: oklch(0.9 0.01 247);
-  --ring: oklch(0.55 0.08 185);
-  --chart-1: oklch(0.55 0.12 185);
-  --chart-2: oklch(0.62 0.14 155);
-  --chart-3: oklch(0.58 0.12 245);
-  --chart-4: oklch(0.72 0.14 75);
-  --chart-5: oklch(0.6 0.16 25);
+  /* shadcn theme */
+  --background: #f4f7fb;
+  --foreground: #172b4d;
+
+  --card: #ffffff;
+  --card-foreground: #172b4d;
+
+  --popover: #ffffff;
+  --popover-foreground: #172b4d;
+
+  --primary: #082b60;
+  --primary-foreground: #ffffff;
+
+  --secondary: #eff5fc;
+  --secondary-foreground: #082b60;
+
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+
+  --accent: #fff3e8;
+  --accent-foreground: #9a4300;
+
+  --destructive: #dc2626;
+
+  --border: #e2e8f0;
+  --input: #e2e8f0;
+  --ring: #ff7900;
+
+  /* Analytics charts */
+  --chart-1: #082b60;
+  --chart-2: #ff7900;
+  --chart-3: #2563eb;
+  --chart-4: #16a34a;
+  --chart-5: #9333ea;
+
   --radius: 0.75rem;
-  --sidebar: oklch(0.99 0.002 247);
-  --sidebar-foreground: oklch(0.28 0.03 256);
-  --sidebar-primary: oklch(0.47 0.08 185);
-  --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0.95 0.015 185);
-  --sidebar-accent-foreground: oklch(0.28 0.04 185);
-  --sidebar-border: oklch(0.91 0.01 247);
-  --sidebar-ring: oklch(0.55 0.08 185);
+
+  /* Sidebar - shadcn */
+  --sidebar: #082b60;
+  --sidebar-foreground: #eaf1fb;
+  --sidebar-primary: #ff7900;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #16447e;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #234a7d;
+  --sidebar-ring: #ff7900;
 }
+
+/* ========================================
+   QENENIA ERP - DARK THEME
+======================================== */
 
 .dark {
-  --erp-accent: #2dd4bf;
-  --erp-accent-hover: #5eead4;
-  --erp-desk: #0b1220;
-  --erp-surface: #111827;
-  --erp-section-head: #1a2332;
-  --erp-border: #243044;
-  --erp-text: #e5eef9;
-  --erp-text-muted: #94a3b8;
-  --erp-danger: #f87171;
-  --erp-sidebar: #020617;
-  --erp-sidebar-text: #cbd5e1;
-  --erp-sidebar-active: #2dd4bf;
+  --qenenia-navy: #082b60;
+  --qenenia-navy-hover: #124783;
+  --qenenia-navy-deep: #061b3b;
+  --qenenia-orange: #ff8a1f;
+  --qenenia-orange-hover: #ffa347;
+  --qenenia-orange-light: #422910;
+  --qenenia-blue-light: #172b4d;
 
-  --background: oklch(0.17 0.02 256);
-  --foreground: oklch(0.97 0.01 247);
-  --card: oklch(0.21 0.025 256);
-  --card-foreground: oklch(0.97 0.01 247);
-  --popover: oklch(0.21 0.025 256);
-  --popover-foreground: oklch(0.97 0.01 247);
-  --primary: oklch(0.78 0.1 185);
-  --primary-foreground: oklch(0.2 0.03 185);
-  --secondary: oklch(0.27 0.03 256);
-  --secondary-foreground: oklch(0.97 0.01 247);
-  --muted: oklch(0.27 0.03 256);
-  --muted-foreground: oklch(0.72 0.02 247);
-  --accent: oklch(0.28 0.04 185);
-  --accent-foreground: oklch(0.95 0.02 185);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.65 0.08 185);
-  --chart-1: oklch(0.75 0.12 185);
-  --chart-2: oklch(0.72 0.14 155);
-  --chart-3: oklch(0.7 0.12 245);
-  --chart-4: oklch(0.78 0.12 75);
-  --chart-5: oklch(0.7 0.14 25);
-  --sidebar: oklch(0.19 0.025 256);
-  --sidebar-foreground: oklch(0.97 0.01 247);
-  --sidebar-primary: oklch(0.75 0.1 185);
-  --sidebar-primary-foreground: oklch(0.2 0.03 185);
-  --sidebar-accent: oklch(0.27 0.03 256);
-  --sidebar-accent-foreground: oklch(0.97 0.01 247);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.65 0.08 185);
+  /* ERP */
+  --erp-accent: #ff8a1f;
+  --erp-accent-hover: #ffa347;
+  --erp-highlight: #ff8a1f;
+  --erp-highlight-hover: #ffa347;
+
+  --erp-desk: #0b1425;
+  --erp-surface: #111e33;
+  --erp-section-head: #172840;
+  --erp-border: #293b55;
+  --erp-text: #edf3fc;
+  --erp-text-muted: #9fb0c8;
+  --erp-danger: #f87171;
+
+  --erp-sidebar: #06152b;
+  --erp-sidebar-text: #c5d3e7;
+  --erp-sidebar-active: #ff8a1f;
+
+  /* shadcn */
+  --background: #0b1425;
+  --foreground: #edf3fc;
+
+  --card: #111e33;
+  --card-foreground: #edf3fc;
+
+  --popover: #111e33;
+  --popover-foreground: #edf3fc;
+
+  --primary: #ff8a1f;
+  --primary-foreground: #1c1105;
+
+  --secondary: #1b2c45;
+  --secondary-foreground: #edf3fc;
+
+  --muted: #1b2c45;
+  --muted-foreground: #a8b7cc;
+
+  --accent: #422910;
+  --accent-foreground: #ffd1a3;
+
+  --destructive: #f87171;
+
+  --border: #293b55;
+  --input: #293b55;
+  --ring: #ff8a1f;
+
+  --chart-1: #5b9cf6;
+  --chart-2: #ff8a1f;
+  --chart-3: #38bdf8;
+  --chart-4: #4ade80;
+  --chart-5: #c084fc;
+
+  /* Sidebar */
+  --sidebar: #06152b;
+  --sidebar-foreground: #eaf1fb;
+  --sidebar-primary: #ff8a1f;
+  --sidebar-primary-foreground: #1c1105;
+  --sidebar-accent: #17345a;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #253d5e;
+  --sidebar-ring: #ff8a1f;
 }
+
+/* ========================================
+   BASE STYLES
+======================================== */
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground antialiased;
-  }
+
   html {
     @apply font-sans;
   }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
 }
 
-/* Shared ERP / list table */
+/* ========================================
+   ERP TABLES
+======================================== */
+
 .erp-list-table,
 .frappe-list-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
 }
+
 .erp-list-table thead tr,
 .frappe-list-table thead tr {
   background: var(--erp-section-head);
   border-bottom: 1px solid var(--erp-border);
 }
+
 .erp-list-table th,
 .frappe-list-table th {
   padding: 10px 12px;
@@ -193,6 +271,7 @@
   white-space: nowrap;
   vertical-align: middle;
 }
+
 .erp-list-table td,
 .frappe-list-table td {
   padding: 11px 12px;
@@ -200,39 +279,104 @@
   color: var(--erp-text);
   vertical-align: middle;
 }
+
 .erp-list-table tbody tr,
 .frappe-list-table tbody tr {
   background: var(--erp-surface);
   cursor: default;
-  transition: background-color 120ms ease;
+  transition: background-color 150ms ease;
 }
+
 .erp-list-table tbody tr:hover,
 .frappe-list-table tbody tr:hover {
-  background: color-mix(in oklab, var(--erp-accent) 6%, var(--erp-surface));
+  background: color-mix(
+    in oklab,
+    var(--erp-highlight) 5%,
+    var(--erp-surface)
+  );
 }
+
+/* ========================================
+   PAGE HEADERS
+======================================== */
 
 .erp-page-head,
 .frappe-page-head {
-  box-shadow: 0 1px 0 oklch(0 0 0 / 4%);
+  box-shadow: 0 1px 0 rgb(8 43 96 / 6%);
   backdrop-filter: blur(8px);
 }
+
 .dark .erp-page-head,
 .dark .frappe-page-head {
-  box-shadow: 0 1px 0 oklch(1 0 0 / 6%);
+  box-shadow: 0 1px 0 rgb(255 255 255 / 6%);
 }
 
-/* Page chrome uses ERP accent for primary actions */
+/* ========================================
+   PAGE PRIMARY ACTIONS
+======================================== */
+
 .erp-page,
 .frappe-page {
   --primary: var(--erp-accent);
   --primary-foreground: #ffffff;
 }
 
+.dark .erp-page,
+.dark .frappe-page {
+  --primary-foreground: #1c1105;
+}
+
+/* ========================================
+   BRAND UTILITIES
+======================================== */
+
+.qenenia-brand-text {
+  color: var(--qenenia-navy);
+}
+
+.dark .qenenia-brand-text {
+  color: #eaf1fb;
+}
+
+.qenenia-orange-text {
+  color: var(--qenenia-orange);
+}
+
+.qenenia-brand-gradient {
+  background: linear-gradient(
+    135deg,
+    #082b60 0%,
+    #124783 60%,
+    #ff7900 100%
+  );
+}
+
+.qenenia-highlight {
+  background: var(--qenenia-orange-light);
+  color: var(--accent-foreground);
+}
+
+.qenenia-focus {
+  transition:
+    border-color 150ms ease,
+    box-shadow 150ms ease;
+}
+
+.qenenia-focus:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* ========================================
+   RESPONSIVE TABLES
+======================================== */
+
 @media (max-width: 767px) {
   .erp-list-table th,
   .frappe-list-table th {
     padding: 8px 10px;
   }
+
   .erp-list-table td,
   .frappe-list-table td {
     padding: 10px;

@@ -37,7 +37,7 @@ export default function StockTransferDetailPage() {
       title={loading ? "Stock Transfer" : title}
       variant="form"
       breadcrumbs={[
-        { label: "Stock", href: "/dashboard" },
+        { label: "Qenenia ERP", href: "/dashboard" },
         { label: "Stock Transfers", href: "/stock-transfers" },
         { label: id ? id.slice(0, 8) : "…" },
       ]}

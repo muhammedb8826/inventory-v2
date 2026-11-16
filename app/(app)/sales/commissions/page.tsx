@@ -92,7 +92,7 @@ export default function SalesCommissionsPage() {
       title="Sales commissions"
       subtitle="Per-rep totals for active (non-voided) sales"
       breadcrumbs={[
-        { label: "Stock", href: "/dashboard" },
+        { label: "Qenenia ERP", href: "/dashboard" },
         { label: "Sales Invoice", href: "/sales" },
         { label: "Commissions" },
       ]}

@@ -32,7 +32,7 @@ export default function ProductionOrderDetailPage() {
       title={title}
       variant="form"
       breadcrumbs={[
-        { label: "Stock", href: "/dashboard" },
+        { label: "Qenenia ERP", href: "/dashboard" },
         { label: "Production", href: "/production-orders" },
         { label: id ? id.slice(0, 8) : "…" },
       ]}

@@ -194,7 +194,7 @@ export default function BrandingSettingsPage() {
                       onChange={(e) => setAppName(e.target.value)}
                       required
                       maxLength={80}
-                      placeholder="Stock"
+                      placeholder="Qenenia ERP"
                       disabled={!canWrite}
                     />
                   </FrappeField>

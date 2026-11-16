@@ -73,7 +73,7 @@ export default function AccountPage() {
       title="Account settings"
       subtitle="Update your profile and password"
       breadcrumbs={[
-        { label: "Stock", href: "/dashboard" },
+        { label: "Qenenia ERP", href: "/dashboard" },
         { label: "Account" },
       ]}
       layout="frappe"

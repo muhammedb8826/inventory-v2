@@ -10,7 +10,7 @@ export default function NewProductionOrderPage() {
       title="New production order"
       variant="form"
       breadcrumbs={[
-        { label: "Stock", href: "/dashboard" },
+        { label: "Qenenia ERP", href: "/dashboard" },
         { label: "Production", href: "/production-orders" },
         { label: "New" },
       ]}

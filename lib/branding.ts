@@ -1,7 +1,8 @@
 import { api } from "@/lib/api";
 import type { BrandingSettings, UpdateBrandingBody } from "@/lib/types";
 
-export const DEFAULT_APP_NAME = "Stock";
+export const DEFAULT_APP_NAME = "Qenenia ERP";
+export const DEFAULT_LOGO_SRC = "/qenenia-erp-horizontal.png";
 export const DEFAULT_HERO_IMAGE = "/background-image.webp";
 export const DEFAULT_HEADLINE =
   "Tell us what you need. We will send a clear quote.";
