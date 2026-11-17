@@ -645,9 +645,13 @@ export function SaleForm({ sale }: { sale?: Sale }) {
                 return (
                 <FrappeGridRow
                   key={i}
-                  canRemove={lines.length > 1}
+                  canRemove
                   onRemove={() =>
-                    setLines((prev) => prev.filter((_, idx) => idx !== i))
+                    setLines((prev) =>
+                      prev.length <= 1
+                        ? [emptyLine()]
+                        : prev.filter((_, idx) => idx !== i)
+                    )
                   }
                 >
                   <FrappeGridCell>

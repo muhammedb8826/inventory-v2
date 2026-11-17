@@ -91,7 +91,7 @@ export function ProductionOrderForm() {
       <FrappeDocument>
         <FrappeSection
           title="Production order"
-          description="Only Manufacture BoMs can be produced. Kit BoMs are for selling bundles."
+          description="Only Manufacture BoMs can be produced. Nested Manufacture BoMs explode to raw materials. Kit BoMs are for selling bundles."
         >
           <FrappeFormGrid columns={2}>
             <EntitySelectField

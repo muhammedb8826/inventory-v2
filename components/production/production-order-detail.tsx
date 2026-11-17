@@ -176,6 +176,22 @@ export function ProductionOrderDetail({
               Cancel
             </Button>
           ) : null}
+          {status === "COMPLETED" ? (
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={busy}
+              onClick={() =>
+                runAction(
+                  `/production-orders/${order.id}/reverse`,
+                  undefined,
+                  "Production reversed"
+                )
+              }
+            >
+              Reverse
+            </Button>
+          ) : null}
         </PermissionGate>
       </div>
 
@@ -260,7 +276,7 @@ export function ProductionOrderDetail({
 
         <FrappeSection
           title="Materials"
-          description={`${lines.length} component line${lines.length === 1 ? "" : "s"}`}
+          description={`${lines.length} component line${lines.length === 1 ? "" : "s"} (nested Manufacture BoMs exploded to leaves)`}
         >
           {lines.length === 0 ? (
             <p className="text-sm text-[var(--frappe-text-muted)]">

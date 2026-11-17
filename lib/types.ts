@@ -783,8 +783,14 @@ export interface BomLine {
   uomId?: string | null;
   stockQuantity?: string | number | null;
   scrapPercent?: string | number | null;
+  dimWidth?: string | number | null;
+  dimHeight?: string | number | null;
+  dimPieces?: string | number | null;
+  /** Length UOM for W×H (m/cm/mm). Null = meters. */
+  dimUomId?: string | null;
   componentItem?: Item;
   uom?: Uom | null;
+  dimUom?: Uom | null;
 }
 
 export type BomType = "MANUFACTURE" | "KIT";

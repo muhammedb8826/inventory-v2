@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { QuickStockItemDialog } from "@/components/inventory/quick-stock-item-dialog";
 import { ItemSearchSelect } from "@/components/shared/item-search-select";
 import { QuickCreateInlineTrigger } from "@/components/shared/quick-create-trigger";
+import { SearchSelect } from "@/components/shared/search-select";
 import { LineUomSelect } from "@/components/uom/line-uom-select";
 import {
   FrappeButtonLink,
@@ -30,7 +31,13 @@ import {
   productItemId,
   resolveItem,
 } from "@/lib/inventory-items";
-import { defaultUomIdForItem, fetchUoms } from "@/lib/uom";
+import {
+  defaultUomIdForItem,
+  fetchUoms,
+  findDefaultLengthUomId,
+  itemAllowsCuts,
+  lengthUoms,
+} from "@/lib/uom";
 import { errorMessage } from "@/lib/format";
 import type { Bom, BomType, Item, StockRecord } from "@/lib/types";
 import { useFetch } from "@/hooks/use-fetch";
@@ -44,13 +51,26 @@ interface BomLineRow {
   quantity: string;
   scrapPercent: string;
   uomId: string;
+  width: string;
+  height: string;
+  pieces: string;
+  dimUomId: string;
 }
 
-function emptyBomLine(): BomLineRow {
-  return { componentItemId: "", quantity: "1", scrapPercent: "", uomId: "" };
+function emptyBomLine(defaultDimUomId = ""): BomLineRow {
+  return {
+    componentItemId: "",
+    quantity: "1",
+    scrapPercent: "",
+    uomId: "",
+    width: "",
+    height: "",
+    pieces: "1",
+    dimUomId: defaultDimUomId,
+  };
 }
 
-function linesFromBom(bom: Bom): BomLineRow[] {
+function linesFromBom(bom: Bom, defaultDimUomId = ""): BomLineRow[] {
   const rows = (bom.lines ?? []).map((line) => ({
     componentItemId: line.componentItemId,
     quantity: String(line.quantity ?? ""),
@@ -62,8 +82,18 @@ function linesFromBom(bom: Bom): BomLineRow[] {
       line.uomId ??
       defaultUomIdForItem(line.componentItem, "stock") ??
       "",
+    width: line.dimWidth != null && line.dimWidth !== "" ? String(line.dimWidth) : "",
+    height:
+      line.dimHeight != null && line.dimHeight !== ""
+        ? String(line.dimHeight)
+        : "",
+    pieces:
+      line.dimPieces != null && line.dimPieces !== ""
+        ? String(line.dimPieces)
+        : "1",
+    dimUomId: line.dimUomId ?? defaultDimUomId,
   }));
-  return rows.length > 0 ? rows : [emptyBomLine()];
+  return rows.length > 0 ? rows : [emptyBomLine(defaultDimUomId)];
 }
 
 export function BomForm({ bom }: { bom?: Bom }) {
@@ -101,7 +131,22 @@ export function BomForm({ bom }: { bom?: Bom }) {
     []
   );
   const uoms = uomsData ?? [];
+  const dimLengthUoms = useMemo(() => lengthUoms(uoms), [uoms]);
+  const defaultDimUomId = useMemo(
+    () => findDefaultLengthUomId(uoms) ?? "",
+    [uoms]
+  );
   const quickLocationId = findDefaultLocationId(locations);
+
+  // Prefill dim UOM (meters) once UOMs load for new lines / edit without dimUomId.
+  useEffect(() => {
+    if (!defaultDimUomId) return;
+    setLines((prev) =>
+      prev.map((line) =>
+        line.dimUomId ? line : { ...line, dimUomId: defaultDimUomId }
+      )
+    );
+  }, [defaultDimUomId]);
 
   const products = catalog?.products ?? [];
   const components = catalog?.components ?? [];
@@ -227,7 +272,7 @@ export function BomForm({ bom }: { bom?: Bom }) {
       setLines((prev) => [
         ...prev,
         {
-          ...emptyBomLine(),
+          ...emptyBomLine(defaultDimUomId),
           componentItemId: item.id,
           uomId: defaultUomIdForItem(item, "stock") ?? "",
         },
@@ -237,6 +282,7 @@ export function BomForm({ bom }: { bom?: Bom }) {
     updateLine(idx, {
       componentItemId: item.id,
       uomId: defaultUomIdForItem(item, "stock") ?? "",
+      dimUomId: lines[idx]?.dimUomId || defaultDimUomId,
     });
   }
 
@@ -275,30 +321,73 @@ export function BomForm({ bom }: { bom?: Bom }) {
     const effectiveFinished = variantItemId || finishedItemId;
     const parsedLines: {
       componentItemId: string;
-      quantity: number;
+      quantity?: number;
       scrapPercent?: number;
       uomId?: string;
+      width?: number;
+      height?: number;
+      pieces?: number;
+      dimUomId?: string;
     }[] = [];
     for (const line of lines) {
       if (!line.componentItemId) continue;
-      const lineQty = parseFloat(line.quantity);
-      if (Number.isNaN(lineQty) || lineQty <= 0) {
-        toast.error("Each component needs a positive quantity");
-        return;
-      }
       if (line.componentItemId === effectiveFinished) {
         toast.error("Finished product cannot be a component of itself");
         return;
       }
+      const widthRaw = (line.width ?? "").trim();
+      const heightRaw = (line.height ?? "").trim();
+      const isCut = Boolean(widthRaw || heightRaw);
+      let width: number | undefined;
+      let height: number | undefined;
+      let pieces: number | undefined;
+      if (isCut) {
+        width = parseFloat(widthRaw);
+        height = parseFloat(heightRaw);
+        if (
+          !widthRaw ||
+          !heightRaw ||
+          Number.isNaN(width) ||
+          Number.isNaN(height) ||
+          width <= 0 ||
+          height <= 0
+        ) {
+          toast.error("Cut lines need positive width and height");
+          return;
+        }
+        pieces = parseFloat(line.pieces || "1");
+        if (Number.isNaN(pieces) || pieces < 1) {
+          toast.error("Pieces must be at least 1");
+          return;
+        }
+      } else {
+        const lineQty = parseFloat(line.quantity);
+        if (Number.isNaN(lineQty) || lineQty <= 0) {
+          toast.error("Each component needs a positive quantity");
+          return;
+        }
+      }
       const entry: {
         componentItemId: string;
-        quantity: number;
+        quantity?: number;
         scrapPercent?: number;
         uomId?: string;
+        width?: number;
+        height?: number;
+        pieces?: number;
+        dimUomId?: string;
       } = {
         componentItemId: line.componentItemId,
-        quantity: lineQty,
       };
+      if (isCut) {
+        entry.width = width;
+        entry.height = height;
+        entry.pieces = pieces;
+        entry.quantity = pieces;
+        if (line.dimUomId) entry.dimUomId = line.dimUomId;
+      } else {
+        entry.quantity = parseFloat(line.quantity);
+      }
       if (line.uomId) entry.uomId = line.uomId;
       if (line.scrapPercent.trim()) {
         const scrap = parseFloat(line.scrapPercent);
@@ -511,7 +600,7 @@ export function BomForm({ bom }: { bom?: Bom }) {
 
         <FrappeSection
           title="Components"
-          description={`Quantities needed to produce ${quantity || "1"} finished ${stockUnit}. Scrap % increases required material.`}
+          description={`Quantities needed to produce ${quantity || "1"} finished ${stockUnit}. Cut W×H use the Dim unit (m/cm/mm) and convert to area. Scrap % increases required material. Nested Manufacture BoMs explode on production.`}
         >
           <div className="mb-3 flex flex-wrap items-center justify-end gap-3">
             <QuickStockItemDialog
@@ -529,23 +618,33 @@ export function BomForm({ bom }: { bom?: Bom }) {
           <FrappeGridTable
             columns={[
               { key: "component", label: "Component" },
-              { key: "uom", label: "Unit", className: "w-28" },
+              { key: "uom", label: "Unit", className: "w-24" },
+              { key: "dimUom", label: "Dim", className: "w-20" },
+              { key: "w", label: "W", className: "w-20" },
+              { key: "h", label: "H", className: "w-20" },
+              { key: "pcs", label: "Pcs", className: "w-16" },
               { key: "qty", label: "Quantity", className: "w-24" },
-              { key: "scrap", label: "Scrap %", className: "w-24" },
+              { key: "scrap", label: "Scrap %", className: "w-20" },
             ]}
-            onAddRow={() => setLines((prev) => [...prev, emptyBomLine()])}
+            onAddRow={() =>
+              setLines((prev) => [...prev, emptyBomLine(defaultDimUomId)])
+            }
             addLabel="Add a line"
           >
             {lines.map((line, index) => {
               const item = itemById.get(line.componentItemId);
+              const cut = itemAllowsCuts(item, uoms);
+              const isCutFilled = Boolean(
+                (line.width ?? "").trim() && (line.height ?? "").trim()
+              );
               return (
                 <FrappeGridRow
                   key={index}
-                  canRemove={lines.length > 1}
+                  canRemove
                   onRemove={() =>
                     setLines((prev) =>
                       prev.length <= 1
-                        ? prev
+                        ? [emptyBomLine(defaultDimUomId)]
                         : prev.filter((_, i) => i !== index)
                     )
                   }
@@ -558,6 +657,10 @@ export function BomForm({ bom }: { bom?: Bom }) {
                         updateLine(index, {
                           componentItemId,
                           uomId: defaultUomIdForItem(next, "stock") ?? "",
+                          width: "",
+                          height: "",
+                          pieces: "1",
+                          dimUomId: line.dimUomId || defaultDimUomId,
                         });
                       }}
                       options={componentOptions}
@@ -580,7 +683,99 @@ export function BomForm({ bom }: { bom?: Bom }) {
                       item={item}
                       uoms={uoms}
                       loading={uomsLoading}
+                      disabled={cut && isCutFilled}
                     />
+                  </FrappeGridCell>
+                  <FrappeGridCell>
+                    {cut ? (
+                      <SearchSelect
+                        value={line.dimUomId || defaultDimUomId || ""}
+                        onValueChange={(v) =>
+                          updateLine(index, {
+                            dimUomId: v || defaultDimUomId,
+                          })
+                        }
+                        options={dimLengthUoms.map((u) => ({
+                          value: u.id,
+                          label: u.symbol || u.code,
+                        }))}
+                        placeholder="m"
+                        searchPlaceholder="Length unit…"
+                        emptyMessage="Add Length UOMs first."
+                        loading={uomsLoading}
+                        className="h-8"
+                      />
+                    ) : (
+                      <span className="text-xs text-[var(--frappe-text-muted)]">
+                        —
+                      </span>
+                    )}
+                  </FrappeGridCell>
+                  <FrappeGridCell>
+                    {cut ? (
+                      <Input
+                        type="number"
+                        step="any"
+                        min="0"
+                        value={line.width ?? ""}
+                        onChange={(e) =>
+                          updateLine(index, { width: e.target.value })
+                        }
+                        placeholder={`W (${
+                          dimLengthUoms.find(
+                            (u) => u.id === (line.dimUomId || defaultDimUomId)
+                          )?.symbol ?? "m"
+                        })`}
+                        title="Width in the Dim unit"
+                        className="h-8"
+                      />
+                    ) : (
+                      <span className="text-xs text-[var(--frappe-text-muted)]">
+                        —
+                      </span>
+                    )}
+                  </FrappeGridCell>
+                  <FrappeGridCell>
+                    {cut ? (
+                      <Input
+                        type="number"
+                        step="any"
+                        min="0"
+                        value={line.height ?? ""}
+                        onChange={(e) =>
+                          updateLine(index, { height: e.target.value })
+                        }
+                        placeholder={`H (${
+                          dimLengthUoms.find(
+                            (u) => u.id === (line.dimUomId || defaultDimUomId)
+                          )?.symbol ?? "m"
+                        })`}
+                        title="Height in the Dim unit"
+                        className="h-8"
+                      />
+                    ) : (
+                      <span className="text-xs text-[var(--frappe-text-muted)]">
+                        —
+                      </span>
+                    )}
+                  </FrappeGridCell>
+                  <FrappeGridCell>
+                    {cut ? (
+                      <Input
+                        type="number"
+                        step="any"
+                        min="1"
+                        value={line.pieces ?? "1"}
+                        onChange={(e) =>
+                          updateLine(index, { pieces: e.target.value })
+                        }
+                        className="h-8"
+                      />
+                    ) : (
+                      <span className="text-xs text-[var(--frappe-text-muted)]">
+                        —
+                      </span>
+                    )}
                   </FrappeGridCell>
                   <FrappeGridCell>
                     <Input
@@ -591,7 +786,13 @@ export function BomForm({ bom }: { bom?: Bom }) {
                       onChange={(e) =>
                         updateLine(index, { quantity: e.target.value })
                       }
+                      disabled={cut && isCutFilled}
                       className="h-8"
+                      title={
+                        cut && isCutFilled
+                          ? "Qty from W×H×pieces"
+                          : undefined
+                      }
                     />
                   </FrappeGridCell>
                   <FrappeGridCell>

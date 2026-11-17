@@ -142,6 +142,24 @@ export function itemAllowsCuts(
   return itemStockUomCategoryCode(item, uoms) === "AREA";
 }
 
+/** Length UOMs for cut dimension entry (m, cm, mm, …). */
+export function lengthUoms(uoms: Uom[] = []): Uom[] {
+  return uoms.filter(
+    (u) => u.isActive !== false && u.category?.code === "LENGTH"
+  );
+}
+
+/** Prefer meters as default cut-dimension UOM. */
+export function findDefaultLengthUomId(uoms: Uom[] = []): string | null {
+  const length = lengthUoms(uoms);
+  return (
+    length.find((u) => u.code === "M" || u.symbol === "m")?.id ??
+    length.find((u) => u.isBase)?.id ??
+    length[0]?.id ??
+    null
+  );
+}
+
 /**
  * Allowed UOM category ids for document lines / sales-purchase defaults.
  * Same category only; Length↔Area allowed when item has a positive width.
