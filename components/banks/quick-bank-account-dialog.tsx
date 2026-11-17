@@ -1,5 +1,6 @@
 "use client";
 
+import * as React from "react";
 import { useState } from "react";
 import { FrappeButtonPrimary, FrappeButtonSecondary } from "@/components/frappe";
 import { QuickCreateTrigger } from "@/components/shared/quick-create-trigger";
@@ -22,12 +23,19 @@ export function QuickBankAccountDialog({
   onCreated,
   trigger,
   defaultAccountType = "BANK",
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
 }: {
   onCreated: (account: BankAccount) => void;
-  trigger?: React.ReactNode;
+  trigger?: React.ReactNode | null;
   defaultAccountType?: BankAccountType;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const { open, setOpen, onOpenChange } = useQuickCreateDialog();
+  const { open, setOpen, onOpenChange } = useQuickCreateDialog({
+    open: openProp,
+    onOpenChange: onOpenChangeProp,
+  });
   const [values, setValues] = useState(() =>
     emptyBankAccountForm(defaultAccountType)
   );
@@ -37,6 +45,11 @@ export function QuickBankAccountDialog({
     setValues(emptyBankAccountForm(defaultAccountType));
     setOpen(true);
   }
+
+  // Controlled opens (from select host) skip openDialog — reset form when shown.
+  React.useEffect(() => {
+    if (open) setValues(emptyBankAccountForm(defaultAccountType));
+  }, [open, defaultAccountType]);
 
   function patchValues(patch: Partial<typeof values>) {
     setValues((prev) => ({ ...prev, ...patch }));

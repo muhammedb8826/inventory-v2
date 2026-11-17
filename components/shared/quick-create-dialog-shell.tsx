@@ -12,6 +12,7 @@ import {
 /**
  * Quick-create fields rendered inside a full-page form (e.g. purchase/sale).
  * Uses a div instead of nested <form> so the parent form is not submitted.
+ * Dialogs use z-[200]; nested selects/popovers use z-[300] so they stay on top.
  */
 export function QuickCreateDialogShell({
   open,
@@ -41,16 +42,35 @@ export function QuickCreateDialogShell({
   );
 }
 
-export function useQuickCreateDialog() {
-  const [open, setOpen] = React.useState(false);
-  return { open, setOpen, onOpenChange: setOpen };
+export type QuickCreateDialogControl = {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+};
+
+export function useQuickCreateDialog(control?: QuickCreateDialogControl) {
+  const [uncontrolled, setUncontrolled] = React.useState(false);
+  const controlled = control?.open !== undefined;
+  const open = controlled ? Boolean(control.open) : uncontrolled;
+  const onOpenChangeProp = control?.onOpenChange;
+
+  const onOpenChange = React.useCallback(
+    (next: boolean) => {
+      if (!controlled) setUncontrolled(next);
+      onOpenChangeProp?.(next);
+    },
+    [controlled, onOpenChangeProp]
+  );
+
+  return { open, setOpen: onOpenChange, onOpenChange };
 }
 
+/** `trigger={null}` hides the default button (host / select-footer controlled open). */
 export function bindQuickCreateTrigger(
-  trigger: React.ReactNode | undefined,
+  trigger: React.ReactNode | null | undefined,
   openDialog: () => void,
   fallback: React.ReactNode
 ) {
+  if (trigger === null) return null;
   if (trigger) {
     if (React.isValidElement<{ onClick?: React.MouseEventHandler }>(trigger)) {
       return React.cloneElement(trigger, {

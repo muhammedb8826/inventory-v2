@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { FrappeButtonPrimary } from "@/components/frappe";
+import { withSelectCreateTrigger } from "@/components/shared/create-in-select";
 import { EntitySelectField } from "@/components/shared/entity-select-field";
 import { ItemSearchSelect } from "@/components/shared/item-search-select";
 import { QuickSupplierDialog } from "@/components/suppliers/quick-supplier-dialog";
@@ -347,22 +347,7 @@ export function TransactionFormDialog({
               </div>
             ) : null}
             <div className="space-y-3">
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <Label>Line items</Label>
-                <div className="flex items-center gap-3">
-                  <QuickStockItemDialog
-                    locationId={locationId}
-                    onCreated={onStockCreated}
-                    disabled={!locationId}
-                  />
-                  <Link
-                    href="/inventory"
-                    className="text-xs text-[var(--frappe-text-muted)] hover:underline"
-                  >
-                    Stock ledger
-                  </Link>
-                </div>
-              </div>
+              <Label>Line items</Label>
               {lines.map((line, i) => (
                 <div
                   key={i}
@@ -375,6 +360,18 @@ export function TransactionFormDialog({
                     disabled={!locationId}
                     placeholder="Item"
                     className="min-w-0"
+                    footer={(close) =>
+                      withSelectCreateTrigger(
+                        <QuickStockItemDialog
+                          locationId={locationId}
+                          onCreated={onStockCreated}
+                          disabled={!locationId}
+                        />,
+                        close,
+                        "Create new item",
+                        !locationId
+                      )
+                    }
                   />
                   <Input
                     type="number"

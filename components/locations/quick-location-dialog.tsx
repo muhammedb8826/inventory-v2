@@ -26,11 +26,18 @@ import { toast } from "sonner";
 export function QuickLocationDialog({
   onCreated,
   trigger,
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
 }: {
   onCreated: (location: Location) => void;
-  trigger?: React.ReactNode;
+  trigger?: React.ReactNode | null;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const { open, setOpen, onOpenChange } = useQuickCreateDialog();
+  const { open, setOpen, onOpenChange } = useQuickCreateDialog({
+    open: openProp,
+    onOpenChange: onOpenChangeProp,
+  });
   const [name, setName] = useState("");
   const [type, setType] = useState<LocationType>("WAREHOUSE");
   const [address, setAddress] = useState("");

@@ -3,6 +3,7 @@
 import { AuthProvider } from "@/lib/auth";
 import { BrandingProvider } from "@/components/branding/branding-provider";
 import { CurrencyProvider } from "@/components/currency-provider";
+import { CreateInSelectHost } from "@/components/shared/create-in-select";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import type { BrandingSettings } from "@/lib/types";
@@ -20,6 +21,7 @@ export function Providers({
         <CurrencyProvider>
           <BrandingProvider initialBranding={initialBranding}>
             {children}
+            <CreateInSelectHost />
             <Toaster richColors position="top-right" />
           </BrandingProvider>
         </CurrencyProvider>

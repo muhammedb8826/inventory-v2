@@ -18,11 +18,18 @@ import { toast } from "sonner";
 export function QuickExpenseCategoryDialog({
   onCreated,
   trigger,
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
 }: {
   onCreated: (category: ExpenseCategory) => void;
-  trigger?: React.ReactNode;
+  trigger?: React.ReactNode | null;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const { open, setOpen, onOpenChange } = useQuickCreateDialog();
+  const { open, setOpen, onOpenChange } = useQuickCreateDialog({
+    open: openProp,
+    onOpenChange: onOpenChangeProp,
+  });
   const [name, setName] = useState("");
   const [saving, setSaving] = useState(false);
 

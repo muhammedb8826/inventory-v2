@@ -1,11 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { QuickStockItemDialog } from "@/components/inventory/quick-stock-item-dialog";
+import { withSelectCreateTrigger } from "@/components/shared/create-in-select";
 import { ItemSearchSelect } from "@/components/shared/item-search-select";
-import { QuickCreateInlineTrigger } from "@/components/shared/quick-create-trigger";
 import { DimUomSelect } from "@/components/uom/dim-uom-select";
 import { LineUomSelect } from "@/components/uom/line-uom-select";
 import {
@@ -319,20 +318,15 @@ export function BomForm({ bom }: { bom?: Bom }) {
     onCreated: (record: StockRecord) => void,
     close: () => void
   ) {
-    return (
+    return withSelectCreateTrigger(
       <QuickStockItemDialog
         locationId={quickLocationId}
         disabled={!quickLocationId}
         onCreated={onCreated}
-        trigger={
-          <QuickCreateInlineTrigger
-            label="Create new item"
-            className="flex w-full items-center gap-1 px-2 py-1.5 text-left text-sm"
-            disabled={!quickLocationId}
-            onClick={close}
-          />
-        }
-      />
+      />,
+      close,
+      "Create new item",
+      !quickLocationId
     );
   }
 
@@ -491,32 +485,16 @@ export function BomForm({ bom }: { bom?: Bom }) {
         <FrappeSection title="Bill of Materials">
           <FrappeFormGrid columns={2}>
             <FrappeField label="Product" required>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <ItemSearchSelect
-                  value={finishedItemId}
-                  onValueChange={onProductChange}
-                  options={productOptions}
-                  placeholder="Select product…"
-                  searchPlaceholder="Search product…"
-                  className="sm:flex-1"
-                  footer={(close) =>
-                    itemQuickCreateFooter(onProductCreated, close)
-                  }
-                />
-                <div className="flex shrink-0 flex-wrap items-center gap-3">
-                  <QuickStockItemDialog
-                    locationId={quickLocationId}
-                    disabled={!quickLocationId}
-                    onCreated={onProductCreated}
-                  />
-                  <Link
-                    href="/inventory"
-                    className="text-xs text-[var(--frappe-text-muted)] hover:text-[var(--frappe-primary)] hover:underline"
-                  >
-                    All items
-                  </Link>
-                </div>
-              </div>
+              <ItemSearchSelect
+                value={finishedItemId}
+                onValueChange={onProductChange}
+                options={productOptions}
+                placeholder="Select product…"
+                searchPlaceholder="Search product…"
+                footer={(close) =>
+                  itemQuickCreateFooter(onProductCreated, close)
+                }
+              />
             </FrappeField>
             <FrappeField
               label="Reference"
@@ -635,19 +613,6 @@ export function BomForm({ bom }: { bom?: Bom }) {
           title="Components"
           description={`Quantities needed to produce ${quantity || "1"} finished ${stockUnit}. Cut items use Cut in + W×H (stock UOM stays on the item; Unit is hidden). Plain items use Unit. Scrap % increases required material. Nested Manufacture BoMs explode on production.`}
         >
-          <div className="mb-3 flex flex-wrap items-center justify-end gap-3">
-            <QuickStockItemDialog
-              locationId={quickLocationId}
-              disabled={!quickLocationId}
-              onCreated={(record) => onComponentCreated(record)}
-            />
-            <Link
-              href="/inventory"
-              className="text-xs text-[var(--frappe-text-muted)] hover:text-[var(--frappe-primary)] hover:underline"
-            >
-              All items
-            </Link>
-          </div>
           <FrappeGridTable
             columns={[
               { key: "component", label: "Component" },

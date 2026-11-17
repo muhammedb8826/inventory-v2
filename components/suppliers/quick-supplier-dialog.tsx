@@ -20,11 +20,18 @@ import { toast } from "sonner";
 export function QuickSupplierDialog({
   onCreated,
   trigger,
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
 }: {
   onCreated: (supplier: Supplier) => void;
-  trigger?: React.ReactNode;
+  trigger?: React.ReactNode | null;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const { open, setOpen, onOpenChange } = useQuickCreateDialog();
+  const { open, setOpen, onOpenChange } = useQuickCreateDialog({
+    open: openProp,
+    onOpenChange: onOpenChangeProp,
+  });
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");

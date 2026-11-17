@@ -1,12 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { QuickCustomerDialog } from "@/components/customers/quick-customer-dialog";
 import { QuickLocationDialog } from "@/components/locations/quick-location-dialog";
 import { QuickBankAccountDialog } from "@/components/banks/quick-bank-account-dialog";
 import { QuickStockItemDialog } from "@/components/inventory/quick-stock-item-dialog";
+import { withSelectCreateTrigger } from "@/components/shared/create-in-select";
 import { EntitySelectField } from "@/components/shared/entity-select-field";
 import { ItemSearchSelect } from "@/components/shared/item-search-select";
 import { SearchSelect } from "@/components/shared/search-select";
@@ -608,22 +608,6 @@ export function SaleForm({ sale }: { sale?: Sale }) {
                 : "Select a location first"
             }
           >
-            <div className="mb-3 flex flex-wrap items-center justify-end gap-3">
-              <QuickStockItemDialog
-                locationId={locationId}
-                onCreated={onStockCreated}
-                disabled={!locationId}
-              />
-              <Link
-                href={locationId ? `/inventory` : "#"}
-                onClick={(e) => {
-                  if (!locationId) e.preventDefault();
-                }}
-                className="text-xs text-[var(--frappe-text-muted)] hover:text-[var(--frappe-primary)] hover:underline"
-              >
-                Stock ledger
-              </Link>
-            </div>
             <FrappeGridTable
               columns={[
                 { key: "item", label: "Item" },
@@ -678,6 +662,21 @@ export function SaleForm({ sale }: { sale?: Sale }) {
                       filterLocally={false}
                       onQueryChange={setItemQuery}
                       placeholder="Item"
+                      footer={
+                        notesOnly
+                          ? undefined
+                          : (close) =>
+                              withSelectCreateTrigger(
+                                <QuickStockItemDialog
+                                  locationId={locationId}
+                                  onCreated={onStockCreated}
+                                  disabled={!locationId}
+                                />,
+                                close,
+                                "Create new item",
+                                !locationId
+                              )
+                      }
                     />
                   </FrappeGridCell>
                   <FrappeGridCell>

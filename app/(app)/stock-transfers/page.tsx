@@ -5,6 +5,7 @@ import { AppShell } from "@/components/app-shell";
 import { DataCardTable } from "@/components/shared/data-card-table";
 import { PageLoading } from "@/components/shared/page-loading";
 import { PermissionGate } from "@/components/permission-gate";
+import { withSelectCreateTrigger } from "@/components/shared/create-in-select";
 import { EntitySelectField } from "@/components/shared/entity-select-field";
 import { ItemSearchSelect } from "@/components/shared/item-search-select";
 import { QuickLocationDialog } from "@/components/locations/quick-location-dialog";
@@ -424,28 +425,13 @@ function TransferDialog({ onSuccess }: { onSuccess: () => void }) {
             </FrappeField>
 
             <div className="overflow-hidden rounded-lg border border-[var(--frappe-border)]">
-              <div className="flex flex-wrap items-start justify-between gap-3 border-b border-[var(--frappe-border)] bg-[var(--frappe-section-head)] px-4 py-3">
-                <div>
-                  <p className="text-sm font-semibold text-[var(--frappe-text)]">
-                    Line items
-                  </p>
-                  <p className="mt-0.5 text-xs text-[var(--frappe-text-muted)]">
-                    {itemsHint}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-3">
-                  <QuickStockItemDialog
-                    locationId={fromLocationId}
-                    onCreated={onStockCreated}
-                    disabled={!fromLocationId}
-                  />
-                  <Link
-                    href="/inventory"
-                    className="text-xs text-[var(--frappe-text-muted)] hover:text-[var(--frappe-primary)] hover:underline"
-                  >
-                    Stock ledger
-                  </Link>
-                </div>
+              <div className="border-b border-[var(--frappe-border)] bg-[var(--frappe-section-head)] px-4 py-3">
+                <p className="text-sm font-semibold text-[var(--frappe-text)]">
+                  Line items
+                </p>
+                <p className="mt-0.5 text-xs text-[var(--frappe-text-muted)]">
+                  {itemsHint}
+                </p>
               </div>
 
               <div className="hidden border-b border-[var(--frappe-border)] bg-[var(--frappe-section-head)]/60 px-4 py-2 text-xs font-medium text-[var(--frappe-text-muted)] sm:grid sm:grid-cols-[minmax(0,1fr)_88px_40px] sm:gap-3">
@@ -477,6 +463,18 @@ function TransferDialog({ onSuccess }: { onSuccess: () => void }) {
                         disabled={!fromLocationId || stockLoading}
                         placeholder="Select item…"
                         className="min-w-0"
+                        footer={(close) =>
+                          withSelectCreateTrigger(
+                            <QuickStockItemDialog
+                              locationId={fromLocationId}
+                              onCreated={onStockCreated}
+                              disabled={!fromLocationId}
+                            />,
+                            close,
+                            "Create new item",
+                            !fromLocationId
+                          )
+                        }
                       />
                     </div>
                     <div>

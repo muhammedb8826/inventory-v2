@@ -59,13 +59,20 @@ export function QuickStockItemDialog({
   onCreated,
   trigger,
   disabled,
+  open: openProp,
+  onOpenChange: onOpenChangeProp,
 }: {
   locationId: string;
   onCreated: (record: StockRecord) => void;
-  trigger?: React.ReactNode;
+  trigger?: React.ReactNode | null;
   disabled?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const { open, setOpen, onOpenChange } = useQuickCreateDialog();
+  const { open, setOpen, onOpenChange } = useQuickCreateDialog({
+    open: openProp,
+    onOpenChange: onOpenChangeProp,
+  });
   const [description, setDescription] = useState("");
   const [sku, setSku] = useState("");
   const [stockUomId, setStockUomId] = useState<string | null>(null);
@@ -102,6 +109,21 @@ export function QuickStockItemDialog({
     });
     setOpen(true);
   }
+
+  // Controlled opens from select host skip openDialog — reset fields when shown.
+  useEffect(() => {
+    if (!open || openProp === undefined) return;
+    resetQuickCreateFields({
+      setDescription,
+      setSku,
+      setStockUomId,
+      setItemType,
+      setQuantity,
+      setPurchasePrice,
+      setReorderPoint,
+      defaultStockUomId,
+    });
+  }, [open, openProp, defaultStockUomId]);
 
   async function handleSubmit() {
     if (!locationId) {

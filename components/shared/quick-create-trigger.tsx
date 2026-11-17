@@ -18,12 +18,13 @@ export const QuickCreateTrigger = React.forwardRef<
       )}
       {...props}
     >
-      <PlusIcon className="size-3.5" />
+      <PlusIcon className="size-3.5 shrink-0" />
       {label}
     </button>
   );
 });
 
+/** Preferred inside SearchSelect footers (full-width row with Plus). */
 export const QuickCreateInlineTrigger = React.forwardRef<
   HTMLButtonElement,
   React.ComponentPropsWithoutRef<"button"> & { label: string }
@@ -36,11 +37,12 @@ export const QuickCreateInlineTrigger = React.forwardRef<
       ref={ref}
       type={type}
       className={cn(
-        "font-medium text-[var(--frappe-primary)] hover:underline",
+        "inline-flex items-center gap-1.5 font-medium text-[var(--frappe-primary)] hover:underline",
         className
       )}
       {...props}
     >
+      <PlusIcon className="size-3.5 shrink-0" />
       {label}
     </button>
   );

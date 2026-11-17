@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
+import * as React from "react";
 import { FrappeField } from "@/components/frappe";
 import { SearchSelect } from "@/components/shared/search-select";
-import { cn } from "@/lib/utils";
+import { withSelectCreateTrigger } from "@/components/shared/create-in-select";
 
 export interface EntityOption {
   id: string;
@@ -23,9 +24,9 @@ export function EntitySelectField({
   listHref,
   listLabel,
   quickCreate,
+  createLabel,
   emptyMessage,
   disabled,
-  stackedActions,
   loading,
   filterLocally = true,
   onQueryChange,
@@ -39,21 +40,61 @@ export function EntitySelectField({
   options: EntityOption[];
   placeholder?: string;
   searchPlaceholder?: string;
-  listHref: string;
-  listLabel: string;
-  quickCreate?: React.ReactNode;
+  /** Optional “View all” link inside the dropdown footer. */
+  listHref?: string;
+  listLabel?: string;
+  /**
+   * Quick*Dialog (or render fn). Rendered inside the dropdown as
+   * “Create new …”, not beside the field.
+   */
+  quickCreate?:
+    | React.ReactElement<{ trigger?: React.ReactNode; disabled?: boolean }>
+    | ((close: () => void) => React.ReactNode);
+  /** Override default “Create new {label}”. */
+  createLabel?: string;
   emptyMessage: string;
   disabled?: boolean;
-  /** Stack select and action links vertically (better in narrow modals). */
+  /** @deprecated No longer used — create lives in the dropdown. */
   stackedActions?: boolean;
   loading?: boolean;
   filterLocally?: boolean;
   onQueryChange?: (query: string) => void;
 }) {
   const hasOptions = options.length > 0;
+  const canCreate = Boolean(quickCreate);
   const emptyHint =
     hint ??
-    (hasOptions ? undefined : `No ${label.toLowerCase()} yet — create one or open the list.`);
+    (hasOptions
+      ? undefined
+      : canCreate
+        ? `No ${label.toLowerCase()} yet — open the list and create one.`
+        : `No ${label.toLowerCase()} yet — create one or open the list.`);
+
+  const footer =
+    canCreate || listHref
+      ? (close: () => void) => (
+          <div className="flex flex-col gap-0.5">
+            {canCreate
+              ? typeof quickCreate === "function"
+                ? quickCreate(close)
+                : withSelectCreateTrigger(
+                    quickCreate!,
+                    close,
+                    createLabel ?? `Create new ${label.toLowerCase()}`
+                  )
+              : null}
+            {listHref ? (
+              <Link
+                href={listHref}
+                onClick={close}
+                className="px-1 py-1 text-xs text-[var(--frappe-text-muted)] hover:text-[var(--frappe-primary)] hover:underline"
+              >
+                {listLabel ?? `View all ${label.toLowerCase()}s`}
+              </Link>
+            ) : null}
+          </div>
+        )
+      : undefined;
 
   return (
     <FrappeField
@@ -62,44 +103,28 @@ export function EntitySelectField({
       fullWidth={fullWidth}
       hint={emptyHint}
     >
-      <div
-        className={cn(
-          "flex flex-col gap-2",
-          !stackedActions && "sm:flex-row sm:items-center"
-        )}
-      >
-        <SearchSelect
-          value={value}
-          onValueChange={onValueChange}
-          options={options.map((option) => ({
-            value: option.id,
-            label: option.label,
-          }))}
-          placeholder={
-            hasOptions
-              ? (placeholder ?? `Select ${label.toLowerCase()}`)
-              : `No ${label.toLowerCase()}s`
-          }
-          searchPlaceholder={
-            searchPlaceholder ?? `Search ${label.toLowerCase()}…`
-          }
-          emptyMessage={emptyMessage}
-          disabled={disabled || (!hasOptions && !loading)}
-          loading={loading}
-          filterLocally={filterLocally}
-          onQueryChange={onQueryChange}
-          className="sm:flex-1"
-        />
-        <div className="flex shrink-0 flex-wrap items-center gap-3">
-          {quickCreate}
-          <Link
-            href={listHref}
-            className="text-xs text-[var(--frappe-text-muted)] hover:text-[var(--frappe-primary)] hover:underline"
-          >
-            {listLabel}
-          </Link>
-        </div>
-      </div>
+      <SearchSelect
+        value={value}
+        onValueChange={onValueChange}
+        options={options.map((option) => ({
+          value: option.id,
+          label: option.label,
+        }))}
+        placeholder={
+          hasOptions
+            ? (placeholder ?? `Select ${label.toLowerCase()}`)
+            : `No ${label.toLowerCase()}s`
+        }
+        searchPlaceholder={
+          searchPlaceholder ?? `Search ${label.toLowerCase()}…`
+        }
+        emptyMessage={emptyMessage}
+        disabled={disabled || (!hasOptions && !loading && !canCreate)}
+        loading={loading}
+        filterLocally={filterLocally}
+        onQueryChange={onQueryChange}
+        footer={footer}
+      />
       {!hasOptions && !loading ? (
         <div className="mt-2 rounded border border-dashed border-[var(--frappe-border)] bg-[var(--frappe-section-head)] px-3 py-2 text-xs text-[var(--frappe-text-muted)]">
           {emptyMessage}

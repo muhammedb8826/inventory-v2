@@ -34,7 +34,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { withSelectCreateTrigger } from "@/components/shared/create-in-select";
 import { SearchSelect } from "@/components/shared/search-select";
+import { QuickCustomerDialog } from "@/components/customers/quick-customer-dialog";
+import { QuickSupplierDialog } from "@/components/suppliers/quick-supplier-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { api } from "@/lib/api";
@@ -524,7 +527,12 @@ function OpeningCreditDialog({
   const [notes, setNotes] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const { data: parties, loading: partiesLoading } = useFetch(
+  const {
+    data: parties,
+    loading: partiesLoading,
+    reload: reloadParties,
+    setData: setParties,
+  } = useFetch(
     () => (type === "customer" ? fetchCustomers() : fetchSuppliers()),
     [type]
   );
@@ -622,6 +630,35 @@ function OpeningCreditDialog({
                 emptyMessage={`No ${label}s found.`}
                 loading={partiesLoading}
                 disabled={partiesLoading}
+                footer={(close) =>
+                  type === "customer"
+                    ? withSelectCreateTrigger(
+                        <QuickCustomerDialog
+                          onCreated={(c) => {
+                            setParties((prev) =>
+                              prev ? [c, ...prev] : [c]
+                            );
+                            setPartyId(c.id);
+                            void reloadParties();
+                          }}
+                        />,
+                        close,
+                        "Create new customer"
+                      )
+                    : withSelectCreateTrigger(
+                        <QuickSupplierDialog
+                          onCreated={(s) => {
+                            setParties((prev) =>
+                              prev ? [s, ...prev] : [s]
+                            );
+                            setPartyId(s.id);
+                            void reloadParties();
+                          }}
+                        />,
+                        close,
+                        "Create new supplier"
+                      )
+                }
               />
             </div>
             <div className="grid gap-2">
