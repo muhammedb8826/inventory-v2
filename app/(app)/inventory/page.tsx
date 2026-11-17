@@ -46,7 +46,9 @@ import { api } from "@/lib/api";
 import { buildInventoryListPath, buildLowStockListPath } from "@/lib/list-query";
 import { isLowStockRow } from "@/lib/inventory-stock";
 import { resolveItemImageUrl } from "@/lib/inventory-media";
+import { ItemImage } from "@/components/shared/item-image";
 import { formatMoney, formatQty, errorMessage } from "@/lib/format";
+import { formatItemStockQty } from "@/lib/uom";
 import type {
   InventoryListTotals,
   LowStockRecord,
@@ -66,7 +68,7 @@ import { StockFormDialog } from "@/components/inventory/stock-form-dialog";
 import { useAuth } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { toast } from "sonner";
-import { ImageIcon, UploadIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { UploadIcon, PencilIcon, Trash2Icon } from "lucide-react";
 
 const ALL_LOCATIONS = "__all__";
 const VIEW_ALL = "all";
@@ -340,7 +342,7 @@ export default function InventoryPage() {
                       Qty
                     </span>
                     <span className="font-semibold tabular-nums">
-                      {formatQty(r.quantity)}
+                      {formatItemStockQty(r.quantity, r.item, formatQty)}
                     </span>
                   </div>
                   <div className="flex items-baseline justify-between gap-2">
@@ -455,18 +457,7 @@ export default function InventoryPage() {
                           type="button"
                           className="flex max-w-full items-center gap-3 text-left"
                         >
-                          <div className="bg-muted flex size-10 shrink-0 items-center justify-center overflow-hidden rounded border">
-                            {imageSrc ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={imageSrc}
-                                alt=""
-                                className="size-full object-cover"
-                              />
-                            ) : (
-                              <ImageIcon className="text-muted-foreground size-4" />
-                            )}
-                          </div>
+                          <ItemImage src={imageSrc} size="sm" alt="" />
                           <div className="min-w-0">
                             <p className="font-medium text-[var(--frappe-primary)] hover:underline">
                               {r.item.description}
@@ -498,7 +489,9 @@ export default function InventoryPage() {
                     isLowStockView || isLowStockRow(r as StockRecord);
                   return (
                     <div className="flex flex-col items-end gap-1">
-                      <span>{formatQty(r.quantity)}</span>
+                      <span>
+                        {formatItemStockQty(r.quantity, r.item, formatQty)}
+                      </span>
                       {showLowBadge ? (
                         <Badge
                           variant={

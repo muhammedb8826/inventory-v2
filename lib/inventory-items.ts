@@ -31,6 +31,53 @@ export function resolveItem(itemId: string, item?: Partial<Item> | null): Item {
     sku: item?.sku,
     unit: item?.unit,
     itemType: item?.itemType,
+    stockUomId: item?.stockUomId ?? null,
+    salesUomId: item?.salesUomId ?? null,
+    purchaseUomId: item?.purchaseUomId ?? null,
+    uomWidth: item?.uomWidth ?? null,
+    stockUom: item?.stockUom ?? null,
+    salesUom: item?.salesUom ?? null,
+    purchaseUom: item?.purchaseUom ?? null,
+    itemUoms: item?.itemUoms,
+    imageUrl: item?.imageUrl,
+    imagePath: item?.imagePath,
+    isActive: item?.isActive,
+  };
+}
+
+/** Prefer the payload that still has UOM / catalog fields. */
+export function preferRicherItem(
+  current: Item | undefined,
+  next: Item
+): Item {
+  if (!current) return next;
+  const currentHasUom = Boolean(current.stockUomId || current.stockUom);
+  const nextHasUom = Boolean(next.stockUomId || next.stockUom);
+  if (nextHasUom && !currentHasUom) return next;
+  if (currentHasUom && !nextHasUom) {
+    return {
+      ...next,
+      stockUomId: current.stockUomId,
+      salesUomId: current.salesUomId ?? next.salesUomId,
+      purchaseUomId: current.purchaseUomId ?? next.purchaseUomId,
+      uomWidth: current.uomWidth ?? next.uomWidth,
+      stockUom: current.stockUom ?? next.stockUom,
+      salesUom: current.salesUom ?? next.salesUom,
+      purchaseUom: current.purchaseUom ?? next.purchaseUom,
+      itemUoms: current.itemUoms ?? next.itemUoms,
+    };
+  }
+  return {
+    ...current,
+    ...next,
+    stockUomId: next.stockUomId ?? current.stockUomId,
+    salesUomId: next.salesUomId ?? current.salesUomId,
+    purchaseUomId: next.purchaseUomId ?? current.purchaseUomId,
+    uomWidth: next.uomWidth ?? current.uomWidth,
+    stockUom: next.stockUom ?? current.stockUom,
+    salesUom: next.salesUom ?? current.salesUom,
+    purchaseUom: next.purchaseUom ?? current.purchaseUom,
+    itemUoms: next.itemUoms ?? current.itemUoms,
   };
 }
 
@@ -40,10 +87,14 @@ export function buildItemOptionMap(
   lines: { itemId: string; item?: Item | null }[]
 ): Map<string, Item> {
   const map = new Map<string, Item>();
-  for (const source of [...stock, ...lines]) {
+  // Stock last so inventory UOM relations win over sparse line payloads.
+  for (const source of [...lines, ...stock]) {
     const itemId = productItemId(source);
     if (!isProductItemId(itemId)) continue;
-    map.set(itemId, resolveItem(itemId, source.item));
+    map.set(
+      itemId,
+      preferRicherItem(map.get(itemId), resolveItem(itemId, source.item))
+    );
   }
   return map;
 }

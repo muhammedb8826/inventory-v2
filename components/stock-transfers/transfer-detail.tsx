@@ -144,7 +144,11 @@ export function TransferDetail({
                       </td>
                       <td className="text-right tabular-nums">
                         {formatQty(line.quantity)}
-                        {line.item?.unit ? ` ${line.item.unit}` : ""}
+                        {line.item?.stockUom?.symbol
+                          ? ` ${line.item.stockUom.symbol}`
+                          : line.item?.unit
+                            ? ` ${line.item.unit}`
+                            : ""}
                       </td>
                     </tr>
                   ))}

@@ -101,9 +101,151 @@ export function defaultUomIdForItem(
   return item.stockUomId ?? null;
 }
 
+/**
+ * Category id for an item's stock UOM (units outside this category must not mix,
+ * except Length↔Area when `uomWidth` is set).
+ */
+export function itemStockUomCategoryId(
+  item: Item | undefined | null,
+  uoms: Uom[] = []
+): string | null {
+  if (!item) return null;
+  return (
+    item.stockUom?.categoryId ??
+    item.stockUom?.category?.id ??
+    uoms.find((u) => u.id === item.stockUomId)?.categoryId ??
+    null
+  );
+}
+
+/**
+ * Allowed UOM category ids for document lines / sales-purchase defaults.
+ * Same category only; Length↔Area allowed when item has a positive width.
+ */
+export function allowedUomCategoryIds(
+  item: Item | undefined | null,
+  uoms: Uom[] = []
+): string[] {
+  const stockCat = itemStockUomCategoryId(item, uoms);
+  if (!stockCat) return [];
+
+  const ids = new Set<string>([stockCat]);
+  const width =
+    item?.uomWidth != null ? parseFloat(String(item.uomWidth)) : NaN;
+  if (!Number.isFinite(width) || width <= 0) return [...ids];
+
+  const stockUom =
+    item?.stockUom ?? uoms.find((u) => u.id === item?.stockUomId) ?? null;
+  const stockCode =
+    stockUom?.category?.code ??
+    uoms.find((u) => u.categoryId === stockCat)?.category?.code;
+
+  if (stockCode === "AREA") {
+    const length = uoms.find((u) => u.category?.code === "LENGTH");
+    if (length?.categoryId) ids.add(length.categoryId);
+  } else if (stockCode === "LENGTH") {
+    const area = uoms.find((u) => u.category?.code === "AREA");
+    if (area?.categoryId) ids.add(area.categoryId);
+  }
+
+  return [...ids];
+}
+
+/** Units allowed for an item (never mixes unrelated categories). */
+export function uomsForItem(
+  item: Item | undefined | null,
+  uoms: Uom[]
+): Uom[] {
+  const allowed = new Set(allowedUomCategoryIds(item, uoms));
+  if (allowed.size === 0) return [];
+  return uoms
+    .filter((u) => allowed.has(u.categoryId))
+    .sort((a, b) => {
+      if (a.isBase && !b.isBase) return -1;
+      if (!a.isBase && b.isBase) return 1;
+      return (a.symbol || a.name).localeCompare(b.symbol || b.name);
+    });
+}
+
 /** Compact label for line grids. */
 export function formatUomSymbol(uom: Uom): string {
   return uom.symbol || uom.name || uom.code;
+}
+
+/** Stock UOM symbol for inventory rows / items. */
+export function itemStockUnit(item?: {
+  unit?: string | null;
+  stockUom?: { symbol?: string | null } | null;
+} | null): string {
+  return item?.stockUom?.symbol || item?.unit || "";
+}
+
+export function formatItemStockQty(
+  qty: string | number | undefined | null,
+  item: { unit?: string | null; stockUom?: { symbol?: string | null } | null } | null | undefined,
+  formatQty: (v: string | number | undefined) => string
+): string {
+  if (qty === undefined || qty === null || qty === "") return "—";
+  const unit = itemStockUnit(item);
+  return `${formatQty(qty)}${unit ? ` ${unit}` : ""}`;
+}
+
+type LineQtySource = {
+  quantity?: string | number | null;
+  stockQuantity?: string | number | null;
+  uom?: { symbol?: string | null } | null;
+  uomId?: string | null;
+  item?: {
+    unit?: string | null;
+    stockUom?: { symbol?: string | null } | null;
+  } | null;
+  componentItem?: {
+    unit?: string | null;
+    stockUom?: { symbol?: string | null } | null;
+  } | null;
+};
+
+function stockUnitOf(line: LineQtySource): string {
+  const item = line.item ?? line.componentItem;
+  return item?.stockUom?.symbol || item?.unit || "";
+}
+
+function txnUnitOf(line: LineQtySource): string {
+  return line.uom?.symbol || stockUnitOf(line);
+}
+
+/** "100 cm" — transaction qty + line UOM. */
+export function formatTxnQtyLabel(
+  line: LineQtySource,
+  formatQty: (v: string | number | undefined) => string
+): string {
+  const qty = line.quantity;
+  if (qty === undefined || qty === null || qty === "") return "—";
+  const unit = txnUnitOf(line);
+  return `${formatQty(qty)}${unit ? ` ${unit}` : ""}`;
+}
+
+/** "1 m" — stock qty + stock UOM (falls back to txn qty if stock missing). */
+export function formatStockQtyLabel(
+  line: LineQtySource,
+  formatQty: (v: string | number | undefined) => string
+): string {
+  const qty =
+    line.stockQuantity != null && line.stockQuantity !== ""
+      ? line.stockQuantity
+      : line.quantity;
+  if (qty === undefined || qty === null || qty === "") return "—";
+  const unit = stockUnitOf(line);
+  return `${formatQty(qty)}${unit ? ` ${unit}` : ""}`;
+}
+
+/** True when stock qty differs from txn qty (worth showing both). */
+export function stockQtyDiffers(line: LineQtySource): boolean {
+  if (line.stockQuantity == null || line.stockQuantity === "") return false;
+  const txn = parseFloat(String(line.quantity ?? ""));
+  const stock = parseFloat(String(line.stockQuantity));
+  if (!Number.isFinite(txn) || !Number.isFinite(stock)) return false;
+  return Math.abs(txn - stock) > 1e-9 || txnUnitOf(line) !== stockUnitOf(line);
 }
 
 export function formatUomLabel(uom: Uom): string {

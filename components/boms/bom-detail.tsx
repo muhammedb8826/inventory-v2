@@ -9,6 +9,7 @@ import {
 } from "@/components/frappe";
 import { PermissionGate } from "@/components/permission-gate";
 import { formatDate, formatQty } from "@/lib/format";
+import { formatStockQtyLabel, formatTxnQtyLabel } from "@/lib/uom";
 import type { Bom } from "@/lib/types";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -91,6 +92,7 @@ export function BomDetail({ bom }: { bom: Bom }) {
                     <th>Component</th>
                     <th>SKU</th>
                     <th className="text-right tabular-nums">Qty / FG</th>
+                    <th className="text-right tabular-nums">Stock qty</th>
                     <th className="text-right tabular-nums">Scrap %</th>
                   </tr>
                 </thead>
@@ -105,10 +107,10 @@ export function BomDetail({ bom }: { bom: Bom }) {
                         {line.componentItem?.sku ?? "—"}
                       </td>
                       <td className="text-right tabular-nums">
-                        {formatQty(String(line.quantity))}
-                        {line.componentItem?.unit
-                          ? ` ${line.componentItem.unit}`
-                          : ""}
+                        {formatTxnQtyLabel(line, formatQty)}
+                      </td>
+                      <td className="text-right tabular-nums text-[var(--frappe-text-muted)]">
+                        {formatStockQtyLabel(line, formatQty)}
                       </td>
                       <td className="text-right tabular-nums">
                         {line.scrapPercent != null && line.scrapPercent !== ""

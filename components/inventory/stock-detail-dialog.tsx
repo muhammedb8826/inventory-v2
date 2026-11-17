@@ -20,12 +20,14 @@ import {
 import { PageLoading } from "@/components/shared/page-loading";
 import { api } from "@/lib/api";
 import { resolveItemImageUrl } from "@/lib/inventory-media";
+import { ItemImage } from "@/components/shared/item-image";
 import { isLowStockRow } from "@/lib/inventory-stock";
 import { itemTypeLabel } from "@/lib/item-types";
 import { errorMessage, formatMoney, formatQty } from "@/lib/format";
+import { formatItemStockQty, itemStockUnit } from "@/lib/uom";
 import type { LowStockRecord, StockRecord } from "@/lib/types";
 import { toast } from "sonner";
-import { EyeIcon, ImageIcon } from "lucide-react";
+import { EyeIcon } from "lucide-react";
 
 function DetailValue({ children }: { children: React.ReactNode }) {
   return (
@@ -103,21 +105,13 @@ export function StockDetailDialog({
           ) : (
             <FrappeDocument>
               <FrappeSection title="Item">
-                <div className="mb-4 overflow-hidden rounded-lg border border-[var(--frappe-border)] bg-[var(--frappe-section-head)]">
-                  {imageSrc ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={imageSrc}
-                      alt={shown.item.description}
-                      className="aspect-[4/3] w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 text-[var(--frappe-text-muted)]">
-                      <ImageIcon className="size-10" />
-                      <p className="text-xs">No image</p>
-                    </div>
-                  )}
-                </div>
+                <ItemImage
+                  src={imageSrc}
+                  alt={shown.item.description}
+                  size="full"
+                  className="mb-4 rounded-lg"
+                  imgClassName="p-3"
+                />
                 <FrappeFormGrid columns={2}>
                   <FrappeField label="Description" fullWidth>
                     <DetailValue>{shown.item.description}</DetailValue>
@@ -126,7 +120,9 @@ export function StockDetailDialog({
                     <DetailValue>{shown.item.sku || "—"}</DetailValue>
                   </FrappeField>
                   <FrappeField label="Unit">
-                    <DetailValue>{shown.item.unit || "—"}</DetailValue>
+                    <DetailValue>
+                      {itemStockUnit(shown.item) || "—"}
+                    </DetailValue>
                   </FrappeField>
                   <FrappeField label="Item type">
                     <DetailValue>
@@ -151,7 +147,11 @@ export function StockDetailDialog({
                   <FrappeField label="On hand">
                     <div className="flex min-h-8 flex-wrap items-center gap-2">
                       <span className="text-sm font-medium tabular-nums text-[var(--frappe-text)]">
-                        {formatQty(shown.quantity)}
+                        {formatItemStockQty(
+                          shown.quantity,
+                          shown.item,
+                          formatQty
+                        )}
                       </span>
                       {outOfStock ? (
                         <Badge variant="destructive" className="text-[10px]">

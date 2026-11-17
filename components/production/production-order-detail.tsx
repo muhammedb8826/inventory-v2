@@ -218,11 +218,31 @@ export function ProductionOrderDetail({
             />
             <DetailField
               label="Planned qty"
-              value={formatQty(order.quantityPlanned)}
+              value={`${formatQty(order.quantityPlanned)}${
+                order.finishedItem?.stockUom?.symbol ||
+                order.finishedItem?.unit ||
+                order.bom?.finishedItem?.stockUom?.symbol ||
+                order.bom?.finishedItem?.unit
+                  ? ` ${
+                      order.finishedItem?.stockUom?.symbol ||
+                      order.finishedItem?.unit ||
+                      order.bom?.finishedItem?.stockUom?.symbol ||
+                      order.bom?.finishedItem?.unit
+                    }`
+                  : ""
+              }`}
             />
             <DetailField
               label="Completed qty"
-              value={formatQty(order.quantityCompleted ?? "0")}
+              value={`${formatQty(order.quantityCompleted ?? "0")}${
+                order.finishedItem?.stockUom?.symbol ||
+                order.finishedItem?.unit
+                  ? ` ${
+                      order.finishedItem?.stockUom?.symbol ||
+                      order.finishedItem?.unit
+                    }`
+                  : ""
+              }`}
             />
             <DetailField
               label="Document ID"
@@ -270,9 +290,19 @@ export function ProductionOrderDetail({
                       </td>
                       <td className="text-right tabular-nums">
                         {formatQty(line.quantityRequired ?? "0")}
+                        {line.componentItem?.stockUom?.symbol
+                          ? ` ${line.componentItem.stockUom.symbol}`
+                          : line.componentItem?.unit
+                            ? ` ${line.componentItem.unit}`
+                            : ""}
                       </td>
                       <td className="text-right tabular-nums">
                         {formatQty(line.quantityIssued ?? "0")}
+                        {line.componentItem?.stockUom?.symbol
+                          ? ` ${line.componentItem.stockUom.symbol}`
+                          : line.componentItem?.unit
+                            ? ` ${line.componentItem.unit}`
+                            : ""}
                       </td>
                       <td className="text-right tabular-nums">
                         {line.scrapPercent != null && line.scrapPercent !== ""

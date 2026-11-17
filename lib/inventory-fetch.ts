@@ -1,6 +1,6 @@
 import { fetchAllPages } from "@/lib/fetch-all-pages";
 import { buildInventoryListPath } from "@/lib/list-query";
-import { productItemId } from "@/lib/inventory-items";
+import { productItemId, resolveItem } from "@/lib/inventory-items";
 import type { Item, StockRecord } from "@/lib/types";
 
 /** Load all stock rows at a location (paginated API). Optional `search` uses backend filter. */
@@ -42,13 +42,7 @@ export function uniqueItemsFromStock(stock: StockRecord[]): Item[] {
   for (const row of stock) {
     const itemId = productItemId(row);
     if (!itemId || map.has(itemId)) continue;
-    map.set(itemId, {
-      id: itemId,
-      description: row.item?.description ?? itemId,
-      sku: row.item?.sku,
-      unit: row.item?.unit,
-      itemType: row.item?.itemType,
-    });
+    map.set(itemId, resolveItem(itemId, row.item));
   }
   return [...map.values()].sort((a, b) =>
     a.description.localeCompare(b.description)

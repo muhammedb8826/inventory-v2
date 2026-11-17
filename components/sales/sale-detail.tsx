@@ -17,6 +17,11 @@ import {
   formatCommissionRate,
   saleRepUser,
 } from "@/lib/sale-utils";
+import {
+  formatStockQtyLabel,
+  formatTxnQtyLabel,
+  stockQtyDiffers,
+} from "@/lib/uom";
 import type { Sale, SaleLine } from "@/lib/types";
 
 function DetailField({
@@ -196,6 +201,7 @@ export function SaleDetail({
                     <th>Item</th>
                     <th>SKU</th>
                     <th className="text-right tabular-nums">Qty</th>
+                    <th className="text-right tabular-nums">Stock qty</th>
                     <th className="text-right tabular-nums">Rate</th>
                     <th className="text-right tabular-nums">Amount</th>
                   </tr>
@@ -208,14 +214,12 @@ export function SaleDetail({
                         {line.item?.sku ?? "—"}
                       </td>
                       <td className="text-right tabular-nums">
-                        {formatQty(line.quantity)}
-                        {line.uom?.symbol
-                          ? ` ${line.uom.symbol}`
-                          : line.item?.stockUom?.symbol
-                            ? ` ${line.item.stockUom.symbol}`
-                            : line.item?.unit
-                              ? ` ${line.item.unit}`
-                              : ""}
+                        {formatTxnQtyLabel(line, formatQty)}
+                      </td>
+                      <td className="text-right tabular-nums text-[var(--frappe-text-muted)]">
+                        {stockQtyDiffers(line) || line.stockQuantity
+                          ? formatStockQtyLabel(line, formatQty)
+                          : "—"}
                       </td>
                       <td className="text-right tabular-nums">
                         {formatMoney(line.unitPrice)}
@@ -229,7 +233,7 @@ export function SaleDetail({
                 <tfoot>
                   <tr className="bg-[var(--frappe-section-head)]">
                     <td
-                      colSpan={4}
+                      colSpan={5}
                       className="px-3 py-2 text-right text-xs font-semibold uppercase text-[var(--frappe-text-muted)]"
                     >
                       Total

@@ -24,6 +24,7 @@ import {
   fetchAllInventory,
   uniqueItemsFromStock,
 } from "@/lib/inventory-fetch";
+import { preferRicherItem, resolveItem } from "@/lib/inventory-items";
 import { defaultUomIdForItem, fetchUoms } from "@/lib/uom";
 import { errorMessage } from "@/lib/format";
 import type { Bom, Item } from "@/lib/types";
@@ -82,14 +83,24 @@ export function BomForm({ bom }: { bom?: Bom }) {
 
   const itemById = useMemo(() => {
     const map = new Map<string, Item>();
-    for (const item of uniqueItemsFromStock(stock ?? [])) {
-      map.set(item.id, item);
+    if (bom?.finishedItem) {
+      map.set(
+        bom.finishedItemId,
+        resolveItem(bom.finishedItemId, bom.finishedItem)
+      );
     }
-    if (bom?.finishedItem) map.set(bom.finishedItemId, bom.finishedItem);
     for (const line of bom?.lines ?? []) {
-      if (line.componentItem) {
-        map.set(line.componentItemId, line.componentItem);
-      }
+      if (!line.componentItem) continue;
+      map.set(
+        line.componentItemId,
+        preferRicherItem(
+          map.get(line.componentItemId),
+          resolveItem(line.componentItemId, line.componentItem)
+        )
+      );
+    }
+    for (const item of uniqueItemsFromStock(stock ?? [])) {
+      map.set(item.id, preferRicherItem(map.get(item.id), item));
     }
     return map;
   }, [stock, bom]);

@@ -1,20 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { formatUomSymbol } from "@/lib/uom";
+import { useEffect, useMemo } from "react";
+import { SearchSelect } from "@/components/shared/search-select";
+import { formatUomLabel, uomsForItem } from "@/lib/uom";
 import type { Item, Uom } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
 /**
- * Compact UOM picker for document lines.
- * Prefers units in the item's stock-UOM category; falls back to all units.
+ * Searchable line UOM picker.
+ * Only units in the item's stock-UOM category (plus Length↔Area when width is set).
  */
 export function LineUomSelect({
   value,
@@ -34,61 +28,46 @@ export function LineUomSelect({
   className?: string;
 }) {
   const options = useMemo(() => {
-    if (!uoms.length) return [] as Uom[];
-
-    const categoryId =
-      item?.stockUom?.categoryId ??
-      item?.stockUom?.category?.id ??
-      uoms.find((u) => u.id === item?.stockUomId)?.categoryId ??
-      uoms.find((u) => u.id === item?.salesUomId)?.categoryId ??
-      uoms.find((u) => u.id === item?.purchaseUomId)?.categoryId ??
-      null;
-
-    let list = categoryId
-      ? uoms.filter((u) => u.categoryId === categoryId)
-      : [...uoms];
-
-    const ensure = (id?: string | null) => {
-      if (!id) return;
-      if (list.some((u) => u.id === id)) return;
-      const found = uoms.find((u) => u.id === id);
-      if (found) list = [...list, found];
-    };
-    ensure(item?.stockUomId);
-    ensure(item?.salesUomId);
-    ensure(item?.purchaseUomId);
-    ensure(value);
-
-    return list.sort((a, b) => {
-      if (a.isBase && !b.isBase) return -1;
-      if (!a.isBase && b.isBase) return 1;
-      return (a.symbol || a.name).localeCompare(b.symbol || b.name);
-    });
-  }, [uoms, item, value]);
+    return uomsForItem(item, uoms).map((u) => ({
+      value: u.id,
+      label: formatUomLabel(u),
+    }));
+  }, [item, uoms]);
 
   const noItem = !item?.id;
+  const noCategory = Boolean(item?.id) && options.length === 0;
+
+  // Drop invalid selection if it falls outside the allowed category.
+  useEffect(() => {
+    if (!value) return;
+    if (options.some((o) => o.value === value)) return;
+    onValueChange(options[0]?.value ?? null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only react to value/options
+  }, [value, options]);
 
   return (
-    <Select
-      value={value || undefined}
+    <SearchSelect
+      value={value || ""}
       onValueChange={(v) => onValueChange(v || null)}
-      disabled={disabled || loading || noItem || options.length === 0}
-    >
-      <SelectTrigger className={cn("h-8", className)}>
-        <SelectValue
-          placeholder={
-            loading ? "…" : noItem ? "Item first" : options.length ? "UOM" : "—"
-          }
-        />
-      </SelectTrigger>
-      <SelectContent>
-        {options.map((u) => (
-          <SelectItem key={u.id} value={u.id}>
-            {formatUomSymbol(u)}
-            {u.isBase ? " (base)" : ""}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+      options={options.map(({ value: v, label }) => ({ value: v, label }))}
+      placeholder={
+        loading
+          ? "Loading…"
+          : noItem
+            ? "Item first"
+            : noCategory
+              ? "No UOM category"
+              : "UOM"
+      }
+      searchPlaceholder="Search unit…"
+      emptyMessage={
+        noCategory
+          ? "Set a stock UOM on the item first."
+          : "No units in this category."
+      }
+      loading={loading}
+      disabled={disabled || loading || noItem || noCategory}
+      className={cn("h-8", className)}
+    />
   );
 }

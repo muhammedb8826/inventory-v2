@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { api } from "@/lib/api";
 import { errorMessage, formatQty } from "@/lib/format";
+import { formatItemStockQty } from "@/lib/uom";
 import {
   directionForReason,
   reasonsForDirection,
@@ -141,7 +142,7 @@ export function StockAdjustDialog({
               </p>
               <p className="text-xs text-[var(--frappe-text-muted)]">
                 {record.location?.name ?? "Location"} · On hand{" "}
-                {formatQty(record.quantity)}
+                {formatItemStockQty(record.quantity, record.item, formatQty)}
                 {record.item.sku ? ` · SKU ${record.item.sku}` : ""}
               </p>
             </div>

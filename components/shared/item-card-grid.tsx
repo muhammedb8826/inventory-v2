@@ -5,10 +5,10 @@ import {
   TablePagination,
   type TablePaginationProps,
 } from "@/components/shared/table-pagination";
+import { ItemImage } from "@/components/shared/item-image";
 import { unwrapList } from "@/lib/list-response";
 import type { PaginatedResponse } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { ImageIcon } from "lucide-react";
 
 export function ItemCardGrid<T extends { id: string }>({
   rows,
@@ -71,19 +71,14 @@ export function ItemCardGrid<T extends { id: string }>({
               role={clickable ? "button" : undefined}
               tabIndex={clickable ? 0 : undefined}
             >
-              <div className="relative aspect-[4/3] overflow-hidden border-b border-[var(--erp-border)] bg-[var(--erp-section-head)]">
-                {imageSrc ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={imageSrc}
-                    alt=""
-                    className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
-                  />
-                ) : (
-                  <div className="flex size-full items-center justify-center">
-                    <ImageIcon className="size-10 text-[var(--erp-text-muted)] opacity-50" />
-                  </div>
-                )}
+              <div className="relative border-b border-[var(--erp-border)]">
+                <ItemImage
+                  src={imageSrc}
+                  size="full"
+                  rounded={false}
+                  className="rounded-none border-0"
+                  imgClassName="p-2 transition-transform duration-300 group-hover:scale-[1.02]"
+                />
                 {renderBadges ? (
                   <div className="absolute top-2 left-2 flex flex-wrap gap-1">
                     {renderBadges(row)}

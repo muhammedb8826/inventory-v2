@@ -185,6 +185,7 @@ export interface Item {
   imagePath?: string | null;
   /** Absolute or relative image URL for display */
   imageUrl?: string | null;
+  isActive?: boolean;
 }
 
 export interface StockRecord {
@@ -746,6 +747,7 @@ export interface BomLine {
   componentItemId: string;
   quantity: string | number;
   uomId?: string | null;
+  stockQuantity?: string | number | null;
   scrapPercent?: string | number | null;
   componentItem?: Item;
   uom?: Uom | null;

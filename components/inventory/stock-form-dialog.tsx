@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -33,14 +33,18 @@ import {
 } from "@/lib/inventory-stock";
 import { ITEM_TYPE_OPTIONS } from "@/lib/item-types";
 import { formatQty, errorMessage } from "@/lib/format";
+import { formatItemStockQty } from "@/lib/uom";
 import { requestNotificationsRefresh } from "@/lib/notification-events";
 import type { ItemType, StockRecord } from "@/lib/types";
 import { UomSelect } from "@/components/uom/uom-select";
 import { EntitySelectField } from "@/components/shared/entity-select-field";
+import { ItemImage } from "@/components/shared/item-image";
 import { QuickLocationDialog } from "@/components/locations/quick-location-dialog";
 import { useLocations } from "@/hooks/use-locations";
+import { useFetch } from "@/hooks/use-fetch";
+import { fetchUoms } from "@/lib/uom";
 import { toast } from "sonner";
-import { ImageIcon, PlusIcon, Trash2Icon, UploadIcon } from "lucide-react";
+import { PlusIcon, Trash2Icon, UploadIcon } from "lucide-react";
 
 export function StockFormDialog({
   locationId: defaultLocationId,
@@ -95,6 +99,16 @@ export function StockFormDialog({
     resolveItemImageUrl(record?.item.imageUrl)
   );
   const [removeExistingImage, setRemoveExistingImage] = useState(false);
+
+  const { data: allUoms } = useFetch(() => fetchUoms(), []);
+  const stockUomCategoryId = useMemo(() => {
+    if (!stockUomId) return null;
+    return (
+      allUoms?.find((u) => u.id === stockUomId)?.categoryId ??
+      record?.item.stockUom?.categoryId ??
+      null
+    );
+  }, [stockUomId, allUoms, record?.item.stockUom?.categoryId]);
 
   useEffect(() => {
     return () => {
@@ -288,18 +302,7 @@ export function StockFormDialog({
             <div className="grid gap-2">
               <Label>Item image (optional)</Label>
               <div className="flex items-start gap-3">
-                <div className="bg-muted flex size-20 shrink-0 items-center justify-center overflow-hidden rounded border">
-                  {displayImageSrc ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={displayImageSrc}
-                      alt=""
-                      className="size-full object-cover"
-                    />
-                  ) : (
-                    <ImageIcon className="text-muted-foreground size-6" />
-                  )}
-                </div>
+                <ItemImage src={displayImageSrc} size="md" alt="" />
                 <div className="flex flex-col gap-2">
                   <input
                     ref={fileRef}
@@ -360,14 +363,19 @@ export function StockFormDialog({
               <Label>Stock UOM</Label>
               <UomSelect
                 value={stockUomId}
-                onValueChange={setStockUomId}
+                onValueChange={(id) => {
+                  setStockUomId(id);
+                  // Changing category clears sales/purchase so they cannot mix.
+                  setSalesUomId(null);
+                  setPurchaseUomId(null);
+                }}
                 placeholder="Default pcs"
                 allowEmpty
                 emptyLabel="Default (pcs)"
               />
               <p className="text-xs text-muted-foreground">
-                Inventory is always stored in this unit. Pack/box conversions
-                and Length→Area use it as the base.
+                Inventory is always stored in this unit. Sales/purchase units
+                stay in the same category.
               </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -376,8 +384,11 @@ export function StockFormDialog({
                 <UomSelect
                   value={salesUomId}
                   onValueChange={setSalesUomId}
+                  categoryId={stockUomCategoryId}
+                  requireCategory
                   allowEmpty
                   emptyLabel="Same as stock"
+                  placeholder="Same category as stock"
                 />
               </div>
               <div className="grid gap-2">
@@ -385,8 +396,11 @@ export function StockFormDialog({
                 <UomSelect
                   value={purchaseUomId}
                   onValueChange={setPurchaseUomId}
+                  categoryId={stockUomCategoryId}
+                  requireCategory
                   allowEmpty
                   emptyLabel="Same as stock"
+                  placeholder="Same category as stock"
                 />
               </div>
             </div>
@@ -449,7 +463,7 @@ export function StockFormDialog({
               <div className="rounded border border-dashed border-[var(--frappe-border)] px-3 py-2 text-sm text-[var(--frappe-text-muted)]">
                 On hand:{" "}
                 <span className="font-medium tabular-nums text-[var(--frappe-text)]">
-                  {formatQty(record.quantity)}
+                  {formatItemStockQty(record.quantity, record.item, formatQty)}
                 </span>
               </div>
             )}
