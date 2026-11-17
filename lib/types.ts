@@ -176,6 +176,8 @@ export interface Item {
   purchaseUomId?: string | null;
   /** Length→Area width (area per 1 length-base unit) */
   uomWidth?: string | null;
+  /** Cut pricing: AREA (per m²) or PIECE. Null = non-dimensional. */
+  dimensionPriceMode?: "AREA" | "PIECE" | null;
   stockUom?: Uom | null;
   salesUom?: Uom | null;
   purchaseUom?: Uom | null;
@@ -206,6 +208,8 @@ export interface StockRecord {
   reorderPoint?: string | null;
   item: Item;
   location: Location;
+  /** True when stock UOM is frozen (ERP: after stock or document history). */
+  stockUomLocked?: boolean;
 }
 
 /** Response when create generates 2+ product variants. */
@@ -417,6 +421,9 @@ export interface PurchaseLine {
   amount?: string;
   item?: Item;
   uom?: Uom | null;
+  dimWidth?: string | null;
+  dimHeight?: string | null;
+  dimPieces?: string | null;
 }
 
 export interface Purchase {
@@ -462,6 +469,9 @@ export interface SaleLine {
   amount?: string;
   item?: Item;
   uom?: Uom | null;
+  dimWidth?: string | null;
+  dimHeight?: string | null;
+  dimPieces?: string | null;
   /** Present when the sale exploded a Kit BoM. */
   components?: SaleLineComponent[];
 }

@@ -162,6 +162,7 @@ export function PurchaseDetail({
                   <tr>
                     <th>Item</th>
                     <th>SKU</th>
+                    <th>Cut</th>
                     <th className="text-right tabular-nums">Qty</th>
                     <th className="text-right tabular-nums">Stock qty</th>
                     <th className="text-right tabular-nums">Rate</th>
@@ -174,6 +175,15 @@ export function PurchaseDetail({
                       <td>{line.item?.description ?? line.itemId}</td>
                       <td className="text-[var(--frappe-text-muted)]">
                         {line.item?.sku ?? "—"}
+                      </td>
+                      <td className="text-[var(--frappe-text-muted)]">
+                        {line.dimWidth && line.dimHeight
+                          ? `${line.dimWidth} × ${line.dimHeight}${
+                              line.dimPieces && line.dimPieces !== "1.000"
+                                ? ` × ${line.dimPieces}`
+                                : ""
+                            }`
+                          : "—"}
                       </td>
                       <td className="text-right tabular-nums">
                         {formatTxnQtyLabel(line, formatQty)}
@@ -195,7 +205,7 @@ export function PurchaseDetail({
                 <tfoot>
                   <tr className="bg-[var(--frappe-section-head)]">
                     <td
-                      colSpan={5}
+                      colSpan={6}
                       className="px-3 py-2 text-right text-xs font-semibold uppercase text-[var(--frappe-text-muted)]"
                     >
                       Total

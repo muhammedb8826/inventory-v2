@@ -98,6 +98,12 @@ export function StockFormDialog({
     record?.item.purchaseUomId ?? null
   );
   const [uomWidth, setUomWidth] = useState(record?.item.uomWidth ?? "");
+  const [dimensionPriceMode, setDimensionPriceMode] = useState<
+    "" | "AREA" | "PIECE"
+  >(record?.item.dimensionPriceMode ?? "");
+  const [stockUomLocked, setStockUomLocked] = useState(
+    Boolean(record?.stockUomLocked)
+  );
   const [itemType, setItemType] = useState<ItemType | "">(
     record?.item.itemType ?? (record ? "" : DEFAULT_ITEM_TYPE)
   );
@@ -155,6 +161,8 @@ export function StockFormDialog({
     setSalesUomId(defaultUomId);
     setPurchaseUomId(defaultUomId);
     setUomWidth("");
+    setDimensionPriceMode("");
+    setStockUomLocked(false);
     setItemType(DEFAULT_ITEM_TYPE);
     setQuantity(DEFAULT_OPENING_QTY);
     setPurchasePrice(DEFAULT_PURCHASE_PRICE);
@@ -180,6 +188,8 @@ export function StockFormDialog({
         setSalesUomId(record.item.salesUomId ?? null);
         setPurchaseUomId(record.item.purchaseUomId ?? null);
         setUomWidth(record.item.uomWidth ?? "");
+        setDimensionPriceMode(record.item.dimensionPriceMode ?? "");
+        setStockUomLocked(Boolean(record.stockUomLocked));
         setItemType(record.item.itemType ?? "");
         setQuantity(record.quantity ?? "");
         setPurchasePrice(record.purchasePrice ?? "");
@@ -188,6 +198,16 @@ export function StockFormDialog({
           selectionsFromAttributeValues(record.item.attributeValues)
         );
         resetImageState(record);
+        void api<StockRecord>(`/inventory/${record.id}`)
+          .then((fresh) => {
+            setStockUomLocked(Boolean(fresh.stockUomLocked));
+            setStockUomId(fresh.item.stockUomId ?? null);
+            setSalesUomId(fresh.item.salesUomId ?? null);
+            setPurchaseUomId(fresh.item.purchaseUomId ?? null);
+          })
+          .catch(() => {
+            /* keep list payload */
+          });
       } else {
         applyCreateDefaults();
       }
@@ -233,23 +253,26 @@ export function StockFormDialog({
 
       let stockId = record?.id;
       if (record) {
+        const body: Record<string, unknown> = {
+          description: description.trim(),
+          sku: optionalStringBodyValue(sku),
+          salesUomId,
+          purchaseUomId,
+          uomWidth: uomWidth.trim() ? parseFloat(uomWidth) : null,
+          dimensionPriceMode: dimensionPriceMode || null,
+          itemType: itemType || null,
+          purchasePrice: parseFloat(purchasePrice),
+          reorderPoint: reorderValue,
+          attributeValueIds:
+            attributeValueIdsFromSelections(attributeSelections),
+        };
+        // ERP: never send stock UOM change when locked.
+        if (!stockUomLocked) {
+          body.stockUomId = stockUomId;
+        }
         await api(`/inventory/${record.id}`, {
           method: "PATCH",
-          body: {
-            description: description.trim(),
-            sku: optionalStringBodyValue(sku),
-            stockUomId,
-            salesUomId,
-            purchaseUomId,
-            uomWidth: uomWidth.trim()
-              ? parseFloat(uomWidth)
-              : null,
-            itemType: itemType || null,
-            purchasePrice: parseFloat(purchasePrice),
-            reorderPoint: reorderValue,
-            attributeValueIds:
-              attributeValueIdsFromSelections(attributeSelections),
-          },
+          body,
         });
         requestNotificationsRefresh();
       } else {
@@ -279,6 +302,7 @@ export function StockFormDialog({
             attributeValueIdsFromSelections(attributeSelections),
         };
         if (uomWidth.trim()) body.uomWidth = parseFloat(uomWidth);
+        if (dimensionPriceMode) body.dimensionPriceMode = dimensionPriceMode;
         if (reorderValue !== null) {
           body.reorderPoint = reorderValue;
         }
@@ -434,10 +458,12 @@ export function StockFormDialog({
                 placeholder="Default pcs"
                 allowEmpty
                 emptyLabel="Default (pcs)"
+                disabled={Boolean(record) && stockUomLocked}
               />
               <p className="text-xs text-muted-foreground">
-                Inventory is always stored in this unit. Sales/purchase units
-                stay in the same category.
+                {record && stockUomLocked
+                  ? "Stock UOM is locked after stock or document history (ERP standard). Change sales/purchase UOM in the same category instead."
+                  : "Inventory is always stored in this unit. Sales/purchase units stay in the same category."}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -467,7 +493,7 @@ export function StockFormDialog({
               </div>
             </div>
             <div className="grid gap-2">
-              <Label>Width (Length → Area)</Label>
+              <Label>Roll width (Length → Area)</Label>
               <Input
                 type="number"
                 step="any"
@@ -477,8 +503,31 @@ export function StockFormDialog({
                 placeholder="e.g. 1.5 for fabric"
               />
               <p className="text-xs text-muted-foreground">
-                When stock is Area (sqm) and you sell/buy by Length (m): area =
+                When stock is Area (sqm) and you buy rolls by Length (m): area =
                 length × width.
+              </p>
+            </div>
+            <div className="grid gap-2">
+              <Label>Cut pricing</Label>
+              <Select
+                value={dimensionPriceMode || "__none__"}
+                onValueChange={(v) =>
+                  setDimensionPriceMode(
+                    v === "__none__" ? "" : (v as "AREA" | "PIECE")
+                  )
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="None" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None (plain qty)</SelectItem>
+                  <SelectItem value="AREA">By area (m²)</SelectItem>
+                  <SelectItem value="PIECE">By piece</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Enables W×H cuts on sales/purchases. Stock moves in m².
               </p>
             </div>
             <div className="grid gap-2">

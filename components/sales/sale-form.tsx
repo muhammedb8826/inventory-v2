@@ -78,10 +78,25 @@ interface LineRow {
   unitPrice: string;
   uomId: string;
   item?: Item;
+  width: string;
+  height: string;
+  pieces: string;
 }
 
 function emptyLine(): LineRow {
-  return { itemId: "", quantity: "1", unitPrice: "", uomId: "" };
+  return {
+    itemId: "",
+    quantity: "1",
+    unitPrice: "",
+    uomId: "",
+    width: "",
+    height: "",
+    pieces: "1",
+  };
+}
+
+function itemAllowsCuts(item?: Item | null): boolean {
+  return Boolean(item?.dimensionPriceMode);
 }
 
 function linesFromSale(sale: Sale): LineRow[] {
@@ -94,6 +109,9 @@ function linesFromSale(sale: Sale): LineRow[] {
       unitPrice: l.unitPrice,
       uomId: l.uomId ?? defaultUomIdForItem(item, "sales") ?? "",
       item,
+      width: l.dimWidth ?? "",
+      height: l.dimHeight ?? "",
+      pieces: l.dimPieces ?? "1",
     };
   });
   return rows.length > 0 ? rows : [emptyLine()];
@@ -613,14 +631,22 @@ export function SaleForm({ sale }: { sale?: Sale }) {
             <FrappeGridTable
               columns={[
                 { key: "item", label: "Item" },
-                { key: "uom", label: "UOM", className: "w-28" },
-                { key: "qty", label: "Qty", className: "w-24" },
-                { key: "rate", label: "Rate", className: "w-28" },
+                { key: "uom", label: "UOM", className: "w-24" },
+                { key: "w", label: "W", className: "w-20" },
+                { key: "h", label: "H", className: "w-20" },
+                { key: "pcs", label: "Pcs", className: "w-16" },
+                { key: "qty", label: "Qty", className: "w-20" },
+                { key: "rate", label: "Rate", className: "w-24" },
               ]}
               onAddRow={() => setLines((prev) => [...prev, emptyLine()])}
               addLabel="Add Row"
             >
-              {lines.map((line, i) => (
+              {lines.map((line, i) => {
+                const cut = itemAllowsCuts(line.item);
+                const isCutFilled = Boolean(
+                  line.width.trim() && line.height.trim()
+                );
+                return (
                 <FrappeGridRow
                   key={i}
                   canRemove={lines.length > 1}
@@ -637,6 +663,9 @@ export function SaleForm({ sale }: { sale?: Sale }) {
                           itemId: v,
                           item,
                           uomId: defaultUomIdForItem(item, "sales") ?? "",
+                          width: "",
+                          height: "",
+                          pieces: "1",
                         });
                       }}
                       options={itemOptions}
@@ -656,8 +685,67 @@ export function SaleForm({ sale }: { sale?: Sale }) {
                       item={line.item}
                       uoms={uoms}
                       loading={uomsLoading}
-                      disabled={!locationId}
+                      disabled={!locationId || (cut && isCutFilled)}
                     />
+                  </FrappeGridCell>
+                  <FrappeGridCell>
+                    {cut ? (
+                      <Input
+                        type="number"
+                        min="0"
+                        step="any"
+                        className="h-8"
+                        value={line.width}
+                        onChange={(e) =>
+                          updateLine(i, { width: e.target.value })
+                        }
+                        placeholder="W"
+                        disabled={notesOnly}
+                      />
+                    ) : (
+                      <span className="text-xs text-[var(--frappe-text-muted)]">
+                        —
+                      </span>
+                    )}
+                  </FrappeGridCell>
+                  <FrappeGridCell>
+                    {cut ? (
+                      <Input
+                        type="number"
+                        min="0"
+                        step="any"
+                        className="h-8"
+                        value={line.height}
+                        onChange={(e) =>
+                          updateLine(i, { height: e.target.value })
+                        }
+                        placeholder="H"
+                        disabled={notesOnly}
+                      />
+                    ) : (
+                      <span className="text-xs text-[var(--frappe-text-muted)]">
+                        —
+                      </span>
+                    )}
+                  </FrappeGridCell>
+                  <FrappeGridCell>
+                    {cut ? (
+                      <Input
+                        type="number"
+                        min="1"
+                        step="any"
+                        className="h-8"
+                        value={line.pieces}
+                        onChange={(e) =>
+                          updateLine(i, { pieces: e.target.value })
+                        }
+                        disabled={notesOnly}
+                      />
+                    ) : (
+                      <span className="text-xs text-[var(--frappe-text-muted)]">
+                        —
+                      </span>
+                    )}
                   </FrappeGridCell>
                   <FrappeGridCell>
                     <Input
@@ -669,7 +757,13 @@ export function SaleForm({ sale }: { sale?: Sale }) {
                       onChange={(e) =>
                         updateLine(i, { quantity: e.target.value })
                       }
-                      required
+                      required={!isCutFilled}
+                      disabled={notesOnly || (cut && isCutFilled)}
+                      title={
+                        cut && isCutFilled
+                          ? "Qty from W×H×pieces"
+                          : undefined
+                      }
                     />
                   </FrappeGridCell>
                   <FrappeGridCell>
@@ -683,10 +777,12 @@ export function SaleForm({ sale }: { sale?: Sale }) {
                         updateLine(i, { unitPrice: e.target.value })
                       }
                       required
+                      disabled={notesOnly}
                     />
                   </FrappeGridCell>
                 </FrappeGridRow>
-              ))}
+              );
+              })}
             </FrappeGridTable>
           </FrappeSection>
         ) : null}

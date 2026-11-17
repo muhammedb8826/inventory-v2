@@ -35,6 +35,7 @@ export function resolveItem(itemId: string, item?: Partial<Item> | null): Item {
     salesUomId: item?.salesUomId ?? null,
     purchaseUomId: item?.purchaseUomId ?? null,
     uomWidth: item?.uomWidth ?? null,
+    dimensionPriceMode: item?.dimensionPriceMode ?? null,
     stockUom: item?.stockUom ?? null,
     salesUom: item?.salesUom ?? null,
     purchaseUom: item?.purchaseUom ?? null,
@@ -121,6 +122,9 @@ export interface DocumentLineInput {
   quantity: string | number;
   unitPrice?: string | number;
   uomId?: string | null;
+  width?: string | number | null;
+  height?: string | number | null;
+  pieces?: string | number | null;
 }
 
 export interface DocumentLineBody {
@@ -128,6 +132,18 @@ export interface DocumentLineBody {
   quantity: number;
   unitPrice: number;
   uomId?: string;
+  width?: number;
+  height?: number;
+  pieces?: number;
+}
+
+function parseOptionalPositive(
+  value: string | number | null | undefined
+): number | undefined {
+  if (value === null || value === undefined || value === "") return undefined;
+  const n = typeof value === "number" ? value : parseFloat(String(value));
+  if (Number.isNaN(n) || n <= 0) return undefined;
+  return n;
 }
 
 export function parseDocumentLines(
@@ -144,13 +160,34 @@ export function parseDocumentLines(
           "Each line must use a product from stock (select from the list — not SKU or stock row id).",
       };
     }
-    const quantity =
-      typeof line.quantity === "number"
-        ? line.quantity
-        : parseFloat(line.quantity);
-    if (Number.isNaN(quantity) || quantity <= 0) {
-      return { error: "Enter a valid quantity for each line." };
+    const width = parseOptionalPositive(line.width);
+    const height = parseOptionalPositive(line.height);
+    const isCut = width != null || height != null;
+    if (isCut && (width == null || height == null)) {
+      return { error: "Cut lines need both width and height." };
     }
+    let pieces: number | undefined;
+    if (isCut) {
+      const p = parseOptionalPositive(line.pieces);
+      pieces = p ?? 1;
+      if (pieces < 1) {
+        return { error: "Pieces must be at least 1." };
+      }
+    }
+
+    let quantity: number;
+    if (isCut) {
+      quantity = pieces!;
+    } else {
+      quantity =
+        typeof line.quantity === "number"
+          ? line.quantity
+          : parseFloat(String(line.quantity));
+      if (Number.isNaN(quantity) || quantity <= 0) {
+        return { error: "Enter a valid quantity for each line." };
+      }
+    }
+
     const unitPriceRaw = line.unitPrice ?? "";
     const unitPrice =
       typeof unitPriceRaw === "number"
@@ -161,6 +198,11 @@ export function parseDocumentLines(
     }
     const entry: DocumentLineBody = { itemId, quantity, unitPrice };
     if (line.uomId) entry.uomId = line.uomId;
+    if (isCut && width != null && height != null) {
+      entry.width = width;
+      entry.height = height;
+      entry.pieces = pieces;
+    }
     parsed.push(entry);
   }
 

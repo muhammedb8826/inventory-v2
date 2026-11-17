@@ -86,6 +86,9 @@ export function StockForm({
   const [salesUomId, setSalesUomId] = useState<string | null>(null);
   const [purchaseUomId, setPurchaseUomId] = useState<string | null>(null);
   const [uomWidth, setUomWidth] = useState("");
+  const [dimensionPriceMode, setDimensionPriceMode] = useState<
+    "" | "AREA" | "PIECE"
+  >("");
   const [itemType, setItemType] = useState<ItemType>(DEFAULT_ITEM_TYPE);
   const [quantity, setQuantity] = useState(DEFAULT_OPENING_QTY);
   const [purchasePrice, setPurchasePrice] = useState(DEFAULT_PURCHASE_PRICE);
@@ -208,6 +211,11 @@ export function StockForm({
         purchaseUomId: purchaseUomId ?? undefined,
       };
       if (uomWidth.trim()) body.uomWidth = parseFloat(uomWidth);
+      if (dimensionPriceMode) {
+        body.dimensionPriceMode = dimensionPriceMode;
+      } else {
+        body.dimensionPriceMode = null;
+      }
       if (reorderValue !== null) body.reorderPoint = reorderValue;
 
       const variantAttributes = variantAttributesFromMulti(
@@ -480,8 +488,8 @@ export function StockForm({
                   />
                 </FrappeField>
                 <FrappeField
-                  label="Width (Length → Area)"
-                  hint="Optional. Area = length × width when converting."
+                  label="Roll width (Length → Area)"
+                  hint="For buying rolls by the meter. Area = length × width."
                 >
                   <Input
                     type="number"
@@ -491,6 +499,28 @@ export function StockForm({
                     onChange={(e) => setUomWidth(e.target.value)}
                     placeholder="e.g. 1.5"
                   />
+                </FrappeField>
+                <FrappeField
+                  label="Cut pricing"
+                  hint="Enable W×H cuts on sales/purchases. Stock stays in area (m²)."
+                >
+                  <Select
+                    value={dimensionPriceMode || "__none__"}
+                    onValueChange={(v) =>
+                      setDimensionPriceMode(
+                        v === "__none__" ? "" : (v as "AREA" | "PIECE")
+                      )
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="None" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">None (plain qty)</SelectItem>
+                      <SelectItem value="AREA">By area (m²)</SelectItem>
+                      <SelectItem value="PIECE">By piece</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </FrappeField>
               </FrappeFormGrid>
             </FrappeSection>
