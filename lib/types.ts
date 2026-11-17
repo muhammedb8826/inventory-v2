@@ -178,9 +178,12 @@ export interface Item {
   uomWidth?: string | null;
   /** Cut pricing: AREA (per m²) or PIECE. Null = non-dimensional. */
   dimensionPriceMode?: "AREA" | "PIECE" | null;
+  /** Length UOM for W×H cuts (m/cm/mm). Null = meters. */
+  dimensionUomId?: string | null;
   stockUom?: Uom | null;
   salesUom?: Uom | null;
   purchaseUom?: Uom | null;
+  dimensionUom?: Uom | null;
   itemUoms?: ItemUom[];
   itemType?: ItemType | null;
   /** Selected attribute values (Color, Size, …) */

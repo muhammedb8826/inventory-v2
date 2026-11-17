@@ -480,6 +480,10 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                 const isCutFilled = Boolean(
                   line.width.trim() && line.height.trim()
                 );
+                const dimSymbol =
+                  line.item?.dimensionUom?.symbol ||
+                  line.item?.dimensionUom?.code ||
+                  "m";
                 return (
                 <FrappeGridRow
                   key={i}
@@ -512,16 +516,25 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                     />
                   </FrappeGridCell>
                   <FrappeGridCell>
-                    <LineUomSelect
-                      value={line.uomId || null}
-                      onValueChange={(uomId) =>
-                        updateLine(i, { uomId: uomId ?? "" })
-                      }
-                      item={line.item}
-                      uoms={uoms}
-                      loading={uomsLoading}
-                      disabled={!locationId || (cut && isCutFilled)}
-                    />
+                    {cut ? (
+                      <span
+                        className="text-xs text-[var(--frappe-text-muted)]"
+                        title="Stock UOM comes from the item (e.g. m²)"
+                      >
+                        —
+                      </span>
+                    ) : (
+                      <LineUomSelect
+                        value={line.uomId || null}
+                        onValueChange={(uomId) =>
+                          updateLine(i, { uomId: uomId ?? "" })
+                        }
+                        item={line.item}
+                        uoms={uoms}
+                        loading={uomsLoading}
+                        disabled={!locationId}
+                      />
+                    )}
                   </FrappeGridCell>
                   <FrappeGridCell>
                     {cut ? (
@@ -534,7 +547,8 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                         onChange={(e) =>
                           updateLine(i, { width: e.target.value })
                         }
-                        placeholder="W"
+                        placeholder={`W (${dimSymbol})`}
+                        title={`Width in ${dimSymbol}`}
                         disabled={notesOnly}
                       />
                     ) : (
@@ -554,7 +568,8 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                         onChange={(e) =>
                           updateLine(i, { height: e.target.value })
                         }
-                        placeholder="H"
+                        placeholder={`H (${dimSymbol})`}
+                        title={`Height in ${dimSymbol}`}
                         disabled={notesOnly}
                       />
                     ) : (

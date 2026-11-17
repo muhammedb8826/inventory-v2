@@ -66,7 +66,7 @@ import {
 import { QuickLocationDialog } from "@/components/locations/quick-location-dialog";
 import { useLocations } from "@/hooks/use-locations";
 import { useFetch } from "@/hooks/use-fetch";
-import { fetchUoms } from "@/lib/uom";
+import { fetchUoms, findDefaultLengthUomId, lengthUoms } from "@/lib/uom";
 import { toast } from "sonner";
 import { ImageIcon, Trash2Icon, UploadIcon } from "lucide-react";
 
@@ -110,6 +110,9 @@ export function StockForm({
   const [dimensionPriceMode, setDimensionPriceMode] = useState<
     "" | "AREA" | "PIECE"
   >(record?.item.dimensionPriceMode ?? "");
+  const [dimensionUomId, setDimensionUomId] = useState<string | null>(
+    record?.item.dimensionUomId ?? null
+  );
   const [stockUomLocked, setStockUomLocked] = useState(
     Boolean(record?.stockUomLocked)
   );
@@ -146,6 +149,18 @@ export function StockForm({
       null
     );
   }, [stockUomId, allUoms, record?.item.stockUom?.categoryId]);
+
+  const lengthCategoryId = useMemo(
+    () => lengthUoms(allUoms ?? [])[0]?.categoryId ?? null,
+    [allUoms]
+  );
+
+  useEffect(() => {
+    if (!dimensionPriceMode) return;
+    if (dimensionUomId) return;
+    const id = findDefaultLengthUomId(allUoms ?? []);
+    if (id) setDimensionUomId(id);
+  }, [dimensionPriceMode, dimensionUomId, allUoms]);
 
   const variantCount = useMemo(
     () => countVariantCombinations(multiAttributeSelections),
@@ -193,6 +208,7 @@ export function StockForm({
         setPurchaseUomId(fresh.item.purchaseUomId ?? null);
         setUomWidth(fresh.item.uomWidth ?? "");
         setDimensionPriceMode(fresh.item.dimensionPriceMode ?? "");
+        setDimensionUomId(fresh.item.dimensionUomId ?? null);
         setQuantity(fresh.quantity ?? "");
         setPurchasePrice(fresh.purchasePrice ?? "");
         setReorderPoint(fresh.reorderPoint ?? "");
@@ -261,6 +277,10 @@ export function StockForm({
     }
 
     if (isEdit && record) {
+      if (dimensionPriceMode && !dimensionUomId) {
+        toast.error("Select Cut dimensions in (m, cm, or mm)");
+        return;
+      }
       setSaving(true);
       try {
         const body: Record<string, unknown> = {
@@ -270,6 +290,7 @@ export function StockForm({
           purchaseUomId,
           uomWidth: uomWidth.trim() ? parseFloat(uomWidth) : null,
           dimensionPriceMode: dimensionPriceMode || null,
+          dimensionUomId: dimensionPriceMode ? dimensionUomId : null,
           itemType: itemType || null,
           purchasePrice: price,
           reorderPoint: reorderValue,
@@ -312,6 +333,10 @@ export function StockForm({
       toast.error("Too many variants (max 100). Narrow your attribute selections.");
       return;
     }
+    if (dimensionPriceMode && !dimensionUomId) {
+      toast.error("Select Cut dimensions in (m, cm, or mm)");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -329,8 +354,10 @@ export function StockForm({
       if (uomWidth.trim()) body.uomWidth = parseFloat(uomWidth);
       if (dimensionPriceMode) {
         body.dimensionPriceMode = dimensionPriceMode;
+        body.dimensionUomId = dimensionUomId;
       } else {
         body.dimensionPriceMode = null;
+        body.dimensionUomId = null;
       }
       if (reorderValue !== null) body.reorderPoint = reorderValue;
 
@@ -648,15 +675,21 @@ export function StockForm({
                 </FrappeField>
                 <FrappeField
                   label="Cut pricing"
-                  hint="Requires Area stock UOM (m²). Use roll width for Length purchases; W×H cuts on sales/purchases."
+                  hint="Requires Area stock UOM (m²). Use roll width for Length purchases; W×H cuts on sales/purchases/BoM."
                 >
                   <Select
                     value={dimensionPriceMode || "__none__"}
-                    onValueChange={(v) =>
-                      setDimensionPriceMode(
-                        v === "__none__" ? "" : (v as "AREA" | "PIECE")
-                      )
-                    }
+                    onValueChange={(v) => {
+                      const next =
+                        v === "__none__" ? "" : (v as "AREA" | "PIECE");
+                      setDimensionPriceMode(next);
+                      if (!next) setDimensionUomId(null);
+                      else if (!dimensionUomId) {
+                        setDimensionUomId(
+                          findDefaultLengthUomId(allUoms ?? [])
+                        );
+                      }
+                    }}
                   >
                     <SelectTrigger>
                       <SelectValue placeholder="None" />
@@ -668,6 +701,20 @@ export function StockForm({
                     </SelectContent>
                   </Select>
                 </FrappeField>
+                {dimensionPriceMode ? (
+                  <FrappeField
+                    label="Cut dimensions in"
+                    hint="W×H on sales/purchases/BoM are entered in this unit, then converted to m² stock."
+                  >
+                    <UomSelect
+                      value={dimensionUomId}
+                      onValueChange={setDimensionUomId}
+                      categoryId={lengthCategoryId}
+                      requireCategory
+                      placeholder="Meters"
+                    />
+                  </FrappeField>
+                ) : null}
               </FrappeFormGrid>
             </FrappeSection>
           </TabsContent>

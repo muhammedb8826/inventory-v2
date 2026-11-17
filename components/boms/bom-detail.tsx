@@ -196,7 +196,11 @@ export function BomDetail({ bom }: { bom: Bom }) {
                       line.dimHeight != null &&
                       line.dimHeight !== "";
                     const dimUnit =
-                      line.dimUom?.symbol || line.dimUom?.code || "m";
+                      line.dimUom?.symbol ||
+                      line.dimUom?.code ||
+                      line.componentItem?.dimensionUom?.symbol ||
+                      line.componentItem?.dimensionUom?.code ||
+                      "m";
                     return (
                     <tr key={line.id ?? `${line.componentItemId}-${i}`}>
                       <td>
