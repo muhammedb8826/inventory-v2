@@ -31,7 +31,7 @@ export function ProductionOrderForm() {
   const [saving, setSaving] = useState(false);
 
   const { data: boms, loading: bomsLoading } = useFetch(
-    () => fetchAllBoms({ isActive: true }),
+    () => fetchAllBoms({ isActive: true, bomType: "MANUFACTURE" }),
     []
   );
   const { data: locations, loading: locationsLoading } = useLocations();
@@ -91,7 +91,7 @@ export function ProductionOrderForm() {
       <FrappeDocument>
         <FrappeSection
           title="Production order"
-          description="BOM lines are snapshotted when the order is created"
+          description="Only Manufacture BoMs can be produced. Kit BoMs are for selling bundles."
         >
           <FrappeFormGrid columns={2}>
             <EntitySelectField
@@ -108,7 +108,7 @@ export function ProductionOrderForm() {
               }))}
               listHref="/boms"
               listLabel="All BOMs"
-              emptyMessage="Create an active BOM first."
+              emptyMessage="Create an active Manufacture BoM first. Kit BoMs cannot be produced."
             />
             <EntitySelectField
               label="Location"

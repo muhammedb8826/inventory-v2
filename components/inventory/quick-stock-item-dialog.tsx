@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FrappeButtonPrimary, FrappeButtonSecondary } from "@/components/frappe";
 import {
   QuickCreateTrigger,
@@ -10,6 +10,7 @@ import {
   useQuickCreateDialog,
   bindQuickCreateTrigger,
 } from "@/components/shared/quick-create-dialog-shell";
+import { UomSelect } from "@/components/uom/uom-select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -24,25 +25,29 @@ import {
   DEFAULT_ITEM_TYPE,
   DEFAULT_OPENING_QTY,
   DEFAULT_PURCHASE_PRICE,
+  findDefaultStockUomId,
 } from "@/lib/inventory-defaults";
 import { reorderPointBodyValue } from "@/lib/inventory-stock";
 import { ITEM_TYPE_OPTIONS } from "@/lib/item-types";
 import { errorMessage } from "@/lib/format";
+import { fetchUoms } from "@/lib/uom";
 import type { ItemType, StockRecord } from "@/lib/types";
+import { useFetch } from "@/hooks/use-fetch";
 import { toast } from "sonner";
 
 function resetQuickCreateFields(setters: {
   setDescription: (v: string) => void;
   setSku: (v: string) => void;
-  setUnit: (v: string) => void;
+  setStockUomId: (v: string | null) => void;
   setItemType: (v: ItemType) => void;
   setQuantity: (v: string) => void;
   setPurchasePrice: (v: string) => void;
   setReorderPoint: (v: string) => void;
+  defaultStockUomId?: string | null;
 }) {
   setters.setDescription("");
   setters.setSku("");
-  setters.setUnit("pcs");
+  setters.setStockUomId(setters.defaultStockUomId ?? null);
   setters.setItemType(DEFAULT_ITEM_TYPE);
   setters.setQuantity(DEFAULT_OPENING_QTY);
   setters.setPurchasePrice(DEFAULT_PURCHASE_PRICE);
@@ -63,23 +68,37 @@ export function QuickStockItemDialog({
   const { open, setOpen, onOpenChange } = useQuickCreateDialog();
   const [description, setDescription] = useState("");
   const [sku, setSku] = useState("");
-  const [unit, setUnit] = useState("pcs");
+  const [stockUomId, setStockUomId] = useState<string | null>(null);
   const [itemType, setItemType] = useState<ItemType>(DEFAULT_ITEM_TYPE);
   const [quantity, setQuantity] = useState(DEFAULT_OPENING_QTY);
   const [purchasePrice, setPurchasePrice] = useState(DEFAULT_PURCHASE_PRICE);
   const [reorderPoint, setReorderPoint] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const { data: uoms } = useFetch(
+    () => fetchUoms(undefined, false),
+    [],
+    { enabled: open }
+  );
+  const defaultStockUomId = findDefaultStockUomId(uoms);
+
+  // Apply default once when units arrive; skip if user already picked/cleared.
+  useEffect(() => {
+    if (!open || !defaultStockUomId) return;
+    setStockUomId((current) => current ?? defaultStockUomId);
+  }, [open, defaultStockUomId]);
+
   function openDialog() {
     if (disabled) return;
     resetQuickCreateFields({
       setDescription,
       setSku,
-      setUnit,
+      setStockUomId,
       setItemType,
       setQuantity,
       setPurchasePrice,
       setReorderPoint,
+      defaultStockUomId,
     });
     setOpen(true);
   }
@@ -108,7 +127,7 @@ export function QuickStockItemDialog({
         purchasePrice: parseFloat(purchasePrice) || 0,
         itemType,
         sku: sku || undefined,
-        unit,
+        stockUomId: stockUomId || undefined,
       };
       if (reorderValue !== null) {
         body.reorderPoint = reorderValue;
@@ -122,11 +141,12 @@ export function QuickStockItemDialog({
       resetQuickCreateFields({
         setDescription,
         setSku,
-        setUnit,
+        setStockUomId,
         setItemType,
         setQuantity,
         setPurchasePrice,
         setReorderPoint,
+        defaultStockUomId,
       });
       onCreated(record);
     } catch (err) {
@@ -185,11 +205,13 @@ export function QuickStockItemDialog({
               />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="item-unit">Unit</Label>
-              <Input
-                id="item-unit"
-                value={unit}
-                onChange={(e) => setUnit(e.target.value)}
+              <Label>Unit</Label>
+              <UomSelect
+                value={stockUomId}
+                onValueChange={setStockUomId}
+                placeholder="Select unit"
+                allowEmpty
+                emptyLabel="Default (pcs)"
               />
             </div>
           </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { SearchSelect } from "@/components/shared/search-select";
 
 export interface ItemSearchOption {
@@ -19,6 +20,7 @@ export function ItemSearchSelect({
   filterLocally = true,
   onQueryChange,
   className,
+  footer,
 }: {
   value: string;
   onValueChange: (itemId: string) => void;
@@ -31,6 +33,8 @@ export function ItemSearchSelect({
   filterLocally?: boolean;
   onQueryChange?: (query: string) => void;
   className?: string;
+  /** Pinned under the dropdown (e.g. quick-create item). */
+  footer?: ReactNode | ((close: () => void) => ReactNode);
 }) {
   return (
     <SearchSelect
@@ -49,6 +53,7 @@ export function ItemSearchSelect({
       filterLocally={filterLocally}
       onQueryChange={onQueryChange}
       className={className}
+      footer={footer}
     />
   );
 }

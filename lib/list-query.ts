@@ -86,6 +86,7 @@ export type StockTransfersListQueryParams = GenericListQueryParams & {
 export type BomsListQueryParams = GenericListQueryParams & {
   finishedItemId?: string;
   isActive?: boolean;
+  bomType?: "MANUFACTURE" | "KIT";
 };
 
 export type ProductionOrdersListQueryParams = GenericListQueryParams & {

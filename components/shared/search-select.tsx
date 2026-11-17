@@ -30,6 +30,7 @@ export function SearchSelect({
   filterLocally = true,
   onQueryChange,
   className,
+  footer,
 }: {
   value: string;
   onValueChange: (value: string) => void;
@@ -44,6 +45,8 @@ export function SearchSelect({
   filterLocally?: boolean;
   onQueryChange?: (query: string) => void;
   className?: string;
+  /** Optional action row (e.g. quick-create) pinned under the options list. */
+  footer?: React.ReactNode | ((close: () => void) => React.ReactNode);
 }) {
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
@@ -164,6 +167,11 @@ export function SearchSelect({
             </div>
           )}
         </div>
+        {footer ? (
+          <div className="border-t border-[var(--frappe-border)] px-2 py-1.5">
+            {typeof footer === "function" ? footer(() => setOpen(false)) : footer}
+          </div>
+        ) : null}
       </PopoverContent>
     </Popover>
   );

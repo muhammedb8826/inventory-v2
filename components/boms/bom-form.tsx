@@ -1,8 +1,11 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { QuickStockItemDialog } from "@/components/inventory/quick-stock-item-dialog";
 import { ItemSearchSelect } from "@/components/shared/item-search-select";
+import { QuickCreateInlineTrigger } from "@/components/shared/quick-create-trigger";
 import { LineUomSelect } from "@/components/uom/line-uom-select";
 import {
   FrappeButtonLink,
@@ -20,12 +23,18 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { api } from "@/lib/api";
 import { fetchBomCatalog, itemOptionLabel } from "@/lib/bom-catalog";
+import { findDefaultLocationId } from "@/lib/inventory-defaults";
 import { formatItemAttributeLabel } from "@/lib/item-attributes";
-import { preferRicherItem, resolveItem } from "@/lib/inventory-items";
+import {
+  preferRicherItem,
+  productItemId,
+  resolveItem,
+} from "@/lib/inventory-items";
 import { defaultUomIdForItem, fetchUoms } from "@/lib/uom";
 import { errorMessage } from "@/lib/format";
-import type { Bom, BomType, Item } from "@/lib/types";
+import type { Bom, BomType, Item, StockRecord } from "@/lib/types";
 import { useFetch } from "@/hooks/use-fetch";
+import { useLocations } from "@/hooks/use-locations";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 import { cn } from "@/lib/utils";
@@ -80,12 +89,19 @@ export function BomForm({ bom }: { bom?: Bom }) {
   );
   const [saving, setSaving] = useState(false);
 
-  const { data: catalog, loading } = useFetch(() => fetchBomCatalog(), []);
+  const {
+    data: catalog,
+    loading,
+    reload: reloadCatalog,
+    setData: setCatalog,
+  } = useFetch(() => fetchBomCatalog(), []);
+  const { data: locations } = useLocations();
   const { data: uomsData, loading: uomsLoading } = useFetch(
     () => fetchUoms(undefined, false),
     []
   );
   const uoms = uomsData ?? [];
+  const quickLocationId = findDefaultLocationId(locations);
 
   const products = catalog?.products ?? [];
   const components = catalog?.components ?? [];
@@ -156,13 +172,93 @@ export function BomForm({ bom }: { bom?: Bom }) {
     );
   }
 
-  function onProductChange(productId: string) {
+  function onProductChange(productId: string, productHint?: Item | null) {
     setFinishedItemId(productId);
     setVariantItemId("");
-    const product = products.find((p) => p.id === productId);
+    const product =
+      productHint ?? products.find((p) => p.id === productId) ?? null;
     if (!reference.trim() && product) {
       setReference(product.description);
     }
+  }
+
+  function mergeCreatedItem(item: Item) {
+    setCatalog((prev) => {
+      if (!prev) {
+        return {
+          products: [item],
+          components: item.isTemplate ? [] : [item],
+          variants: [],
+        };
+      }
+      const nextProducts = prev.products.some((p) => p.id === item.id)
+        ? prev.products
+        : [...prev.products, item];
+      const nextComponents =
+        item.isTemplate || prev.components.some((c) => c.id === item.id)
+          ? prev.components
+          : [...prev.components, item];
+      return {
+        ...prev,
+        products: nextProducts,
+        components: nextComponents,
+      };
+    });
+    void reloadCatalog();
+  }
+
+  function onProductCreated(record: StockRecord) {
+    const item = resolveItem(productItemId(record), record.item);
+    mergeCreatedItem(item);
+    onProductChange(item.id, item);
+  }
+
+  function onComponentCreated(record: StockRecord, lineIndex?: number) {
+    const item = resolveItem(productItemId(record), record.item);
+    mergeCreatedItem(item);
+    const emptyIdx = lines.findIndex((l) => !l.componentItemId);
+    const idx =
+      lineIndex != null
+        ? lineIndex
+        : emptyIdx >= 0
+          ? emptyIdx
+          : lines.length - 1;
+    if (idx < 0) {
+      setLines((prev) => [
+        ...prev,
+        {
+          ...emptyBomLine(),
+          componentItemId: item.id,
+          uomId: defaultUomIdForItem(item, "stock") ?? "",
+        },
+      ]);
+      return;
+    }
+    updateLine(idx, {
+      componentItemId: item.id,
+      uomId: defaultUomIdForItem(item, "stock") ?? "",
+    });
+  }
+
+  function itemQuickCreateFooter(
+    onCreated: (record: StockRecord) => void,
+    close: () => void
+  ) {
+    return (
+      <QuickStockItemDialog
+        locationId={quickLocationId}
+        disabled={!quickLocationId}
+        onCreated={onCreated}
+        trigger={
+          <QuickCreateInlineTrigger
+            label="Create new item"
+            className="flex w-full items-center gap-1 px-2 py-1.5 text-left text-sm"
+            disabled={!quickLocationId}
+            onClick={close}
+          />
+        }
+      />
+    );
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -273,13 +369,32 @@ export function BomForm({ bom }: { bom?: Bom }) {
         <FrappeSection title="Bill of Materials">
           <FrappeFormGrid columns={2}>
             <FrappeField label="Product" required>
-              <ItemSearchSelect
-                value={finishedItemId}
-                onValueChange={onProductChange}
-                options={productOptions}
-                placeholder="Select product…"
-                searchPlaceholder="Search product…"
-              />
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <ItemSearchSelect
+                  value={finishedItemId}
+                  onValueChange={onProductChange}
+                  options={productOptions}
+                  placeholder="Select product…"
+                  searchPlaceholder="Search product…"
+                  className="sm:flex-1"
+                  footer={(close) =>
+                    itemQuickCreateFooter(onProductCreated, close)
+                  }
+                />
+                <div className="flex shrink-0 flex-wrap items-center gap-3">
+                  <QuickStockItemDialog
+                    locationId={quickLocationId}
+                    disabled={!quickLocationId}
+                    onCreated={onProductCreated}
+                  />
+                  <Link
+                    href="/inventory"
+                    className="text-xs text-[var(--frappe-text-muted)] hover:text-[var(--frappe-primary)] hover:underline"
+                  >
+                    All items
+                  </Link>
+                </div>
+              </div>
             </FrappeField>
             <FrappeField
               label="Reference"
@@ -317,13 +432,18 @@ export function BomForm({ bom }: { bom?: Bom }) {
                     {
                       value: "MANUFACTURE" as const,
                       label: "Manufacture this product",
+                      hint: "Used for production orders",
                     },
-                    { value: "KIT" as const, label: "Kit" },
+                    {
+                      value: "KIT" as const,
+                      label: "Kit",
+                      hint: "Sell as a bundle — not produced",
+                    },
                   ] as const
                 ).map((opt) => (
                   <label
                     key={opt.value}
-                    className="flex cursor-pointer items-center gap-2 text-sm text-[var(--frappe-text)]"
+                    className="flex cursor-pointer items-start gap-2 text-sm text-[var(--frappe-text)]"
                   >
                     <input
                       type="radio"
@@ -331,9 +451,14 @@ export function BomForm({ bom }: { bom?: Bom }) {
                       value={opt.value}
                       checked={bomType === opt.value}
                       onChange={() => setBomType(opt.value)}
-                      className="size-3.5 accent-[var(--frappe-primary)]"
+                      className="mt-0.5 size-3.5 accent-[var(--frappe-primary)]"
                     />
-                    {opt.label}
+                    <span className="flex flex-col gap-0.5">
+                      <span>{opt.label}</span>
+                      <span className="text-xs text-[var(--frappe-text-muted)]">
+                        {opt.hint}
+                      </span>
+                    </span>
                   </label>
                 ))}
               </div>
@@ -388,6 +513,19 @@ export function BomForm({ bom }: { bom?: Bom }) {
           title="Components"
           description={`Quantities needed to produce ${quantity || "1"} finished ${stockUnit}. Scrap % increases required material.`}
         >
+          <div className="mb-3 flex flex-wrap items-center justify-end gap-3">
+            <QuickStockItemDialog
+              locationId={quickLocationId}
+              disabled={!quickLocationId}
+              onCreated={(record) => onComponentCreated(record)}
+            />
+            <Link
+              href="/inventory"
+              className="text-xs text-[var(--frappe-text-muted)] hover:text-[var(--frappe-primary)] hover:underline"
+            >
+              All items
+            </Link>
+          </div>
           <FrappeGridTable
             columns={[
               { key: "component", label: "Component" },
@@ -425,6 +563,12 @@ export function BomForm({ bom }: { bom?: Bom }) {
                       options={componentOptions}
                       placeholder="Select component…"
                       searchPlaceholder="Search component…"
+                      footer={(close) =>
+                        itemQuickCreateFooter(
+                          (record) => onComponentCreated(record, index),
+                          close
+                        )
+                      }
                     />
                   </FrappeGridCell>
                   <FrappeGridCell>

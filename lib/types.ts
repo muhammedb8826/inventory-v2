@@ -444,6 +444,13 @@ export interface Purchase {
   lines?: PurchaseLine[];
 }
 
+export interface SaleLineComponent {
+  id?: string;
+  componentItemId: string;
+  stockQuantity: string;
+  componentItem?: Item;
+}
+
 export interface SaleLine {
   id?: string;
   itemId: string;
@@ -455,6 +462,8 @@ export interface SaleLine {
   amount?: string;
   item?: Item;
   uom?: Uom | null;
+  /** Present when the sale exploded a Kit BoM. */
+  components?: SaleLineComponent[];
 }
 
 export interface SaleUserRef {

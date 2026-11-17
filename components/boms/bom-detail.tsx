@@ -85,7 +85,9 @@ export function BomDetail({ bom }: { bom: Bom }) {
             <DetailField
               label="BoM Type"
               value={
-                bom.bomType === "KIT" ? "Kit" : "Manufacture this product"
+                bom.bomType === "KIT"
+                  ? "Kit (not produced)"
+                  : "Manufacture this product"
               }
             />
             {bom.notes ? (

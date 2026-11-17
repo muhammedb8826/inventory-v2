@@ -61,12 +61,14 @@ export function UomSelect({
   }, [list, allowEmpty, emptyLabel]);
 
   useEffect(() => {
+    // Don't clear while options are still loading — parent may set a default id first.
+    if (loading) return;
     if (!value) return;
     if (allowEmpty && value === "") return;
     if (options.some((o) => o.value === value)) return;
     // Selection left the allowed category — clear or fall back.
     onValueChange(allowEmpty ? null : options[0]?.value ?? null);
-  }, [value, options, allowEmpty, onValueChange]);
+  }, [value, options, allowEmpty, onValueChange, loading]);
 
   const selectValue =
     !value && allowEmpty ? "__none__" : value || "";
