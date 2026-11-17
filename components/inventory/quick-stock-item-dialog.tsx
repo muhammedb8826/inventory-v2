@@ -20,11 +20,34 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/lib/api";
+import {
+  DEFAULT_ITEM_TYPE,
+  DEFAULT_OPENING_QTY,
+  DEFAULT_PURCHASE_PRICE,
+} from "@/lib/inventory-defaults";
 import { reorderPointBodyValue } from "@/lib/inventory-stock";
 import { ITEM_TYPE_OPTIONS } from "@/lib/item-types";
 import { errorMessage } from "@/lib/format";
 import type { ItemType, StockRecord } from "@/lib/types";
 import { toast } from "sonner";
+
+function resetQuickCreateFields(setters: {
+  setDescription: (v: string) => void;
+  setSku: (v: string) => void;
+  setUnit: (v: string) => void;
+  setItemType: (v: ItemType) => void;
+  setQuantity: (v: string) => void;
+  setPurchasePrice: (v: string) => void;
+  setReorderPoint: (v: string) => void;
+}) {
+  setters.setDescription("");
+  setters.setSku("");
+  setters.setUnit("pcs");
+  setters.setItemType(DEFAULT_ITEM_TYPE);
+  setters.setQuantity(DEFAULT_OPENING_QTY);
+  setters.setPurchasePrice(DEFAULT_PURCHASE_PRICE);
+  setters.setReorderPoint("");
+}
 
 export function QuickStockItemDialog({
   locationId,
@@ -41,14 +64,23 @@ export function QuickStockItemDialog({
   const [description, setDescription] = useState("");
   const [sku, setSku] = useState("");
   const [unit, setUnit] = useState("pcs");
-  const [itemType, setItemType] = useState<ItemType | "">("");
-  const [quantity, setQuantity] = useState("0");
-  const [purchasePrice, setPurchasePrice] = useState("");
+  const [itemType, setItemType] = useState<ItemType>(DEFAULT_ITEM_TYPE);
+  const [quantity, setQuantity] = useState(DEFAULT_OPENING_QTY);
+  const [purchasePrice, setPurchasePrice] = useState(DEFAULT_PURCHASE_PRICE);
   const [reorderPoint, setReorderPoint] = useState("");
   const [saving, setSaving] = useState(false);
 
   function openDialog() {
     if (disabled) return;
+    resetQuickCreateFields({
+      setDescription,
+      setSku,
+      setUnit,
+      setItemType,
+      setQuantity,
+      setPurchasePrice,
+      setReorderPoint,
+    });
     setOpen(true);
   }
 
@@ -74,10 +106,10 @@ export function QuickStockItemDialog({
         locationId,
         quantity: parseFloat(quantity) || 0,
         purchasePrice: parseFloat(purchasePrice) || 0,
+        itemType,
         sku: sku || undefined,
         unit,
       };
-      if (itemType) body.itemType = itemType;
       if (reorderValue !== null) {
         body.reorderPoint = reorderValue;
       }
@@ -87,13 +119,15 @@ export function QuickStockItemDialog({
       });
       toast.success("Item added to stock");
       setOpen(false);
-      setDescription("");
-      setSku("");
-      setUnit("pcs");
-      setItemType("");
-      setQuantity("0");
-      setPurchasePrice("");
-      setReorderPoint("");
+      resetQuickCreateFields({
+        setDescription,
+        setSku,
+        setUnit,
+        setItemType,
+        setQuantity,
+        setPurchasePrice,
+        setReorderPoint,
+      });
       onCreated(record);
     } catch (err) {
       toast.error(errorMessage(err));
@@ -162,16 +196,13 @@ export function QuickStockItemDialog({
           <div className="grid gap-2">
             <Label>Item type</Label>
             <Select
-              value={itemType || "__none__"}
-              onValueChange={(v) =>
-                setItemType(v === "__none__" ? "" : (v as ItemType))
-              }
+              value={itemType}
+              onValueChange={(v) => setItemType(v as ItemType)}
             >
               <SelectTrigger>
-                <SelectValue placeholder="Optional" />
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">Not set</SelectItem>
                 {ITEM_TYPE_OPTIONS.map((option) => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}

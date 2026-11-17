@@ -181,6 +181,13 @@ export interface Item {
   purchaseUom?: Uom | null;
   itemUoms?: ItemUom[];
   itemType?: ItemType | null;
+  /** Selected attribute values (Color, Size, …) */
+  attributeValues?: ProductAttributeValue[];
+  /** Product template (owns allowed attribute values; no stock). */
+  isTemplate?: boolean;
+  parentItemId?: string | null;
+  parentItem?: Item | null;
+  variantKey?: string | null;
   /** Relative path from API, e.g. `/uploads/items/...` */
   imagePath?: string | null;
   /** Absolute or relative image URL for display */
@@ -197,6 +204,12 @@ export interface StockRecord {
   reorderPoint?: string | null;
   item: Item;
   location: Location;
+}
+
+/** Response when create generates 2+ Odoo-style variants. */
+export interface InventoryVariantCreateResult {
+  template: Item;
+  variants: StockRecord[];
 }
 
 export type LowStockStatus = "LOW_STOCK" | "OUT_OF_STOCK";

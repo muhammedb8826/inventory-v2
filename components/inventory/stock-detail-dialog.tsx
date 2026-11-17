@@ -116,6 +116,16 @@ export function StockDetailDialog({
                   <FrappeField label="Description" fullWidth>
                     <DetailValue>{shown.item.description}</DetailValue>
                   </FrappeField>
+                  {shown.item.parentItem ? (
+                    <FrappeField label="Product" fullWidth>
+                      <DetailValue>
+                        {shown.item.parentItem.description}
+                        <span className="ml-2 text-xs text-[var(--frappe-text-muted)]">
+                          (variant)
+                        </span>
+                      </DetailValue>
+                    </FrappeField>
+                  ) : null}
                   <FrappeField label="SKU">
                     <DetailValue>{shown.item.sku || "—"}</DetailValue>
                   </FrappeField>
@@ -139,6 +149,31 @@ export function StockDetailDialog({
                           }`
                         : "—"}
                     </DetailValue>
+                  </FrappeField>
+                  <FrappeField label="Attributes" fullWidth>
+                    {(shown.item.attributeValues ?? []).length > 0 ? (
+                      <div className="flex min-h-8 flex-wrap gap-1.5">
+                        {(shown.item.attributeValues ?? []).map((value) => (
+                          <Badge
+                            key={value.id}
+                            variant="secondary"
+                            className="gap-1 text-[10px]"
+                          >
+                            {value.colorHex ? (
+                              <span
+                                className="size-2 rounded-full border border-black/10"
+                                style={{ backgroundColor: value.colorHex }}
+                              />
+                            ) : null}
+                            {value.attribute?.name
+                              ? `${value.attribute.name}: ${value.name}`
+                              : value.name}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : (
+                      <DetailValue>—</DetailValue>
+                    )}
                   </FrappeField>
                 </FrappeFormGrid>
               </FrappeSection>

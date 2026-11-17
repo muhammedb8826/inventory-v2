@@ -1,13 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { DataCardTable } from "@/components/shared/data-card-table";
 import { ItemCardGrid } from "@/components/shared/item-card-grid";
 import { ListGridViewToggle } from "@/components/shared/list-grid-view-toggle";
 import { PageLoading } from "@/components/shared/page-loading";
 import { PermissionGate } from "@/components/permission-gate";
-import { FrappeFilterBar, FrappeListToolbar } from "@/components/frappe";
+import {
+  FrappeButtonPrimary,
+  FrappeFilterBar,
+  FrappeListToolbar,
+} from "@/components/frappe";
 import { DateRangeFilter } from "@/components/shared/date-range-filter";
 import { ListSearchField } from "@/components/shared/list-search-field";
 import { FilterSelect } from "@/components/shared/filter-field";
@@ -55,6 +60,7 @@ import type {
   StockRecord,
 } from "@/lib/types";
 import { itemTypeLabel } from "@/lib/item-types";
+import { formatItemAttributeLabel } from "@/lib/item-attributes";
 import { ListPageTotals } from "@/components/shared/list-page-totals";
 import { useLocations } from "@/hooks/use-locations";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
@@ -68,7 +74,7 @@ import { StockFormDialog } from "@/components/inventory/stock-form-dialog";
 import { useAuth } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { toast } from "sonner";
-import { UploadIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import { PlusIcon, UploadIcon, PencilIcon, Trash2Icon } from "lucide-react";
 
 const ALL_LOCATIONS = "__all__";
 const VIEW_ALL = "all";
@@ -151,10 +157,18 @@ export default function InventoryPage() {
       actions={
         <div className="flex flex-wrap items-center gap-2">
           <PermissionGate permission="inventory.write">
-            <StockFormDialog
-              locationId={listLocationId}
-              onSuccess={reload}
-            />
+            <FrappeButtonPrimary asChild>
+              <Link
+                href={
+                  listLocationId
+                    ? `/inventory/new?locationId=${encodeURIComponent(listLocationId)}`
+                    : "/inventory/new"
+                }
+              >
+                <PlusIcon className="size-3.5" />
+                Add item
+              </Link>
+            </FrappeButtonPrimary>
           </PermissionGate>
           <PermissionGate permission="inventory.read">
             <ExportInventoryButton
@@ -312,6 +326,7 @@ export default function InventoryPage() {
               getSubtitle={(r) =>
                 [
                   isAllLocations ? r.location?.name : null,
+                  formatItemAttributeLabel(r.item.attributeValues) || null,
                   r.item.sku ? `SKU: ${r.item.sku}` : null,
                   r.item.itemType ? itemTypeLabel(r.item.itemType) : null,
                 ]
@@ -464,6 +479,9 @@ export default function InventoryPage() {
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {[
+                                formatItemAttributeLabel(
+                                  r.item.attributeValues
+                                ) || null,
                                 r.item.sku ? `SKU: ${r.item.sku}` : null,
                                 r.item.itemType
                                   ? itemTypeLabel(r.item.itemType)

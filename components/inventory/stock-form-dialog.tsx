@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { api } from "@/lib/api";
+import { fetchAttributes } from "@/lib/attributes";
 import {
   clearStockItemImage,
   ITEM_IMAGE_ACCEPT,
@@ -31,6 +32,13 @@ import {
   optionalStringBodyValue,
   reorderPointBodyValue,
 } from "@/lib/inventory-stock";
+import {
+  DEFAULT_ITEM_TYPE,
+  DEFAULT_OPENING_QTY,
+  DEFAULT_PURCHASE_PRICE,
+  findDefaultLocationId,
+  findDefaultStockUomId,
+} from "@/lib/inventory-defaults";
 import { ITEM_TYPE_OPTIONS } from "@/lib/item-types";
 import { formatQty, errorMessage } from "@/lib/format";
 import { formatItemStockQty } from "@/lib/uom";
@@ -38,6 +46,12 @@ import { requestNotificationsRefresh } from "@/lib/notification-events";
 import type { ItemType, StockRecord } from "@/lib/types";
 import { UomSelect } from "@/components/uom/uom-select";
 import { EntitySelectField } from "@/components/shared/entity-select-field";
+import {
+  attributeValueIdsFromSelections,
+  ItemAttributePicker,
+  selectionsFromAttributeValues,
+  type AttributeSelections,
+} from "@/components/inventory/item-attribute-picker";
 import { ItemImage } from "@/components/shared/item-image";
 import { QuickLocationDialog } from "@/components/locations/quick-location-dialog";
 import { useLocations } from "@/hooks/use-locations";
@@ -85,11 +99,13 @@ export function StockFormDialog({
   );
   const [uomWidth, setUomWidth] = useState(record?.item.uomWidth ?? "");
   const [itemType, setItemType] = useState<ItemType | "">(
-    record?.item.itemType ?? ""
+    record?.item.itemType ?? (record ? "" : DEFAULT_ITEM_TYPE)
   );
-  const [quantity, setQuantity] = useState(record?.quantity ?? "");
+  const [quantity, setQuantity] = useState(
+    record?.quantity ?? DEFAULT_OPENING_QTY
+  );
   const [purchasePrice, setPurchasePrice] = useState(
-    record?.purchasePrice ?? ""
+    record?.purchasePrice ?? DEFAULT_PURCHASE_PRICE
   );
   const [reorderPoint, setReorderPoint] = useState(record?.reorderPoint ?? "");
   const [saving, setSaving] = useState(false);
@@ -99,8 +115,13 @@ export function StockFormDialog({
     resolveItemImageUrl(record?.item.imageUrl)
   );
   const [removeExistingImage, setRemoveExistingImage] = useState(false);
+  const [attributeSelections, setAttributeSelections] =
+    useState<AttributeSelections>(() =>
+      selectionsFromAttributeValues(record?.item.attributeValues)
+    );
 
   const { data: allUoms } = useFetch(() => fetchUoms(), []);
+  const { data: attributes } = useFetch(() => fetchAttributes(), []);
   const stockUomCategoryId = useMemo(() => {
     if (!stockUomId) return null;
     return (
@@ -125,21 +146,51 @@ export function StockFormDialog({
     if (fileRef.current) fileRef.current.value = "";
   }
 
+  function applyCreateDefaults() {
+    const defaultUomId = findDefaultStockUomId(allUoms);
+    setFormLocationId(findDefaultLocationId(locations, defaultLocationId));
+    setDescription("");
+    setSku("");
+    setStockUomId(defaultUomId);
+    setSalesUomId(defaultUomId);
+    setPurchaseUomId(defaultUomId);
+    setUomWidth("");
+    setItemType(DEFAULT_ITEM_TYPE);
+    setQuantity(DEFAULT_OPENING_QTY);
+    setPurchasePrice(DEFAULT_PURCHASE_PRICE);
+    setReorderPoint("");
+    setAttributeSelections({});
+    resetImageState();
+  }
+
+  useEffect(() => {
+    if (open && !record && !formLocationId && locations?.length) {
+      setFormLocationId(findDefaultLocationId(locations, defaultLocationId));
+    }
+  }, [open, record, formLocationId, locations, defaultLocationId]);
+
   function handleOpenChange(nextOpen: boolean) {
     setOpen(nextOpen);
     if (nextOpen) {
-      setFormLocationId(record?.locationId ?? defaultLocationId ?? "");
-      setDescription(record?.item.description ?? "");
-      setSku(record?.item.sku ?? "");
-      setStockUomId(record?.item.stockUomId ?? null);
-      setSalesUomId(record?.item.salesUomId ?? null);
-      setPurchaseUomId(record?.item.purchaseUomId ?? null);
-      setUomWidth(record?.item.uomWidth ?? "");
-      setItemType(record?.item.itemType ?? "");
-      setQuantity(record?.quantity ?? "");
-      setPurchasePrice(record?.purchasePrice ?? "");
-      setReorderPoint(record?.reorderPoint ?? "");
-      resetImageState(record);
+      if (record) {
+        setFormLocationId(record.locationId);
+        setDescription(record.item.description ?? "");
+        setSku(record.item.sku ?? "");
+        setStockUomId(record.item.stockUomId ?? null);
+        setSalesUomId(record.item.salesUomId ?? null);
+        setPurchaseUomId(record.item.purchaseUomId ?? null);
+        setUomWidth(record.item.uomWidth ?? "");
+        setItemType(record.item.itemType ?? "");
+        setQuantity(record.quantity ?? "");
+        setPurchasePrice(record.purchasePrice ?? "");
+        setReorderPoint(record.reorderPoint ?? "");
+        setAttributeSelections(
+          selectionsFromAttributeValues(record.item.attributeValues)
+        );
+        resetImageState(record);
+      } else {
+        applyCreateDefaults();
+      }
     }
   }
 
@@ -196,27 +247,38 @@ export function StockFormDialog({
             itemType: itemType || null,
             purchasePrice: parseFloat(purchasePrice),
             reorderPoint: reorderValue,
+            attributeValueIds:
+              attributeValueIdsFromSelections(attributeSelections),
           },
         });
         requestNotificationsRefresh();
       } else {
-        if (!quantity.trim() || Number.isNaN(parseFloat(quantity))) {
-          toast.error("Quantity is required");
+        const qty = parseFloat(quantity);
+        if (quantity.trim() === "" || Number.isNaN(qty) || qty < 0) {
+          toast.error("Enter a valid opening quantity");
+          setSaving(false);
+          return;
+        }
+        const price = parseFloat(purchasePrice);
+        if (purchasePrice.trim() === "" || Number.isNaN(price) || price < 0) {
+          toast.error("Enter a valid purchase price");
           setSaving(false);
           return;
         }
         const body: Record<string, unknown> = {
           description: description.trim(),
           locationId: targetLocationId,
-          quantity: parseFloat(quantity),
-          purchasePrice: parseFloat(purchasePrice),
+          quantity: qty,
+          purchasePrice: price,
+          itemType: itemType || DEFAULT_ITEM_TYPE,
           sku: optionalStringBodyValue(sku) ?? undefined,
           stockUomId: stockUomId ?? undefined,
           salesUomId: salesUomId ?? undefined,
           purchaseUomId: purchaseUomId ?? undefined,
+          attributeValueIds:
+            attributeValueIdsFromSelections(attributeSelections),
         };
         if (uomWidth.trim()) body.uomWidth = parseFloat(uomWidth);
-        if (itemType) body.itemType = itemType;
         if (reorderValue !== null) {
           body.reorderPoint = reorderValue;
         }
@@ -420,18 +482,15 @@ export function StockFormDialog({
               </p>
             </div>
             <div className="grid gap-2">
-              <Label>Item type (optional)</Label>
+              <Label>Item type</Label>
               <Select
-                value={itemType || "__none__"}
-                onValueChange={(v) =>
-                  setItemType(v === "__none__" ? "" : (v as ItemType))
-                }
+                value={itemType || DEFAULT_ITEM_TYPE}
+                onValueChange={(v) => setItemType(v as ItemType)}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Not set" />
+                  <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="__none__">Not set</SelectItem>
                   {ITEM_TYPE_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -449,15 +508,17 @@ export function StockFormDialog({
             ) : null}
             {!record ? (
               <div className="grid gap-2">
-                <Label>Quantity</Label>
+                <Label>Opening quantity</Label>
                 <Input
                   type="number"
                   step="any"
                   min="0"
                   value={quantity}
                   onChange={(e) => setQuantity(e.target.value)}
-                  required
                 />
+                <p className="text-xs text-muted-foreground">
+                  Defaults to 0 — you can stock later via purchase or adjust.
+                </p>
               </div>
             ) : (
               <div className="rounded border border-dashed border-[var(--frappe-border)] px-3 py-2 text-sm text-[var(--frappe-text-muted)]">
@@ -475,8 +536,12 @@ export function StockFormDialog({
                 min="0"
                 value={purchasePrice}
                 onChange={(e) => setPurchasePrice(e.target.value)}
-                required
               />
+              {!record ? (
+                <p className="text-xs text-muted-foreground">
+                  Defaults to 0.
+                </p>
+              ) : null}
             </div>
             <div className="grid gap-2">
               <Label>Reorder point (optional)</Label>
@@ -491,6 +556,15 @@ export function StockFormDialog({
               <p className="text-xs text-muted-foreground">
                 Leave blank to disable low-stock alerts for this item.
               </p>
+            </div>
+            <div className="grid gap-2">
+              <Label>Attributes</Label>
+              <ItemAttributePicker
+                attributes={attributes}
+                selections={attributeSelections}
+                onChange={setAttributeSelections}
+                compact
+              />
             </div>
           </div>
           <DialogFooter className="mx-0 mb-0 shrink-0 rounded-none border-t border-[var(--frappe-border)] bg-[var(--frappe-section-head)] px-4 py-3">
