@@ -118,6 +118,30 @@ export function itemStockUomCategoryId(
   );
 }
 
+/** Stock UOM category code (AREA, LENGTH, UNIT, …). */
+export function itemStockUomCategoryCode(
+  item: Item | undefined | null,
+  uoms: Uom[] = []
+): string | null {
+  if (!item) return null;
+  const fromRelation = item.stockUom?.category?.code;
+  if (fromRelation) return fromRelation;
+  const stockUom =
+    item.stockUom ?? uoms.find((u) => u.id === item.stockUomId) ?? null;
+  return stockUom?.category?.code ?? null;
+}
+
+/**
+ * W×H cut columns on sales/purchases: needs cut pricing + Area stock UOM.
+ */
+export function itemAllowsCuts(
+  item: Item | undefined | null,
+  uoms: Uom[] = []
+): boolean {
+  if (!item?.dimensionPriceMode) return false;
+  return itemStockUomCategoryCode(item, uoms) === "AREA";
+}
+
 /**
  * Allowed UOM category ids for document lines / sales-purchase defaults.
  * Same category only; Length↔Area allowed when item has a positive width.

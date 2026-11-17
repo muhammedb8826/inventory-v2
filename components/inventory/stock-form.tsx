@@ -25,7 +25,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { api } from "@/lib/api";
 import { fetchAttributes } from "@/lib/attributes";
 import {
+  clearStockItemImage,
   ITEM_IMAGE_ACCEPT,
+  resolveItemImageUrl,
   uploadStockItemImage,
   validateItemImageFile,
 } from "@/lib/inventory-media";
@@ -41,7 +43,9 @@ import {
   reorderPointBodyValue,
 } from "@/lib/inventory-stock";
 import { ITEM_TYPE_OPTIONS } from "@/lib/item-types";
-import { errorMessage } from "@/lib/format";
+import { errorMessage, formatQty } from "@/lib/format";
+import { formatItemStockQty } from "@/lib/uom";
+import { requestNotificationsRefresh } from "@/lib/notification-events";
 import type {
   InventoryVariantCreateResult,
   ItemType,
@@ -50,10 +54,13 @@ import type {
 import { UomSelect } from "@/components/uom/uom-select";
 import { EntitySelectField } from "@/components/shared/entity-select-field";
 import {
+  attributeValueIdsFromSelections,
   countVariantCombinations,
   ItemAttributePicker,
   previewVariantCombinations,
+  selectionsFromAttributeValues,
   variantAttributesFromMulti,
+  type AttributeSelections,
   type MultiAttributeSelections,
 } from "@/components/inventory/item-attribute-picker";
 import { QuickLocationDialog } from "@/components/locations/quick-location-dialog";
@@ -65,11 +72,15 @@ import { ImageIcon, Trash2Icon, UploadIcon } from "lucide-react";
 
 export function StockForm({
   defaultLocationId,
+  record,
 }: {
-  /** Prefill from inventory list filter. */
+  /** Prefill from inventory list filter (create only). */
   defaultLocationId?: string;
+  /** When set, form updates this stock row instead of creating. */
+  record?: StockRecord;
 }) {
   const router = useRouter();
+  const isEdit = Boolean(record);
   const fileRef = useRef<HTMLInputElement>(null);
   const {
     data: locations,
@@ -79,31 +90,62 @@ export function StockForm({
   const { data: allUoms } = useFetch(() => fetchUoms(), []);
   const { data: attributes } = useFetch(() => fetchAttributes(), []);
 
-  const [formLocationId, setFormLocationId] = useState(defaultLocationId ?? "");
-  const [description, setDescription] = useState("");
-  const [sku, setSku] = useState("");
-  const [stockUomId, setStockUomId] = useState<string | null>(null);
-  const [salesUomId, setSalesUomId] = useState<string | null>(null);
-  const [purchaseUomId, setPurchaseUomId] = useState<string | null>(null);
-  const [uomWidth, setUomWidth] = useState("");
+  const [formLocationId, setFormLocationId] = useState(
+    record?.locationId ?? defaultLocationId ?? ""
+  );
+  const [description, setDescription] = useState(
+    record?.item.description ?? ""
+  );
+  const [sku, setSku] = useState(record?.item.sku ?? "");
+  const [stockUomId, setStockUomId] = useState<string | null>(
+    record?.item.stockUomId ?? null
+  );
+  const [salesUomId, setSalesUomId] = useState<string | null>(
+    record?.item.salesUomId ?? null
+  );
+  const [purchaseUomId, setPurchaseUomId] = useState<string | null>(
+    record?.item.purchaseUomId ?? null
+  );
+  const [uomWidth, setUomWidth] = useState(record?.item.uomWidth ?? "");
   const [dimensionPriceMode, setDimensionPriceMode] = useState<
     "" | "AREA" | "PIECE"
-  >("");
-  const [itemType, setItemType] = useState<ItemType>(DEFAULT_ITEM_TYPE);
-  const [quantity, setQuantity] = useState(DEFAULT_OPENING_QTY);
-  const [purchasePrice, setPurchasePrice] = useState(DEFAULT_PURCHASE_PRICE);
-  const [reorderPoint, setReorderPoint] = useState("");
+  >(record?.item.dimensionPriceMode ?? "");
+  const [stockUomLocked, setStockUomLocked] = useState(
+    Boolean(record?.stockUomLocked)
+  );
+  const [itemType, setItemType] = useState<ItemType>(
+    record?.item.itemType ?? DEFAULT_ITEM_TYPE
+  );
+  const [quantity, setQuantity] = useState(
+    record?.quantity ?? DEFAULT_OPENING_QTY
+  );
+  const [purchasePrice, setPurchasePrice] = useState(
+    record?.purchasePrice ?? DEFAULT_PURCHASE_PRICE
+  );
+  const [reorderPoint, setReorderPoint] = useState(record?.reorderPoint ?? "");
   const [saving, setSaving] = useState(false);
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [previewObjectUrl, setPreviewObjectUrl] = useState<string | null>(null);
-  const [uomDefaultApplied, setUomDefaultApplied] = useState(false);
+  const [existingImageUrl, setExistingImageUrl] = useState<string | null>(
+    resolveItemImageUrl(record?.item.imageUrl ?? record?.item.imagePath)
+  );
+  const [removeExistingImage, setRemoveExistingImage] = useState(false);
+  const [uomDefaultApplied, setUomDefaultApplied] = useState(isEdit);
+  const [attributeSelections, setAttributeSelections] =
+    useState<AttributeSelections>(() =>
+      selectionsFromAttributeValues(record?.item.attributeValues)
+    );
   const [multiAttributeSelections, setMultiAttributeSelections] =
     useState<MultiAttributeSelections>({});
 
   const stockUomCategoryId = useMemo(() => {
     if (!stockUomId) return null;
-    return allUoms?.find((u) => u.id === stockUomId)?.categoryId ?? null;
-  }, [stockUomId, allUoms]);
+    return (
+      allUoms?.find((u) => u.id === stockUomId)?.categoryId ??
+      record?.item.stockUom?.categoryId ??
+      null
+    );
+  }, [stockUomId, allUoms, record?.item.stockUom?.categoryId]);
 
   const variantCount = useMemo(
     () => countVariantCombinations(multiAttributeSelections),
@@ -122,16 +164,16 @@ export function StockForm({
   );
 
   useEffect(() => {
-    if (!locations?.length) return;
+    if (isEdit || !locations?.length) return;
     setFormLocationId((current) =>
       current && locations.some((l) => l.id === current)
         ? current
         : findDefaultLocationId(locations, defaultLocationId)
     );
-  }, [locations, defaultLocationId]);
+  }, [locations, defaultLocationId, isEdit]);
 
   useEffect(() => {
-    if (uomDefaultApplied || !allUoms?.length) return;
+    if (isEdit || uomDefaultApplied || !allUoms?.length) return;
     const id = findDefaultStockUomId(allUoms);
     if (id) {
       setStockUomId(id);
@@ -139,7 +181,32 @@ export function StockForm({
       setPurchaseUomId(id);
     }
     setUomDefaultApplied(true);
-  }, [allUoms, uomDefaultApplied]);
+  }, [allUoms, uomDefaultApplied, isEdit]);
+
+  useEffect(() => {
+    if (!record?.id) return;
+    void api<StockRecord>(`/inventory/${record.id}`)
+      .then((fresh) => {
+        setStockUomLocked(Boolean(fresh.stockUomLocked));
+        setStockUomId(fresh.item.stockUomId ?? null);
+        setSalesUomId(fresh.item.salesUomId ?? null);
+        setPurchaseUomId(fresh.item.purchaseUomId ?? null);
+        setUomWidth(fresh.item.uomWidth ?? "");
+        setDimensionPriceMode(fresh.item.dimensionPriceMode ?? "");
+        setQuantity(fresh.quantity ?? "");
+        setPurchasePrice(fresh.purchasePrice ?? "");
+        setReorderPoint(fresh.reorderPoint ?? "");
+        setAttributeSelections(
+          selectionsFromAttributeValues(fresh.item.attributeValues)
+        );
+        setExistingImageUrl(
+          resolveItemImageUrl(fresh.item.imageUrl ?? fresh.item.imagePath)
+        );
+      })
+      .catch(() => {
+        /* keep list/detail payload */
+      });
+  }, [record?.id]);
 
   useEffect(() => {
     return () => {
@@ -157,14 +224,22 @@ export function StockForm({
     if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
     setImageFile(file);
     setPreviewObjectUrl(URL.createObjectURL(file));
+    setRemoveExistingImage(false);
   }
 
   function clearImage() {
-    if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
-    setPreviewObjectUrl(null);
-    setImageFile(null);
-    if (fileRef.current) fileRef.current.value = "";
+    if (previewObjectUrl) {
+      URL.revokeObjectURL(previewObjectUrl);
+      setPreviewObjectUrl(null);
+      setImageFile(null);
+      if (fileRef.current) fileRef.current.value = "";
+      return;
+    }
+    if (existingImageUrl) setRemoveExistingImage(true);
   }
+
+  const displayImageSrc =
+    previewObjectUrl || (!removeExistingImage ? existingImageUrl : null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -172,6 +247,58 @@ export function StockForm({
       toast.error("Item name is required");
       return;
     }
+
+    const reorderValue = reorderPointBodyValue(reorderPoint);
+    if (reorderValue === undefined) {
+      toast.error("Enter a valid reorder point or leave blank");
+      return;
+    }
+
+    const price = parseFloat(purchasePrice);
+    if (purchasePrice.trim() === "" || Number.isNaN(price) || price < 0) {
+      toast.error("Enter a valid purchase price");
+      return;
+    }
+
+    if (isEdit && record) {
+      setSaving(true);
+      try {
+        const body: Record<string, unknown> = {
+          description: description.trim(),
+          sku: optionalStringBodyValue(sku),
+          salesUomId,
+          purchaseUomId,
+          uomWidth: uomWidth.trim() ? parseFloat(uomWidth) : null,
+          dimensionPriceMode: dimensionPriceMode || null,
+          itemType: itemType || null,
+          purchasePrice: price,
+          reorderPoint: reorderValue,
+          attributeValueIds:
+            attributeValueIdsFromSelections(attributeSelections),
+        };
+        if (!stockUomLocked) {
+          body.stockUomId = stockUomId;
+        }
+        await api(`/inventory/${record.id}`, {
+          method: "PATCH",
+          body,
+        });
+        if (imageFile) {
+          await uploadStockItemImage(record.id, imageFile);
+        } else if (removeExistingImage && existingImageUrl) {
+          await clearStockItemImage(record.id);
+        }
+        requestNotificationsRefresh();
+        toast.success("Stock updated");
+        router.push("/inventory");
+      } catch (err) {
+        toast.error(errorMessage(err));
+      } finally {
+        setSaving(false);
+      }
+      return;
+    }
+
     if (!formLocationId) {
       toast.error("Select a location");
       return;
@@ -181,17 +308,6 @@ export function StockForm({
       toast.error("Enter a valid opening quantity");
       return;
     }
-    const price = parseFloat(purchasePrice);
-    if (Number.isNaN(price) || price < 0) {
-      toast.error("Enter a valid purchase price");
-      return;
-    }
-    const reorderValue = reorderPointBodyValue(reorderPoint);
-    if (reorderValue === undefined) {
-      toast.error("Enter a valid reorder point or leave blank");
-      return;
-    }
-
     if (variantCount > 100) {
       toast.error("Too many variants (max 100). Narrow your attribute selections.");
       return;
@@ -270,7 +386,7 @@ export function StockForm({
         <FrappeFormToolbar>
           <FrappeButtonLink href="/inventory">Cancel</FrappeButtonLink>
           <FrappeButtonPrimary type="submit" disabled={saving}>
-            {saving ? "Saving…" : "Save"}
+            {saving ? "Saving…" : isEdit ? "Update" : "Save"}
           </FrappeButtonPrimary>
         </FrappeFormToolbar>
 
@@ -293,7 +409,9 @@ export function StockForm({
                 className="h-11 border-[var(--frappe-border)] bg-[var(--frappe-surface)] text-lg font-semibold shadow-none"
               />
               <p className="text-[11px] text-[var(--frappe-text-muted)]">
-                Only the name is required — other fields have defaults.
+                {isEdit
+                  ? "Changes apply everywhere this item is stocked."
+                  : "Only the name is required — other fields have defaults."}
               </p>
             </div>
 
@@ -311,10 +429,10 @@ export function StockForm({
                 className="group relative flex size-28 flex-col items-center justify-center overflow-hidden rounded-md border border-dashed border-[var(--frappe-border)] bg-[var(--frappe-section-head)] transition-colors hover:border-[var(--frappe-primary)] hover:bg-[var(--frappe-surface)]"
                 title="Upload image"
               >
-                {previewObjectUrl ? (
+                {displayImageSrc ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={previewObjectUrl}
+                    src={displayImageSrc}
                     alt=""
                     className="size-full object-contain p-1"
                   />
@@ -327,7 +445,7 @@ export function StockForm({
                   </>
                 )}
               </button>
-              {previewObjectUrl ? (
+              {displayImageSrc ? (
                 <div className="mt-1.5 flex justify-center gap-1">
                   <Button
                     type="button"
@@ -391,7 +509,11 @@ export function StockForm({
           <TabsContent value="general" className="mt-0">
             <FrappeSection
               title="General information"
-              description="Defaults are fine for a quick create — change only what you need."
+              description={
+                isEdit
+                  ? "Quantity cannot be edited here — use Adjust on the stock row."
+                  : "Defaults are fine for a quick create — change only what you need."
+              }
             >
               <FrappeFormGrid columns={2}>
                 <FrappeField label="SKU" hint="Optional product code">
@@ -418,62 +540,86 @@ export function StockForm({
                     </SelectContent>
                   </Select>
                 </FrappeField>
-                <EntitySelectField
-                  label="Location"
-                  required
-                  hint="Defaults to the first warehouse"
-                  value={formLocationId}
-                  onValueChange={setFormLocationId}
-                  options={(locations ?? []).map((l) => ({
-                    id: l.id,
-                    label: `${l.name} (${l.type})`,
-                  }))}
-                  placeholder={
-                    locationsLoading
-                      ? "Loading locations…"
-                      : "Select location"
-                  }
-                  listHref="/locations"
-                  listLabel="All locations"
-                  emptyMessage="Add a location to stock items."
-                  quickCreate={
-                    <QuickLocationDialog
-                      onCreated={(location) => {
-                        setLocations((prev) => [...(prev ?? []), location]);
-                        setFormLocationId(location.id);
-                      }}
-                    />
-                  }
-                  disabled={locationsLoading}
-                />
+                {isEdit && record ? (
+                  <FrappeField label="Location" hint="Location cannot be changed here.">
+                    <p className="flex h-9 items-center text-sm text-[var(--frappe-text)]">
+                      {record.location?.name ?? "—"}
+                    </p>
+                  </FrappeField>
+                ) : (
+                  <EntitySelectField
+                    label="Location"
+                    required
+                    hint="Defaults to the first warehouse"
+                    value={formLocationId}
+                    onValueChange={setFormLocationId}
+                    options={(locations ?? []).map((l) => ({
+                      id: l.id,
+                      label: `${l.name} (${l.type})`,
+                    }))}
+                    placeholder={
+                      locationsLoading
+                        ? "Loading locations…"
+                        : "Select location"
+                    }
+                    listHref="/locations"
+                    listLabel="All locations"
+                    emptyMessage="Add a location to stock items."
+                    quickCreate={
+                      <QuickLocationDialog
+                        onCreated={(location) => {
+                          setLocations((prev) => [...(prev ?? []), location]);
+                          setFormLocationId(location.id);
+                        }}
+                      />
+                    }
+                    disabled={locationsLoading}
+                  />
+                )}
                 <FrappeField
                   label="Stock UOM"
-                  hint="Inventory is stored in this unit (defaults to pcs)."
+                  hint={
+                    isEdit && stockUomLocked
+                      ? "Locked after stock or document history. Change sales/purchase UOM in the same category instead."
+                      : "Inventory is stored in this unit (defaults to pcs)."
+                  }
                 >
                   <UomSelect
                     value={stockUomId}
                     onValueChange={(id) => {
                       setStockUomId(id);
-                      setSalesUomId(id);
-                      setPurchaseUomId(id);
+                      setSalesUomId(null);
+                      setPurchaseUomId(null);
                     }}
                     placeholder="pcs"
                     allowEmpty
                     emptyLabel="Default (pcs)"
+                    disabled={isEdit && stockUomLocked}
                   />
                 </FrappeField>
-                <FrappeField
-                  label="Opening quantity"
-                  hint="Defaults to 0 — stock later via purchase or adjust."
-                >
-                  <Input
-                    type="number"
-                    step="any"
-                    min="0"
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
-                  />
-                </FrappeField>
+                {isEdit && record ? (
+                  <FrappeField
+                    label="On hand"
+                    hint="Use Adjust on the stock list to change quantity."
+                  >
+                    <p className="flex h-9 items-center text-sm font-medium tabular-nums text-[var(--frappe-text)]">
+                      {formatItemStockQty(quantity, record.item, formatQty)}
+                    </p>
+                  </FrappeField>
+                ) : (
+                  <FrappeField
+                    label="Opening quantity"
+                    hint="Defaults to 0 — stock later via purchase or adjust."
+                  >
+                    <Input
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={quantity}
+                      onChange={(e) => setQuantity(e.target.value)}
+                    />
+                  </FrappeField>
+                )}
                 <FrappeField
                   label="Reorder point"
                   hint="Leave blank to disable low-stock alerts."
@@ -502,7 +648,7 @@ export function StockForm({
                 </FrappeField>
                 <FrappeField
                   label="Cut pricing"
-                  hint="Enable W×H cuts on sales/purchases. Stock stays in area (m²)."
+                  hint="Requires Area stock UOM (m²). Use roll width for Length purchases; W×H cuts on sales/purchases."
                 >
                   <Select
                     value={dimensionPriceMode || "__none__"}
@@ -587,84 +733,105 @@ export function StockForm({
           </TabsContent>
 
           <TabsContent value="attributes" className="mt-0">
-            <FrappeSection
-              title="Attributes"
-              description="Select multiple values to generate variants (each combination gets its own stock)."
-              actions={
-                <Link
-                  href="/settings/attributes"
-                  className="text-xs text-[var(--frappe-primary)] hover:underline"
-                >
-                  Manage attributes
-                </Link>
-              }
-            >
-              <ItemAttributePicker
-                mode="multiple"
-                attributes={attributes}
-                multiSelections={multiAttributeSelections}
-                onMultiChange={setMultiAttributeSelections}
-              />
+            {isEdit ? (
+              <FrappeSection
+                title="Attributes"
+                description="Assign attribute values for this item."
+                actions={
+                  <Link
+                    href="/settings/attributes"
+                    className="text-xs text-[var(--frappe-primary)] hover:underline"
+                  >
+                    Manage attributes
+                  </Link>
+                }
+              >
+                <ItemAttributePicker
+                  attributes={attributes}
+                  selections={attributeSelections}
+                  onChange={setAttributeSelections}
+                />
+              </FrappeSection>
+            ) : (
+              <FrappeSection
+                title="Attributes"
+                description="Select multiple values to generate variants (each combination gets its own stock)."
+                actions={
+                  <Link
+                    href="/settings/attributes"
+                    className="text-xs text-[var(--frappe-primary)] hover:underline"
+                  >
+                    Manage attributes
+                  </Link>
+                }
+              >
+                <ItemAttributePicker
+                  mode="multiple"
+                  attributes={attributes}
+                  multiSelections={multiAttributeSelections}
+                  onMultiChange={setMultiAttributeSelections}
+                />
 
-              {variantCount > 0 ? (
-                <div className="mt-4 space-y-2">
-                  <p className="text-sm text-[var(--frappe-text)]">
-                    {variantCount >= 2 ? (
-                      <>
-                        Will create{" "}
-                        <span className="font-semibold">{variantCount}</span>{" "}
-                        stock variants
-                        {variantPreview.length > 1
-                          ? ` (${Object.values(multiAttributeSelections)
-                              .filter((ids) => ids.length > 0)
-                              .map((ids) => ids.length)
-                              .join(" × ")})`
-                          : null}
-                        .
-                      </>
-                    ) : (
-                      <>One combination — creates a single stock item.</>
-                    )}
-                  </p>
-                  {variantCount >= 2 && variantCount <= 100 ? (
-                    <div className="max-h-48 overflow-y-auto rounded border border-[var(--frappe-border)]">
-                      <table className="w-full text-left text-xs">
-                        <thead className="sticky top-0 bg-[var(--frappe-section-head)] text-[var(--frappe-text-muted)]">
-                          <tr>
-                            <th className="px-3 py-2 font-medium">Variant</th>
-                            <th className="px-3 py-2 font-medium">SKU</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {variantPreview.map((row) => (
-                            <tr
-                              key={row.label}
-                              className="border-t border-[var(--frappe-border)]"
-                            >
-                              <td className="px-3 py-1.5 text-[var(--frappe-text)]">
-                                {row.label}
-                              </td>
-                              <td className="px-3 py-1.5 tabular-nums text-[var(--frappe-text-muted)]">
-                                {row.sku ?? "—"}
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : null}
-                  {variantCount > 100 ? (
-                    <p className="text-xs text-[var(--frappe-red)]">
-                      Too many combinations (max 100). Clear some values.
+                {variantCount > 0 ? (
+                  <div className="mt-4 space-y-2">
+                    <p className="text-sm text-[var(--frappe-text)]">
+                      {variantCount >= 2 ? (
+                        <>
+                          Will create{" "}
+                          <span className="font-semibold">{variantCount}</span>{" "}
+                          stock variants
+                          {variantPreview.length > 1
+                            ? ` (${Object.values(multiAttributeSelections)
+                                .filter((ids) => ids.length > 0)
+                                .map((ids) => ids.length)
+                                .join(" × ")})`
+                            : null}
+                          .
+                        </>
+                      ) : (
+                        <>One combination — creates a single stock item.</>
+                      )}
                     </p>
-                  ) : null}
-                </div>
-              ) : (
-                <p className="mt-3 text-xs text-[var(--frappe-text-muted)]">
-                  Optional. Leave empty for a simple item with no variants.
-                </p>
-              )}
-            </FrappeSection>
+                    {variantCount >= 2 && variantCount <= 100 ? (
+                      <div className="max-h-48 overflow-y-auto rounded border border-[var(--frappe-border)]">
+                        <table className="w-full text-left text-xs">
+                          <thead className="sticky top-0 bg-[var(--frappe-section-head)] text-[var(--frappe-text-muted)]">
+                            <tr>
+                              <th className="px-3 py-2 font-medium">Variant</th>
+                              <th className="px-3 py-2 font-medium">SKU</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {variantPreview.map((row) => (
+                              <tr
+                                key={row.label}
+                                className="border-t border-[var(--frappe-border)]"
+                              >
+                                <td className="px-3 py-1.5 text-[var(--frappe-text)]">
+                                  {row.label}
+                                </td>
+                                <td className="px-3 py-1.5 tabular-nums text-[var(--frappe-text-muted)]">
+                                  {row.sku ?? "—"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : null}
+                    {variantCount > 100 ? (
+                      <p className="text-xs text-[var(--frappe-red)]">
+                        Too many combinations (max 100). Clear some values.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-xs text-[var(--frappe-text-muted)]">
+                    Optional. Leave empty for a simple item with no variants.
+                  </p>
+                )}
+              </FrappeSection>
+            )}
           </TabsContent>
         </Tabs>
       </FrappeDocument>

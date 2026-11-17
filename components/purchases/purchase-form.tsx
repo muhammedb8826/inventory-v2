@@ -42,7 +42,7 @@ import {
   useAutoPaymentAccount,
 } from "@/hooks/use-payment-bank-account";
 import { buildItemOptionMap, itemOptionsFromMap, parseDocumentLines, productItemId, resolveItem, type DocumentLineBody } from "@/lib/inventory-items";
-import { defaultUomIdForItem, fetchUoms } from "@/lib/uom";
+import { defaultUomIdForItem, fetchUoms, itemAllowsCuts } from "@/lib/uom";
 import { errorMessage } from "@/lib/format";
 import { PAYMENT_METHOD_OPTIONS } from "@/lib/form-select-options";
 import { fetchSuppliers, partySelectOptions } from "@/lib/party-fetch";
@@ -82,10 +82,6 @@ function emptyLine(): LineRow {
     height: "",
     pieces: "1",
   };
-}
-
-function itemAllowsCuts(item?: Item | null): boolean {
-  return Boolean(item?.dimensionPriceMode);
 }
 
 function linesFromPurchase(purchase: Purchase): LineRow[] {
@@ -480,7 +476,7 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
               addLabel="Add Row"
             >
               {lines.map((line, i) => {
-                const cut = itemAllowsCuts(line.item);
+                const cut = itemAllowsCuts(line.item, uoms);
                 const isCutFilled = Boolean(
                   line.width.trim() && line.height.trim()
                 );

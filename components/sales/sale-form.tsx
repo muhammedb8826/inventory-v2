@@ -44,7 +44,7 @@ import {
 } from "@/hooks/use-payment-bank-account";
 import { fetchInventoryForLocation } from "@/lib/inventory-fetch";
 import { buildItemOptionMap, itemOptionsFromMap, parseDocumentLines, productItemId, resolveItem, type DocumentLineBody } from "@/lib/inventory-items";
-import { defaultUomIdForItem, fetchUoms } from "@/lib/uom";
+import { defaultUomIdForItem, fetchUoms, itemAllowsCuts } from "@/lib/uom";
 import { saleRepUser } from "@/lib/sale-utils";
 import { errorMessage } from "@/lib/format";
 import {
@@ -93,10 +93,6 @@ function emptyLine(): LineRow {
     height: "",
     pieces: "1",
   };
-}
-
-function itemAllowsCuts(item?: Item | null): boolean {
-  return Boolean(item?.dimensionPriceMode);
 }
 
 function linesFromSale(sale: Sale): LineRow[] {
@@ -642,7 +638,7 @@ export function SaleForm({ sale }: { sale?: Sale }) {
               addLabel="Add Row"
             >
               {lines.map((line, i) => {
-                const cut = itemAllowsCuts(line.item);
+                const cut = itemAllowsCuts(line.item, uoms);
                 const isCutFilled = Boolean(
                   line.width.trim() && line.height.trim()
                 );

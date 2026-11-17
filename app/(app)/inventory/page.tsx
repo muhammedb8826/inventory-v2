@@ -70,7 +70,6 @@ import { ExportInventoryButton } from "@/components/inventory/export-inventory-b
 import { InventoryAdjustmentsPanel } from "@/components/inventory/inventory-adjustments-panel";
 import { StockAdjustDialog } from "@/components/inventory/stock-adjust-dialog";
 import { StockDetailDialog } from "@/components/inventory/stock-detail-dialog";
-import { StockFormDialog } from "@/components/inventory/stock-form-dialog";
 import { useAuth } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { toast } from "sonner";
@@ -397,16 +396,12 @@ export default function InventoryPage() {
                     <StockAdjustDialog record={r} onSuccess={reload} />
                   ) : null}
                   {hasPermission(user, "inventory.write") ? (
-                    <StockFormDialog
-                      locationId={r.locationId ?? listLocationId ?? ""}
-                      record={r}
-                      onSuccess={reload}
-                      trigger={
-                        <Button size="icon" variant="ghost">
-                          <PencilIcon className="size-4" />
-                        </Button>
-                      }
-                    />
+                    <Button size="icon" variant="ghost" asChild>
+                      <Link href={`/inventory/${r.id}/edit`}>
+                        <PencilIcon className="size-4" />
+                        <span className="sr-only">Edit</span>
+                      </Link>
+                    </Button>
                   ) : null}
                   {hasPermission(user, "inventory.delete") ? (
                     <DeleteStockButton id={r.id} onSuccess={reload} />
@@ -576,16 +571,12 @@ export default function InventoryPage() {
                       <StockAdjustDialog record={r} onSuccess={reload} />
                     ) : null}
                     {hasPermission(user, "inventory.write") ? (
-                      <StockFormDialog
-                        locationId={r.locationId ?? listLocationId ?? ""}
-                        record={r}
-                        onSuccess={reload}
-                        trigger={
-                          <Button size="icon" variant="ghost">
-                            <PencilIcon className="size-4" />
-                          </Button>
-                        }
-                      />
+                      <Button size="icon" variant="ghost" asChild>
+                        <Link href={`/inventory/${r.id}/edit`}>
+                          <PencilIcon className="size-4" />
+                          <span className="sr-only">Edit</span>
+                        </Link>
+                      </Button>
                     ) : null}
                     {hasPermission(user, "inventory.delete") ? (
                       <DeleteStockButton id={r.id} onSuccess={reload} />
