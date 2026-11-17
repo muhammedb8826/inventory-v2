@@ -9,16 +9,17 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/80",
+        default:
+          "bg-[var(--erp-accent)] text-white hover:bg-[var(--erp-accent-hover)]",
         outline:
-          "border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50",
+          "border-[var(--erp-border)] bg-[var(--erp-surface)] text-[var(--erp-text)] hover:bg-[var(--erp-section-head)] aria-expanded:bg-[var(--erp-section-head)]",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-[color-mix(in_oklch,var(--secondary),var(--foreground)_5%)] aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
+          "bg-[var(--erp-section-head)] text-[var(--erp-text)] hover:bg-[var(--erp-border)] aria-expanded:bg-[var(--erp-border)]",
         ghost:
-          "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50",
+          "text-[var(--erp-text)] hover:bg-[var(--erp-section-head)] aria-expanded:bg-[var(--erp-section-head)]",
         destructive:
-          "bg-destructive/10 text-destructive hover:bg-destructive/20 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 dark:bg-destructive/20 dark:hover:bg-destructive/30 dark:focus-visible:ring-destructive/40",
-        link: "text-primary underline-offset-4 hover:underline",
+          "bg-[color-mix(in_oklab,var(--erp-danger)_12%,transparent)] text-[var(--erp-danger)] hover:bg-[color-mix(in_oklab,var(--erp-danger)_20%,transparent)] focus-visible:border-[var(--erp-danger)]/40 focus-visible:ring-[var(--erp-danger)]/20",
+        link: "text-[var(--erp-accent)] underline-offset-4 hover:underline",
       },
       size: {
         default:

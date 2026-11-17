@@ -24,11 +24,11 @@ export function FrappeField({
         className
       )}
     >
-      <Label className="text-xs font-medium text-[var(--frappe-text-muted)]">
+      <Label>
         {label}
-        {required ? <span className="text-[var(--frappe-red)]"> *</span> : null}
+        {required ? <span className="text-[var(--erp-danger)]"> *</span> : null}
       </Label>
-      <div className="[&_input]:h-8 [&_input]:rounded [&_input]:border-[var(--frappe-border)] [&_input]:bg-[var(--frappe-surface)] [&_input]:text-sm [&_button]:h-8 [&_button]:rounded [&_button]:border-[var(--frappe-border)] [&_button]:bg-[var(--frappe-surface)] [&_button]:text-sm [&_button]:shadow-none">
+      <div className="erp-field-control">
         {children}
       </div>
       {hint ? (

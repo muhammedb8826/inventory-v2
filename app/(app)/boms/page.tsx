@@ -144,7 +144,7 @@ export default function BomsPage() {
             columns={[
               {
                 key: "name",
-                header: "Name",
+                header: "Reference",
                 cell: (r) => (
                   <Link
                     href={`/boms/${r.id}`}
@@ -156,13 +156,21 @@ export default function BomsPage() {
               },
               {
                 key: "finished",
-                header: "Finished item",
+                header: "Product",
                 cell: (r) => r.finishedItem?.description ?? "—",
               },
               {
-                key: "version",
-                header: "Version",
-                cell: (r) => r.version ?? "—",
+                key: "variant",
+                header: "Variant",
+                cell: (r) =>
+                  r.variantItem?.description ??
+                  (r.variantItemId ? "—" : "All"),
+              },
+              {
+                key: "type",
+                header: "Type",
+                cell: (r) =>
+                  r.bomType === "KIT" ? "Kit" : "Manufacture",
               },
               {
                 key: "status",

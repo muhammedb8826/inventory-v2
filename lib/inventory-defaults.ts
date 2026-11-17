@@ -1,6 +1,6 @@
 import type { ItemType, Location, Uom } from "@/lib/types";
 
-/** Odoo-style create defaults — description is the only required field. */
+/** Create defaults — description is the only required field. */
 export const DEFAULT_ITEM_TYPE: ItemType = "OTHER";
 export const DEFAULT_OPENING_QTY = "0";
 export const DEFAULT_PURCHASE_PRICE = "0";

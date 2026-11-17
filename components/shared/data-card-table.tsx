@@ -38,7 +38,7 @@ export function DataCardTable<T extends { id: string }>({
   emptyTitle?: string;
   emptyDescription?: string;
   pagination?: Omit<TablePaginationProps, "disabled"> & { disabled?: boolean };
-  /** Odoo-style list vs grid. Grid uses columns as card fields. */
+  /** List vs grid. Grid uses columns as card fields. */
   viewMode?: ListViewMode;
 }) {
   const list = unwrapList(rows);

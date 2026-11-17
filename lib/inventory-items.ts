@@ -42,6 +42,11 @@ export function resolveItem(itemId: string, item?: Partial<Item> | null): Item {
     imageUrl: item?.imageUrl,
     imagePath: item?.imagePath,
     isActive: item?.isActive,
+    isTemplate: item?.isTemplate,
+    parentItemId: item?.parentItemId ?? null,
+    parentItem: item?.parentItem ?? null,
+    variantKey: item?.variantKey ?? null,
+    attributeValues: item?.attributeValues,
   };
 }
 

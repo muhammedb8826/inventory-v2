@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 
-/** Wide Frappe-style modal for multi-section inquiry forms. */
+/** Wide modal for multi-section inquiry forms. */
 export const inquiryDialogContentClass =
   "flex max-h-[min(90vh,720px)] w-full max-w-[calc(100vw-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl";
 

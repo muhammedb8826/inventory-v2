@@ -9,6 +9,7 @@ import {
 } from "@/components/frappe";
 import { PermissionGate } from "@/components/permission-gate";
 import { formatDate, formatQty } from "@/lib/format";
+import { formatItemAttributeLabel } from "@/lib/item-attributes";
 import { formatStockQtyLabel, formatTxnQtyLabel } from "@/lib/uom";
 import type { Bom } from "@/lib/types";
 import Link from "next/link";
@@ -53,20 +54,39 @@ export function BomDetail({ bom }: { bom: Bom }) {
 
       <FrappeDocument>
         <FrappeSection
-          title={bom.name}
+          title={bom.name || "Bill of Materials"}
           description={
             bom.createdAt ? `Created ${formatDate(bom.createdAt)}` : undefined
           }
         >
           <FrappeFormGrid columns={2}>
             <DetailField
-              label="Finished item"
+              label="Product"
               value={bom.finishedItem?.description ?? bom.finishedItemId}
             />
-            <DetailField label="Version" value={bom.version ?? "—"} />
+            <DetailField label="Reference" value={bom.name || "—"} />
             <DetailField
-              label="Document ID"
-              value={<span className="font-mono text-xs">{bom.id}</span>}
+              label="Product Variant"
+              value={
+                bom.variantItem
+                  ? formatItemAttributeLabel(bom.variantItem.attributeValues) ||
+                    bom.variantItem.description
+                  : "All variants"
+              }
+            />
+            <DetailField
+              label="Quantity"
+              value={`${formatQty(bom.quantity ?? 1)} ${
+                bom.finishedItem?.stockUom?.symbol ||
+                bom.finishedItem?.unit ||
+                ""
+              }`.trim()}
+            />
+            <DetailField
+              label="BoM Type"
+              value={
+                bom.bomType === "KIT" ? "Kit" : "Manufacture this product"
+              }
             />
             {bom.notes ? (
               <div className="sm:col-span-2">
@@ -78,7 +98,7 @@ export function BomDetail({ bom }: { bom: Bom }) {
 
         <FrappeSection
           title="Components"
-          description={`${lines.length} line${lines.length === 1 ? "" : "s"} per finished unit`}
+          description={`${lines.length} line${lines.length === 1 ? "" : "s"} for ${formatQty(bom.quantity ?? 1)} finished`}
         >
           {lines.length === 0 ? (
             <p className="text-sm text-[var(--frappe-text-muted)]">

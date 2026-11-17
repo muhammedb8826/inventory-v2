@@ -187,6 +187,8 @@ export interface Item {
   isTemplate?: boolean;
   parentItemId?: string | null;
   parentItem?: Item | null;
+  /** Child variants when this item is a template. */
+  variants?: Item[];
   variantKey?: string | null;
   /** Relative path from API, e.g. `/uploads/items/...` */
   imagePath?: string | null;
@@ -206,7 +208,7 @@ export interface StockRecord {
   location: Location;
 }
 
-/** Response when create generates 2+ Odoo-style variants. */
+/** Response when create generates 2+ product variants. */
 export interface InventoryVariantCreateResult {
   template: Item;
   variants: StockRecord[];
@@ -766,14 +768,23 @@ export interface BomLine {
   uom?: Uom | null;
 }
 
+export type BomType = "MANUFACTURE" | "KIT";
+
 export interface Bom {
   id: string;
   finishedItemId: string;
+  /** Optional product variant of finishedItemId */
+  variantItemId?: string | null;
+  /** Internal BoM reference label */
   name: string;
   version?: string | null;
+  /** Finished qty this BoM produces (default 1) */
+  quantity?: string | number;
+  bomType?: BomType;
   notes?: string | null;
   isActive?: boolean;
   finishedItem?: Item;
+  variantItem?: Item | null;
   lines?: BomLine[];
   createdAt?: string;
   updatedAt?: string;

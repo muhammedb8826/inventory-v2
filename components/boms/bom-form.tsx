@@ -18,19 +18,17 @@ import {
 } from "@/components/frappe";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { api } from "@/lib/api";
-import {
-  fetchAllInventory,
-  uniqueItemsFromStock,
-} from "@/lib/inventory-fetch";
+import { fetchBomCatalog, itemOptionLabel } from "@/lib/bom-catalog";
+import { formatItemAttributeLabel } from "@/lib/item-attributes";
 import { preferRicherItem, resolveItem } from "@/lib/inventory-items";
 import { defaultUomIdForItem, fetchUoms } from "@/lib/uom";
 import { errorMessage } from "@/lib/format";
-import type { Bom, Item } from "@/lib/types";
+import type { Bom, BomType, Item } from "@/lib/types";
 import { useFetch } from "@/hooks/use-fetch";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
+import { cn } from "@/lib/utils";
 
 interface BomLineRow {
   componentItemId: string;
@@ -65,8 +63,16 @@ export function BomForm({ bom }: { bom?: Bom }) {
   const [finishedItemId, setFinishedItemId] = useState(
     bom?.finishedItemId ?? ""
   );
-  const [name, setName] = useState(bom?.name ?? "");
-  const [version, setVersion] = useState(bom?.version ?? "1.0");
+  const [variantItemId, setVariantItemId] = useState(
+    bom?.variantItemId ?? ""
+  );
+  const [reference, setReference] = useState(bom?.name ?? "");
+  const [quantity, setQuantity] = useState(
+    String(bom?.quantity ?? "1")
+  );
+  const [bomType, setBomType] = useState<BomType>(
+    bom?.bomType ?? "MANUFACTURE"
+  );
   const [notes, setNotes] = useState(bom?.notes ?? "");
   const [isActive, setIsActive] = useState(bom?.isActive !== false);
   const [lines, setLines] = useState<BomLineRow[]>(() =>
@@ -74,65 +80,72 @@ export function BomForm({ bom }: { bom?: Bom }) {
   );
   const [saving, setSaving] = useState(false);
 
-  const { data: stock, loading } = useFetch(() => fetchAllInventory(), []);
+  const { data: catalog, loading } = useFetch(() => fetchBomCatalog(), []);
   const { data: uomsData, loading: uomsLoading } = useFetch(
     () => fetchUoms(undefined, false),
     []
   );
   const uoms = uomsData ?? [];
 
+  const products = catalog?.products ?? [];
+  const components = catalog?.components ?? [];
+
+  const selectedProduct = useMemo(
+    () => products.find((p) => p.id === finishedItemId) ?? null,
+    [products, finishedItemId]
+  );
+
+  const productVariants = useMemo(() => {
+    if (!selectedProduct) return [];
+    if (selectedProduct.variants?.length) return selectedProduct.variants;
+    return (catalog?.variants ?? []).filter(
+      (v) => v.parentItemId === finishedItemId
+    );
+  }, [selectedProduct, catalog?.variants, finishedItemId]);
+
   const itemById = useMemo(() => {
     const map = new Map<string, Item>();
-    if (bom?.finishedItem) {
-      map.set(
-        bom.finishedItemId,
-        resolveItem(bom.finishedItemId, bom.finishedItem)
-      );
-    }
+    const add = (item?: Item | null) => {
+      if (!item?.id) return;
+      map.set(item.id, preferRicherItem(map.get(item.id), resolveItem(item.id, item)));
+    };
+    if (bom?.finishedItem) add(resolveItem(bom.finishedItemId, bom.finishedItem));
+    if (bom?.variantItem) add(resolveItem(bom.variantItemId!, bom.variantItem));
     for (const line of bom?.lines ?? []) {
-      if (!line.componentItem) continue;
-      map.set(
-        line.componentItemId,
-        preferRicherItem(
-          map.get(line.componentItemId),
-          resolveItem(line.componentItemId, line.componentItem)
-        )
-      );
+      if (line.componentItem) add(resolveItem(line.componentItemId, line.componentItem));
     }
-    for (const item of uniqueItemsFromStock(stock ?? [])) {
-      map.set(item.id, preferRicherItem(map.get(item.id), item));
+    for (const item of products) {
+      add(item);
+      for (const v of item.variants ?? []) add(v);
     }
+    for (const item of components) add(item);
     return map;
-  }, [stock, bom]);
+  }, [bom, products, components]);
 
-  const itemOptions = (() => {
-    const items = uniqueItemsFromStock(stock ?? []);
-    const options = items.map((item) => ({
+  const productOptions = products.map((item) => ({
+    itemId: item.id,
+    label: itemOptionLabel(item) + (item.isTemplate ? " (template)" : ""),
+  }));
+
+  const variantOptions = productVariants.map((item) => ({
+    itemId: item.id,
+    label:
+      formatItemAttributeLabel(item.attributeValues) ||
+      itemOptionLabel(item),
+  }));
+
+  const componentOptions = (() => {
+    const options = components.map((item) => ({
       itemId: item.id,
-      label: item.sku
-        ? `${item.description} (${item.sku})`
-        : item.description,
+      label: itemOptionLabel(item),
     }));
     const pushIfMissing = (itemId: string, label: string) => {
       if (!itemId || options.some((o) => o.itemId === itemId)) return;
       options.push({ itemId, label });
     };
-    if (bom?.finishedItem) {
-      pushIfMissing(
-        bom.finishedItemId,
-        bom.finishedItem.sku
-          ? `${bom.finishedItem.description} (${bom.finishedItem.sku})`
-          : bom.finishedItem.description
-      );
-    }
     for (const line of bom?.lines ?? []) {
       if (!line.componentItem) continue;
-      pushIfMissing(
-        line.componentItemId,
-        line.componentItem.sku
-          ? `${line.componentItem.description} (${line.componentItem.sku})`
-          : line.componentItem.description
-      );
+      pushIfMissing(line.componentItemId, itemOptionLabel(line.componentItem));
     }
     return options;
   })();
@@ -143,16 +156,27 @@ export function BomForm({ bom }: { bom?: Bom }) {
     );
   }
 
+  function onProductChange(productId: string) {
+    setFinishedItemId(productId);
+    setVariantItemId("");
+    const product = products.find((p) => p.id === productId);
+    if (!reference.trim() && product) {
+      setReference(product.description);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name.trim()) {
-      toast.error("BOM name is required");
-      return;
-    }
     if (!finishedItemId) {
-      toast.error("Select a finished item");
+      toast.error("Select a product");
       return;
     }
+    const qty = parseFloat(quantity);
+    if (Number.isNaN(qty) || qty <= 0) {
+      toast.error("Quantity must be greater than 0");
+      return;
+    }
+    const effectiveFinished = variantItemId || finishedItemId;
     const parsedLines: {
       componentItemId: string;
       quantity: number;
@@ -161,13 +185,13 @@ export function BomForm({ bom }: { bom?: Bom }) {
     }[] = [];
     for (const line of lines) {
       if (!line.componentItemId) continue;
-      const quantity = parseFloat(line.quantity);
-      if (Number.isNaN(quantity) || quantity <= 0) {
+      const lineQty = parseFloat(line.quantity);
+      if (Number.isNaN(lineQty) || lineQty <= 0) {
         toast.error("Each component needs a positive quantity");
         return;
       }
-      if (line.componentItemId === finishedItemId) {
-        toast.error("Finished item cannot be a component of itself");
+      if (line.componentItemId === effectiveFinished) {
+        toast.error("Finished product cannot be a component of itself");
         return;
       }
       const entry: {
@@ -177,7 +201,7 @@ export function BomForm({ bom }: { bom?: Bom }) {
         uomId?: string;
       } = {
         componentItemId: line.componentItemId,
-        quantity,
+        quantity: lineQty,
       };
       if (line.uomId) entry.uomId = line.uomId;
       if (line.scrapPercent.trim()) {
@@ -199,19 +223,21 @@ export function BomForm({ bom }: { bom?: Bom }) {
     try {
       const body = {
         finishedItemId,
-        name: name.trim(),
-        version: version.trim() || "1.0",
+        variantItemId: variantItemId || null,
+        name: reference.trim() || undefined,
+        quantity: qty,
+        bomType,
         notes: notes.trim() || undefined,
         isActive,
         lines: parsedLines,
       };
       if (isEdit && bom) {
         await api(`/boms/${bom.id}`, { method: "PATCH", body });
-        toast.success("BOM updated");
+        toast.success("BoM updated");
         router.push(`/boms/${bom.id}`);
       } else {
         const created = await api<Bom>("/boms", { method: "POST", body });
-        toast.success("BOM created");
+        toast.success("BoM created");
         router.push(`/boms/${created.id}`);
       }
     } catch (err) {
@@ -221,13 +247,18 @@ export function BomForm({ bom }: { bom?: Bom }) {
     }
   }
 
-  if (loading && !stock) {
+  if (loading && !catalog) {
     return (
       <div className="flex justify-center py-16">
         <Spinner />
       </div>
     );
   }
+
+  const stockUnit =
+    selectedProduct?.stockUom?.symbol ||
+    selectedProduct?.unit ||
+    "Units";
 
   return (
     <form onSubmit={handleSubmit}>
@@ -239,36 +270,108 @@ export function BomForm({ bom }: { bom?: Bom }) {
           </FrappeButtonPrimary>
         </FrappeFormToolbar>
 
-        <FrappeSection title="BOM">
+        <FrappeSection title="Bill of Materials">
           <FrappeFormGrid columns={2}>
-            <FrappeField label="Name" required>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
-            </FrappeField>
-            <FrappeField label="Version">
-              <Input
-                value={version}
-                onChange={(e) => setVersion(e.target.value)}
-              />
-            </FrappeField>
-            <FrappeField label="Finished item" required>
+            <FrappeField label="Product" required>
               <ItemSearchSelect
                 value={finishedItemId}
-                onValueChange={setFinishedItemId}
-                options={itemOptions}
-                placeholder="Select finished item…"
-                searchPlaceholder="Search finished item…"
+                onValueChange={onProductChange}
+                options={productOptions}
+                placeholder="Select product…"
+                searchPlaceholder="Search product…"
               />
             </FrappeField>
-            <FrappeField label="Active">
-              <div className="flex h-9 items-center gap-2">
+            <FrappeField
+              label="Reference"
+              hint="Optional internal BoM label. Defaults to the product name."
+            >
+              <Input
+                value={reference}
+                onChange={(e) => setReference(e.target.value)}
+                placeholder="e.g. Standard / Premium"
+              />
+            </FrappeField>
+            <FrappeField
+              label="Product Variant"
+              hint="Leave empty to apply this BoM to the product (all variants)."
+            >
+              <ItemSearchSelect
+                value={variantItemId}
+                onValueChange={setVariantItemId}
+                options={variantOptions}
+                placeholder={
+                  !finishedItemId
+                    ? "Select a product first…"
+                    : productVariants.length === 0
+                      ? "No variants"
+                      : "Optional — all variants"
+                }
+                searchPlaceholder="Search variant…"
+                disabled={!finishedItemId || productVariants.length === 0}
+              />
+            </FrappeField>
+            <FrappeField label="BoM Type">
+              <div className="flex flex-col gap-2 pt-1">
+                {(
+                  [
+                    {
+                      value: "MANUFACTURE" as const,
+                      label: "Manufacture this product",
+                    },
+                    { value: "KIT" as const, label: "Kit" },
+                  ] as const
+                ).map((opt) => (
+                  <label
+                    key={opt.value}
+                    className="flex cursor-pointer items-center gap-2 text-sm text-[var(--frappe-text)]"
+                  >
+                    <input
+                      type="radio"
+                      name="bomType"
+                      value={opt.value}
+                      checked={bomType === opt.value}
+                      onChange={() => setBomType(opt.value)}
+                      className="size-3.5 accent-[var(--frappe-primary)]"
+                    />
+                    {opt.label}
+                  </label>
+                ))}
+              </div>
+            </FrappeField>
+            <FrappeField
+              label="Quantity"
+              hint={`Component quantities are for this finished quantity (${stockUnit}).`}
+            >
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  step="any"
+                  min="0.001"
+                  value={quantity}
+                  onChange={(e) => setQuantity(e.target.value)}
+                  className="max-w-[8rem]"
+                />
+                <span className="text-sm text-[var(--frappe-text-muted)]">
+                  {stockUnit}
+                </span>
+              </div>
+            </FrappeField>
+            <FrappeField
+              label="Active"
+              hint="Inactive BoMs are hidden from production."
+            >
+              <div className="flex h-9 items-center gap-2.5">
                 <Switch checked={isActive} onCheckedChange={setIsActive} />
-                <Label className="text-sm text-[var(--erp-text-muted)]">
-                  {isActive ? "Active" : "Inactive"}
-                </Label>
+                <span
+                  className={cn(
+                    "text-sm font-medium",
+                    isActive
+                      ? "text-[var(--frappe-text)]"
+                      : "text-[var(--frappe-text-muted)]"
+                  )}
+                >
+                  {isActive ? "Yes" : "No"}
+                </span>
               </div>
             </FrappeField>
             <FrappeField label="Notes" fullWidth>
@@ -283,17 +386,17 @@ export function BomForm({ bom }: { bom?: Bom }) {
 
         <FrappeSection
           title="Components"
-          description="Quantities are per 1 finished unit (in the selected UOM). Scrap % increases required material."
+          description={`Quantities needed to produce ${quantity || "1"} finished ${stockUnit}. Scrap % increases required material.`}
         >
           <FrappeGridTable
             columns={[
               { key: "component", label: "Component" },
-              { key: "uom", label: "UOM", className: "w-28" },
-              { key: "qty", label: "Qty / FG", className: "w-24" },
+              { key: "uom", label: "Unit", className: "w-28" },
+              { key: "qty", label: "Quantity", className: "w-24" },
               { key: "scrap", label: "Scrap %", className: "w-24" },
             ]}
             onAddRow={() => setLines((prev) => [...prev, emptyBomLine()])}
-            addLabel="Add component"
+            addLabel="Add a line"
           >
             {lines.map((line, index) => {
               const item = itemById.get(line.componentItemId);
@@ -319,7 +422,7 @@ export function BomForm({ bom }: { bom?: Bom }) {
                           uomId: defaultUomIdForItem(next, "stock") ?? "",
                         });
                       }}
-                      options={itemOptions}
+                      options={componentOptions}
                       placeholder="Select component…"
                       searchPlaceholder="Search component…"
                     />

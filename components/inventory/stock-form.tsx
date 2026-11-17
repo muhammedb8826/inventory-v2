@@ -266,7 +266,6 @@ export function StockForm({
           </FrappeButtonPrimary>
         </FrappeFormToolbar>
 
-        {/* Odoo-style header: name + image */}
         <div className="border-b border-[var(--frappe-border)] px-4 py-4 sm:px-5">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
             <div className="min-w-0 flex-1 space-y-1">
