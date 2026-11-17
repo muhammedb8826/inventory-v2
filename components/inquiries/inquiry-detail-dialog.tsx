@@ -242,20 +242,23 @@ export function InquiryDetailDialog({
             </InquiryFormDialogBody>
 
             <PermissionGate permission="inquiries.write">
-              <InquiryFormDialogFooter>
-                {inquiry &&
-                inquiry.status !== "CANCELLED" &&
-                inquiry.status !== "CONVERTED" ? (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    className="mr-auto h-8 text-xs"
-                    disabled={cancelling || acting}
-                    onClick={() => void handleCancel()}
-                  >
-                    {cancelling ? "Cancelling…" : "Cancel inquiry"}
-                  </Button>
-                ) : null}
+              <InquiryFormDialogFooter
+                start={
+                  inquiry &&
+                  inquiry.status !== "CANCELLED" &&
+                  inquiry.status !== "CONVERTED" ? (
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      className="h-8 text-xs"
+                      disabled={cancelling || acting}
+                      onClick={() => void handleCancel()}
+                    >
+                      {cancelling ? "Cancelling…" : "Cancel inquiry"}
+                    </Button>
+                  ) : null
+                }
+              >
                 {canClaim && inquiry?.assignmentStatus !== "PENDING" ? (
                   <Button
                     type="button"

@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
+  AppDialogBody,
+  AppDialogContent,
+  AppDialogFooter,
+  AppDialogHeader,
+} from "@/components/shared/app-dialog-shell";
+import {
   Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -339,17 +341,13 @@ export function StockFormDialog({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="flex max-h-[min(90vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-md">
+      <AppDialogContent size="sm">
         <form
           onSubmit={handleSubmit}
           className="flex min-h-0 flex-1 flex-col"
         >
-          <DialogHeader className="shrink-0 border-b border-[var(--frappe-border)] bg-[var(--frappe-section-head)] px-4 py-3">
-            <DialogTitle className="text-base">
-              {record ? "Edit stock" : "Add stock"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto overflow-x-hidden p-4">
+          <AppDialogHeader title={record ? "Edit stock" : "Add stock"} />
+          <AppDialogBody className="space-y-4">
             {!record ? (
               <EntitySelectField
                 label="Location"
@@ -615,14 +613,14 @@ export function StockFormDialog({
                 compact
               />
             </div>
-          </div>
-          <DialogFooter className="mx-0 mb-0 shrink-0 rounded-none border-t border-[var(--frappe-border)] bg-[var(--frappe-section-head)] px-4 py-3">
-            <Button type="submit" disabled={saving}>
+          </AppDialogBody>
+          <AppDialogFooter>
+            <Button type="submit" className="h-8 text-xs" disabled={saving}>
               {saving ? "Saving…" : record ? "Save" : "Create"}
             </Button>
-          </DialogFooter>
+          </AppDialogFooter>
         </form>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }

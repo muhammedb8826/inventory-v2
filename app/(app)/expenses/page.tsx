@@ -16,11 +16,13 @@ import { QuickBankAccountDialog } from "@/components/banks/quick-bank-account-di
 import { FrappeButtonPrimary } from "@/components/frappe";
 import { Button } from "@/components/ui/button";
 import {
+  AppDialogBody,
+  AppDialogContent,
+  AppDialogFooter,
+  AppDialogHeader,
+} from "@/components/shared/app-dialog-shell";
+import {
   Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -324,12 +326,10 @@ function ExpenseDialog({ onSuccess }: { onSuccess: () => void }) {
           Add expense
         </Button>
       </DialogTrigger>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader className="border-b border-[var(--frappe-border)] bg-[var(--frappe-section-head)] px-4 py-3">
-            <DialogTitle className="text-base">Record expense</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 p-4">
+      <AppDialogContent size="sm">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <AppDialogHeader title="Record expense" />
+          <AppDialogBody className="space-y-4">
             <EntitySelectField
               label="Category"
               required
@@ -385,14 +385,14 @@ function ExpenseDialog({ onSuccess }: { onSuccess: () => void }) {
                 onChange={(e) => setDescription(e.target.value)}
               />
             </div>
-          </div>
-          <DialogFooter className="border-t border-[var(--frappe-border)] bg-[var(--frappe-section-head)] px-4 py-3">
+          </AppDialogBody>
+          <AppDialogFooter>
             <FrappeButtonPrimary type="submit" disabled={saving}>
               Save
             </FrappeButtonPrimary>
-          </DialogFooter>
+          </AppDialogFooter>
         </form>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }

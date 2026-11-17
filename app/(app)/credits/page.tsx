@@ -24,11 +24,13 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import {
+  AppDialogBody,
+  AppDialogContent,
+  AppDialogFooter,
+  AppDialogHeader,
+} from "@/components/shared/app-dialog-shell";
+import {
   Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -602,20 +604,13 @@ function OpeningCreditDialog({
           Opening {type === "customer" ? "receivable" : "payable"}
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>
-              New opening {type === "customer" ? "receivable" : "payable"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <p className="text-sm text-[var(--frappe-text-muted)]">
-              Carry over an unpaid invoice from a previous system. Creating it
-              does not move cash. When you later click Pay, you choose a
-              bank/cash account — customer receipts increase it, supplier
-              payments deduct from it (same as other credits).
-            </p>
+      <AppDialogContent size="sm">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <AppDialogHeader
+            title={`New opening ${type === "customer" ? "receivable" : "payable"}`}
+            description="Carry over an unpaid invoice from a previous system. Creating it does not move cash."
+          />
+          <AppDialogBody className="grid gap-4">
             <div className="grid gap-2">
               <Label>
                 {type === "customer" ? "Customer" : "Supplier"}{" "}
@@ -700,22 +695,27 @@ function OpeningCreditDialog({
                 placeholder="Optional context for this balance"
               />
             </div>
-          </div>
-          <DialogFooter>
+          </AppDialogBody>
+          <AppDialogFooter>
             <Button
               type="button"
               variant="outline"
+              className="h-8 text-xs"
               onClick={() => setOpen(false)}
               disabled={saving}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={saving || !partyId}>
+            <Button
+              type="submit"
+              className="h-8 text-xs"
+              disabled={saving || !partyId}
+            >
               {saving ? "Saving…" : "Create"}
             </Button>
-          </DialogFooter>
+          </AppDialogFooter>
         </form>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }

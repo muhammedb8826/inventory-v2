@@ -1,18 +1,17 @@
 "use client";
 
 import * as React from "react";
+import { Dialog } from "@/components/ui/dialog";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AppDialogBody,
+  AppDialogContent,
+  AppDialogFooter,
+  AppDialogHeader,
+} from "@/components/shared/app-dialog-shell";
 
 /**
  * Quick-create fields rendered inside a full-page form (e.g. purchase/sale).
  * Uses a div instead of nested <form> so the parent form is not submitted.
- * Dialogs use z-[200]; nested selects/popovers use z-[300] so they stay on top.
  */
 export function QuickCreateDialogShell({
   open,
@@ -29,15 +28,11 @@ export function QuickCreateDialogShell({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="gap-0 overflow-hidden p-0 sm:max-w-md">
-        <DialogHeader className="border-b border-[var(--frappe-border)] bg-[var(--frappe-section-head)] px-4 py-3">
-          <DialogTitle className="text-base">{title}</DialogTitle>
-        </DialogHeader>
-        <div>{children}</div>
-        <DialogFooter className="border-t border-[var(--frappe-border)] bg-[var(--frappe-section-head)] px-4 py-3">
-          {footer}
-        </DialogFooter>
-      </DialogContent>
+      <AppDialogContent size="sm">
+        <AppDialogHeader title={title} />
+        <AppDialogBody className="p-0">{children}</AppDialogBody>
+        <AppDialogFooter>{footer}</AppDialogFooter>
+      </AppDialogContent>
     </Dialog>
   );
 }

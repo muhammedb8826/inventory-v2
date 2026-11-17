@@ -3,12 +3,12 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AppDialogBody,
+  AppDialogContent,
+  AppDialogFooter,
+  AppDialogHeader,
+} from "@/components/shared/app-dialog-shell";
+import { Dialog } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -103,20 +103,20 @@ export function CreditPaymentDialog({
           }
         }}
       >
-        <DialogContent>
-          <form onSubmit={handleSubmit}>
-            <DialogHeader>
-              <DialogTitle>Record payment</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              {party ? (
-                <p className="text-sm text-[var(--frappe-text-muted)]">
-                  {type === "customer" ? "Customer" : "Supplier"}:{" "}
-                  <span className="font-medium text-[var(--frappe-text)]">
-                    {party}
-                  </span>
-                </p>
-              ) : null}
+        <AppDialogContent size="sm">
+          <form
+            onSubmit={handleSubmit}
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            <AppDialogHeader
+              title="Record payment"
+              description={
+                party
+                  ? `${type === "customer" ? "Customer" : "Supplier"}: ${party}`
+                  : undefined
+              }
+            />
+            <AppDialogBody className="grid gap-4">
               <p className="text-sm text-[var(--frappe-text-muted)]">
                 Outstanding balance:{" "}
                 <span className="font-medium tabular-nums text-[var(--frappe-text)]">
@@ -180,14 +180,18 @@ export function CreditPaymentDialog({
                   maxLength={200}
                 />
               </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit" disabled={saving || !bankAccountId}>
+            </AppDialogBody>
+            <AppDialogFooter>
+              <Button
+                type="submit"
+                className="h-8 text-xs"
+                disabled={saving || !bankAccountId}
+              >
                 Submit
               </Button>
-            </DialogFooter>
+            </AppDialogFooter>
           </form>
-        </DialogContent>
+        </AppDialogContent>
       </Dialog>
     </>
   );

@@ -23,12 +23,13 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import {
+  AppDialogBody,
+  AppDialogContent,
+  AppDialogFooter,
+  AppDialogHeader,
+} from "@/components/shared/app-dialog-shell";
+import {
   Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -362,19 +363,14 @@ function TransferDialog({ onSuccess }: { onSuccess: () => void }) {
           New transfer
         </FrappeButtonPrimary>
       </DialogTrigger>
-      <DialogContent className="flex max-h-[min(90vh,680px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
+      <AppDialogContent size="lg">
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
-          <DialogHeader className="shrink-0 border-b border-[var(--frappe-border)] bg-[var(--frappe-section-head)] px-5 py-4">
-            <DialogTitle className="text-base font-semibold">
-              Stock transfer
-            </DialogTitle>
-            <DialogDescription className="text-xs text-[var(--frappe-text-muted)]">
-              Move inventory between locations. Stock is deducted from the source
-              when the transfer is created.
-            </DialogDescription>
-          </DialogHeader>
+          <AppDialogHeader
+            title="Stock transfer"
+            description="Move inventory between locations. Stock is deducted from the source when the transfer is created."
+          />
 
-          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overflow-x-hidden p-5">
+          <AppDialogBody className="space-y-5">
             <FrappeFormGrid className="gap-5">
               <EntitySelectField
                 label="From"
@@ -538,12 +534,13 @@ function TransferDialog({ onSuccess }: { onSuccess: () => void }) {
                 </Button>
               </div>
             </div>
-          </div>
+          </AppDialogBody>
 
-          <DialogFooter className="mt-0 shrink-0 gap-2 border-t border-[var(--frappe-border)] bg-[var(--frappe-section-head)] px-5 py-4 sm:justify-end">
+          <AppDialogFooter>
             <Button
               type="button"
               variant="outline"
+              className="h-8 text-xs"
               onClick={() => setOpen(false)}
               disabled={saving}
             >
@@ -552,9 +549,9 @@ function TransferDialog({ onSuccess }: { onSuccess: () => void }) {
             <FrappeButtonPrimary type="submit" disabled={saving}>
               {saving ? "Creating…" : "Create transfer"}
             </FrappeButtonPrimary>
-          </DialogFooter>
+          </AppDialogFooter>
         </form>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }

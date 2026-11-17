@@ -8,12 +8,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  AppDialogBody,
+  AppDialogContent,
+  AppDialogFooter,
+  AppDialogHeader,
+} from "@/components/shared/app-dialog-shell";
+import { Dialog } from "@/components/ui/dialog";
 import {
   FrappeButtonLink,
   FrappeDocument,
@@ -335,12 +335,13 @@ export function ProductionOrderDetail({
       </FrappeDocument>
 
       <Dialog open={completeOpen} onOpenChange={setCompleteOpen}>
-        <DialogContent>
-          <form onSubmit={handleComplete}>
-            <DialogHeader>
-              <DialogTitle>Complete production</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
+        <AppDialogContent size="sm">
+          <form
+            onSubmit={handleComplete}
+            className="flex min-h-0 flex-1 flex-col"
+          >
+            <AppDialogHeader title="Complete production" />
+            <AppDialogBody className="grid gap-4">
               <div className="grid gap-2">
                 <Label>Finished quantity</Label>
                 <Input
@@ -362,14 +363,14 @@ export function ProductionOrderDetail({
                   Auto-issue remaining materials
                 </Label>
               </div>
-            </div>
-            <DialogFooter>
-              <Button type="submit" disabled={busy}>
+            </AppDialogBody>
+            <AppDialogFooter>
+              <Button type="submit" className="h-8 text-xs" disabled={busy}>
                 Complete
               </Button>
-            </DialogFooter>
+            </AppDialogFooter>
           </form>
-        </DialogContent>
+        </AppDialogContent>
       </Dialog>
     </div>
   );

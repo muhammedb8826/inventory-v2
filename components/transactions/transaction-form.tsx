@@ -12,11 +12,13 @@ import { QuickLocationDialog } from "@/components/locations/quick-location-dialo
 import { QuickBankAccountDialog } from "@/components/banks/quick-bank-account-dialog";
 import { QuickStockItemDialog } from "@/components/inventory/quick-stock-item-dialog";
 import {
+  AppDialogBody,
+  AppDialogContent,
+  AppDialogFooter,
+  AppDialogHeader,
+} from "@/components/shared/app-dialog-shell";
+import {
   Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -247,14 +249,12 @@ export function TransactionFormDialog({
           Add {isPurchase ? "Purchase" : "Sale"}
         </FrappeButtonPrimary>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] gap-0 overflow-y-auto p-0 sm:max-w-lg">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader className="border-b border-[var(--frappe-border)] bg-[var(--frappe-section-head)] px-4 py-3">
-            <DialogTitle className="text-base">
-              New {isPurchase ? "Purchase" : "Sales Invoice"}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 p-4">
+      <AppDialogContent size="md">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
+          <AppDialogHeader
+            title={`New ${isPurchase ? "Purchase" : "Sales Invoice"}`}
+          />
+          <AppDialogBody className="space-y-4">
             <EntitySelectField
               label={partyLabel}
               required={isPurchase}
@@ -416,14 +416,14 @@ export function TransactionFormDialog({
                 Add line
               </Button>
             </div>
-          </div>
-          <DialogFooter className="border-t border-[var(--frappe-border)] bg-[var(--frappe-section-head)] px-4 py-3">
+          </AppDialogBody>
+          <AppDialogFooter>
             <FrappeButtonPrimary type="submit" disabled={saving}>
               Save
             </FrappeButtonPrimary>
-          </DialogFooter>
+          </AppDialogFooter>
         </form>
-      </DialogContent>
+      </AppDialogContent>
     </Dialog>
   );
 }
