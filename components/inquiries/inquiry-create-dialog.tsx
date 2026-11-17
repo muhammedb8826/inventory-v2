@@ -18,6 +18,7 @@ import { useInquiryFormOptions } from "@/hooks/use-inquiry-form-options";
 import { api } from "@/lib/api";
 import {
   buildCreateInquiryBody,
+  contactPatchFromCustomer,
   EMPTY_INQUIRY_FORM,
   validateInquiryContact,
   type InquiryFormValues,
@@ -37,6 +38,7 @@ export function InquiryCreateDialog({
   const [saving, setSaving] = useState(false);
 
   const {
+    customers,
     customerOptions,
     userOptions,
     itemOptions,
@@ -98,12 +100,17 @@ export function InquiryCreateDialog({
               onChange={(patch) =>
                 setValues((prev) => ({ ...prev, ...patch }))
               }
+              customers={customers}
               customerOptions={customerOptions}
               userOptions={userOptions}
               itemOptions={itemOptions}
               onCustomerCreated={(customer) => {
                 setCustomers((prev) => [...(prev ?? []), customer]);
-                setValues((prev) => ({ ...prev, customerId: customer.id }));
+                setValues((prev) => ({
+                  ...prev,
+                  customerId: customer.id,
+                  ...contactPatchFromCustomer(customer, prev),
+                }));
                 reloadCustomers();
               }}
             />

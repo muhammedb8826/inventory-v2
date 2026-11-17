@@ -1,5 +1,6 @@
 import type {
   CreateInquiryBody,
+  Customer,
   Inquiry,
   InquiryAssignmentStatus,
   InquiryLine,
@@ -40,6 +41,7 @@ export interface InquiryFormLine {
 
 export interface InquiryFormValues {
   contactName: string;
+  companyName: string;
   phone: string;
   email: string;
   subject: string;
@@ -50,7 +52,9 @@ export interface InquiryFormValues {
   lines: InquiryFormLine[];
   internalNotes: string;
   followUpAt: string;
+  requiredByAt: string;
   status: InquiryStatus;
+  /** Read-only link after convert — not edited as a raw UUID. */
   convertedSaleId: string;
 }
 
@@ -62,6 +66,7 @@ export const EMPTY_INQUIRY_LINE: InquiryFormLine = {
 
 export const EMPTY_INQUIRY_FORM: InquiryFormValues = {
   contactName: "",
+  companyName: "",
   phone: "",
   email: "",
   subject: "",
@@ -69,15 +74,29 @@ export const EMPTY_INQUIRY_FORM: InquiryFormValues = {
   priority: "NORMAL",
   customerId: "",
   assignedToUserId: "",
-  lines: [{ ...EMPTY_INQUIRY_LINE }],
+  lines: [],
   internalNotes: "",
   followUpAt: "",
+  requiredByAt: "",
   status: "NEW",
   convertedSaleId: "",
 };
 
 export function inquiryStatusLabel(status: InquiryStatus): string {
-  return status.replaceAll("_", " ");
+  switch (status) {
+    case "NEW":
+      return "New";
+    case "IN_PROGRESS":
+      return "In progress";
+    case "QUOTED":
+      return "Quoted";
+    case "CONVERTED":
+      return "Converted to sale";
+    case "CLOSED":
+      return "Closed";
+    case "CANCELLED":
+      return "Cancelled";
+  }
 }
 
 export function inquiryAssignmentLabel(
@@ -105,6 +124,14 @@ export function toDatetimeLocal(value?: string | null): string {
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
+export function toDateInput(value?: string | null): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
 export function inquiryLinesFromRecord(inquiry: Inquiry): InquiryFormLine[] {
   const apiLines = inquiry.lines ?? [];
   if (apiLines.length > 0) {
@@ -126,12 +153,13 @@ export function inquiryLinesFromRecord(inquiry: Inquiry): InquiryFormLine[] {
       },
     ];
   }
-  return [{ ...EMPTY_INQUIRY_LINE }];
+  return [];
 }
 
 export function inquiryToFormValues(inquiry: Inquiry): InquiryFormValues {
   return {
     contactName: inquiry.contactName ?? "",
+    companyName: inquiry.companyName ?? "",
     phone: inquiry.phone ?? "",
     email: inquiry.email ?? "",
     subject: inquiry.subject ?? "",
@@ -142,9 +170,32 @@ export function inquiryToFormValues(inquiry: Inquiry): InquiryFormValues {
     lines: inquiryLinesFromRecord(inquiry),
     internalNotes: inquiry.internalNotes ?? "",
     followUpAt: toDatetimeLocal(inquiry.followUpAt),
+    requiredByAt: toDateInput(inquiry.requiredByAt),
     status: inquiry.status,
     convertedSaleId: inquiry.convertedSaleId ?? "",
   };
+}
+
+/** Prefill empty contact fields from a linked customer (ERP standard). */
+export function contactPatchFromCustomer(
+  customer: Customer | null | undefined,
+  current: Pick<InquiryFormValues, "contactName" | "phone" | "email" | "companyName">
+): Partial<InquiryFormValues> {
+  if (!customer) return {};
+  const patch: Partial<InquiryFormValues> = {};
+  if (!current.contactName.trim() && customer.name) {
+    patch.contactName = customer.name;
+  }
+  if (!current.companyName.trim() && customer.name) {
+    patch.companyName = customer.name;
+  }
+  if (!current.phone.trim() && customer.phone) {
+    patch.phone = customer.phone;
+  }
+  if (!current.email.trim() && customer.email) {
+    patch.email = customer.email;
+  }
+  return patch;
 }
 
 export function validateInquiryContact(values: InquiryFormValues): string | null {
@@ -180,12 +231,16 @@ export function buildCreateInquiryBody(
     message: values.message.trim(),
     phone: optionalString(values.phone),
     email: optionalString(values.email),
+    companyName: optionalString(values.companyName),
     priority: values.priority,
     customerId: optionalString(values.customerId),
     assignedToUserId: optionalString(values.assignedToUserId),
     internalNotes: optionalString(values.internalNotes),
     followUpAt: optionalString(values.followUpAt)
       ? new Date(values.followUpAt).toISOString()
+      : undefined,
+    requiredByAt: optionalString(values.requiredByAt)
+      ? new Date(values.requiredByAt).toISOString()
       : undefined,
   };
   const lines = buildInquiryLinePayload(values.lines);
@@ -198,6 +253,7 @@ export function buildUpdateInquiryBody(
 ): UpdateInquiryBody {
   return {
     contactName: values.contactName.trim(),
+    companyName: emptyToNull(values.companyName),
     phone: emptyToNull(values.phone),
     email: emptyToNull(values.email),
     subject: values.subject.trim(),
@@ -211,7 +267,9 @@ export function buildUpdateInquiryBody(
     followUpAt: values.followUpAt
       ? new Date(values.followUpAt).toISOString()
       : null,
-    convertedSaleId: emptyToNull(values.convertedSaleId),
+    requiredByAt: values.requiredByAt
+      ? new Date(values.requiredByAt).toISOString()
+      : null,
   };
 }
 

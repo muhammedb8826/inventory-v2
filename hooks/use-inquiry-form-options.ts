@@ -74,6 +74,7 @@ export function useInquiryFormOptions() {
   );
 
   return {
+    customers: customers ?? [],
     customerOptions,
     userOptions,
     itemOptions,

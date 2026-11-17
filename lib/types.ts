@@ -925,6 +925,7 @@ export interface InquiryLineInput {
 export interface Inquiry {
   id: string;
   contactName: string;
+  companyName?: string | null;
   phone?: string | null;
   email?: string | null;
   subject: string;
@@ -942,6 +943,7 @@ export interface Inquiry {
   createdById?: string | null;
   internalNotes?: string | null;
   followUpAt?: string | null;
+  requiredByAt?: string | null;
   convertedSaleId?: string | null;
   customer?: Customer | null;
   /** @deprecated Prefer `lines` */
@@ -968,6 +970,7 @@ export interface PublicInquiryResponse {
 
 export interface CreatePublicInquiryBody {
   contactName: string;
+  companyName?: string;
   subject: string;
   message: string;
   phone?: string;
@@ -983,10 +986,12 @@ export interface CreateInquiryBody extends CreatePublicInquiryBody {
   assignedToUserId?: string;
   internalNotes?: string;
   followUpAt?: string;
+  requiredByAt?: string;
 }
 
 export interface UpdateInquiryBody {
   contactName?: string;
+  companyName?: string | null;
   phone?: string | null;
   email?: string | null;
   subject?: string;
@@ -1000,6 +1005,7 @@ export interface UpdateInquiryBody {
   assignedToUserId?: string | null;
   internalNotes?: string | null;
   followUpAt?: string | null;
+  requiredByAt?: string | null;
   convertedSaleId?: string | null;
 }
 

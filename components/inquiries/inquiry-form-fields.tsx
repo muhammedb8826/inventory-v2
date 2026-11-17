@@ -16,6 +16,7 @@ import type { ItemSearchOption } from "@/components/shared/item-search-select";
 import { QuickCustomerDialog } from "@/components/customers/quick-customer-dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -27,6 +28,7 @@ import {
   EMPTY_INQUIRY_LINE,
   INQUIRY_PRIORITIES,
   INQUIRY_STATUSES,
+  contactPatchFromCustomer,
   inquiryStatusLabel,
   type InquiryFormLine,
   type InquiryFormValues,
@@ -38,8 +40,10 @@ export function InquiryFormFields({
   values,
   onChange,
   mode,
+  inquiryId,
   idPrefix = "inquiry",
   customerOptions,
+  customers = [],
   userOptions,
   itemOptions,
   onCustomerCreated,
@@ -47,8 +51,12 @@ export function InquiryFormFields({
   values: InquiryFormValues;
   onChange: (patch: Partial<InquiryFormValues>) => void;
   mode: "create" | "edit";
+  /** Required in edit mode for Convert to sale. */
+  inquiryId?: string | null;
   idPrefix?: string;
   customerOptions: EntityOption[];
+  /** Full customer rows for contact prefill when linking a customer. */
+  customers?: Customer[];
   userOptions: EntityOption[];
   itemOptions: ItemSearchOption[];
   onCustomerCreated: (customer: Customer) => void;
@@ -69,11 +77,60 @@ export function InquiryFormFields({
     );
   }
 
+  function onCustomerChange(customerId: string) {
+    const customer = customers.find((c) => c.id === customerId);
+    onChange({
+      customerId,
+      ...contactPatchFromCustomer(customer, values),
+    });
+  }
+
+  const canConvert =
+    mode === "edit" &&
+    values.status !== "CANCELLED" &&
+    values.status !== "CONVERTED" &&
+    !values.convertedSaleId.trim();
+
   return (
     <FrappeDocument>
-      <FrappeSection title="Contact">
+      <FrappeSection
+        title="Party"
+        description="Link a customer when known; contact details stay on the inquiry for walk-ins."
+      >
         <FrappeFormGrid columns={2}>
-          <FrappeField label="Contact name" required fullWidth>
+          <EntitySelectField
+            label="Customer"
+            fullWidth
+            value={values.customerId}
+            onValueChange={onCustomerChange}
+            options={customerOptions}
+            listHref="/customers"
+            listLabel="View all customers"
+            emptyMessage="No customers yet — create one from this list."
+            quickCreate={
+              <QuickCustomerDialog
+                onCreated={(customer) => {
+                  onCustomerCreated(customer);
+                  onChange({
+                    customerId: customer.id,
+                    ...contactPatchFromCustomer(customer, values),
+                  });
+                }}
+              />
+            }
+          />
+          <FrappeField
+            label="Company"
+            hint="Organization name (optional). Prefills from customer when empty."
+          >
+            <Input
+              id={`${idPrefix}-company`}
+              value={values.companyName}
+              onChange={(e) => set("companyName", e.target.value)}
+              placeholder="e.g. Acme Trading"
+            />
+          </FrappeField>
+          <FrappeField label="Contact name" required>
             <Input
               id={`${idPrefix}-name`}
               required
@@ -105,8 +162,8 @@ export function InquiryFormFields({
       </FrappeSection>
 
       <FrappeSection title="Request">
-        <FrappeFormGrid columns={1}>
-          <FrappeField label="Subject" required>
+        <FrappeFormGrid columns={2}>
+          <FrappeField label="Subject" required fullWidth>
             <Input
               id={`${idPrefix}-subject`}
               required
@@ -114,7 +171,7 @@ export function InquiryFormFields({
               onChange={(e) => set("subject", e.target.value)}
             />
           </FrappeField>
-          <FrappeField label="Message" required>
+          <FrappeField label="Message" required fullWidth>
             <Textarea
               id={`${idPrefix}-message`}
               required
@@ -123,12 +180,34 @@ export function InquiryFormFields({
               onChange={(e) => set("message", e.target.value)}
             />
           </FrappeField>
+          <FrappeField
+            label="Required by"
+            hint="When the customer needs a decision / delivery (optional)."
+          >
+            <Input
+              id={`${idPrefix}-required-by`}
+              type="date"
+              value={values.requiredByAt}
+              onChange={(e) => set("requiredByAt", e.target.value)}
+            />
+          </FrappeField>
+          <FrappeField
+            label="Follow-up"
+            hint="Internal reminder to contact them again."
+          >
+            <Input
+              id={`${idPrefix}-follow-up`}
+              type="datetime-local"
+              value={values.followUpAt}
+              onChange={(e) => set("followUpAt", e.target.value)}
+            />
+          </FrappeField>
         </FrappeFormGrid>
       </FrappeSection>
 
       <FrappeSection
         title="Interested items"
-        description="Zero or more catalog products. Leave blank if this is a general question."
+        description="Optional catalog lines for this RFQ. Leave empty for a general question."
       >
         <FrappeGridTable
           columns={[
@@ -141,52 +220,66 @@ export function InquiryFormFields({
           }
           addLabel="Add item"
         >
-          {values.lines.map((line, index) => (
-            <FrappeGridRow
-              key={index}
-              canRemove={values.lines.length > 1}
-              onRemove={() =>
-                set(
-                  "lines",
-                  values.lines.length <= 1
-                    ? values.lines
-                    : values.lines.filter((_, i) => i !== index)
-                )
-              }
-            >
+          {values.lines.length === 0 ? (
+            <FrappeGridRow canRemove={false}>
               <FrappeGridCell>
-                <ItemSearchSelect
-                  value={line.itemId}
-                  onValueChange={(itemId) => updateLine(index, { itemId })}
-                  options={itemOptions}
-                  placeholder="Select item…"
-                  searchPlaceholder="Search catalog…"
-                />
+                <span className="text-xs text-[var(--frappe-text-muted)]">
+                  No items — add a line or leave blank.
+                </span>
               </FrappeGridCell>
               <FrappeGridCell>
-                <Input
-                  type="number"
-                  step="any"
-                  min="0"
-                  value={line.quantity}
-                  onChange={(e) =>
-                    updateLine(index, { quantity: e.target.value })
-                  }
-                  className="h-8"
-                />
+                <span className="text-xs text-[var(--frappe-text-muted)]">—</span>
               </FrappeGridCell>
               <FrappeGridCell>
-                <Input
-                  value={line.notes}
-                  onChange={(e) =>
-                    updateLine(index, { notes: e.target.value })
-                  }
-                  placeholder="Optional"
-                  className="h-8"
-                />
+                <span className="text-xs text-[var(--frappe-text-muted)]">—</span>
               </FrappeGridCell>
             </FrappeGridRow>
-          ))}
+          ) : (
+            values.lines.map((line, index) => (
+              <FrappeGridRow
+                key={index}
+                canRemove
+                onRemove={() =>
+                  set(
+                    "lines",
+                    values.lines.filter((_, i) => i !== index)
+                  )
+                }
+              >
+                <FrappeGridCell>
+                  <ItemSearchSelect
+                    value={line.itemId}
+                    onValueChange={(itemId) => updateLine(index, { itemId })}
+                    options={itemOptions}
+                    placeholder="Select item…"
+                    searchPlaceholder="Search catalog…"
+                  />
+                </FrappeGridCell>
+                <FrappeGridCell>
+                  <Input
+                    type="number"
+                    step="any"
+                    min="0"
+                    value={line.quantity}
+                    onChange={(e) =>
+                      updateLine(index, { quantity: e.target.value })
+                    }
+                    className="h-8"
+                  />
+                </FrappeGridCell>
+                <FrappeGridCell>
+                  <Input
+                    value={line.notes}
+                    onChange={(e) =>
+                      updateLine(index, { notes: e.target.value })
+                    }
+                    placeholder="Optional"
+                    className="h-8"
+                  />
+                </FrappeGridCell>
+              </FrappeGridRow>
+            ))
+          )}
         </FrappeGridTable>
       </FrappeSection>
 
@@ -209,37 +302,14 @@ export function InquiryFormFields({
               </SelectContent>
             </Select>
           </FrappeField>
-          <FrappeField label="Follow-up">
-            <Input
-              id={`${idPrefix}-follow-up`}
-              type="datetime-local"
-              value={values.followUpAt}
-              onChange={(e) => set("followUpAt", e.target.value)}
-            />
-          </FrappeField>
-          <EntitySelectField
-            label="Customer"
-            fullWidth
-            stackedActions
-            value={values.customerId}
-            onValueChange={(id) => set("customerId", id)}
-            options={customerOptions}
-            listHref="/customers"
-            listLabel="Customers"
-            emptyMessage="No customers"
-            quickCreate={
-              <QuickCustomerDialog onCreated={onCustomerCreated} />
-            }
-          />
           <EntitySelectField
             label="Assign to"
             fullWidth
-            stackedActions
             value={values.assignedToUserId}
             onValueChange={(id) => set("assignedToUserId", id)}
             options={userOptions}
             listHref="/users"
-            listLabel="Users"
+            listLabel="View all users"
             emptyMessage="No users"
           />
           <FrappeField label="Internal notes" fullWidth>
@@ -248,13 +318,17 @@ export function InquiryFormFields({
               rows={3}
               value={values.internalNotes}
               onChange={(e) => set("internalNotes", e.target.value)}
+              placeholder="Staff-only notes"
             />
           </FrappeField>
         </FrappeFormGrid>
       </FrappeSection>
 
       {mode === "edit" ? (
-        <FrappeSection title="Workflow">
+        <FrappeSection
+          title="Workflow"
+          description="Advance the pipeline, or convert to a sales invoice when ready."
+        >
           <FrappeFormGrid columns={2}>
             <FrappeField label="Status">
               <Select
@@ -273,24 +347,28 @@ export function InquiryFormFields({
                 </SelectContent>
               </Select>
             </FrappeField>
-            <FrappeField label="Converted sale ID">
-              <Input
-                id={`${idPrefix}-sale`}
-                value={values.convertedSaleId}
-                onChange={(e) => set("convertedSaleId", e.target.value)}
-                placeholder="Sale UUID"
-              />
+            <FrappeField label="Sale">
+              {values.convertedSaleId.trim() ? (
+                <div className="flex h-9 items-center gap-3">
+                  <Link
+                    href={`/sales/${values.convertedSaleId.trim()}`}
+                    className="text-sm text-[var(--frappe-primary)] hover:underline"
+                  >
+                    Open linked sale
+                  </Link>
+                </div>
+              ) : canConvert && inquiryId ? (
+                <Button asChild variant="outline" className="h-8 text-xs">
+                  <Link href={`/sales/new?inquiryId=${inquiryId}`}>
+                    Convert to sale
+                  </Link>
+                </Button>
+              ) : (
+                <span className="text-xs text-[var(--frappe-text-muted)]">
+                  Not converted
+                </span>
+              )}
             </FrappeField>
-            {values.convertedSaleId.trim() ? (
-              <div className="md:col-span-2">
-                <Link
-                  href={`/sales/${values.convertedSaleId.trim()}`}
-                  className="text-xs text-[var(--frappe-primary)] hover:underline"
-                >
-                  Open sale
-                </Link>
-              </div>
-            ) : null}
           </FrappeFormGrid>
         </FrappeSection>
       ) : null}

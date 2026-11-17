@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { QuickCustomerDialog } from "@/components/customers/quick-customer-dialog";
 import { QuickLocationDialog } from "@/components/locations/quick-location-dialog";
@@ -57,6 +57,7 @@ import type {
   BankAccount,
   CommissionBasis,
   Customer,
+  Inquiry,
   Item,
   Location,
   PaymentMethod,
@@ -113,7 +114,14 @@ function linesFromSale(sale: Sale): LineRow[] {
   return rows.length > 0 ? rows : [emptyLine()];
 }
 
-export function SaleForm({ sale }: { sale?: Sale }) {
+export function SaleForm({
+  sale,
+  inquiryId,
+}: {
+  sale?: Sale;
+  /** Prefill from inquiry and link after create (Convert to sale). */
+  inquiryId?: string | null;
+}) {
   const router = useRouter();
   const { user } = useAuth();
   const isEdit = !!sale?.id;
@@ -150,6 +158,7 @@ export function SaleForm({ sale }: { sale?: Sale }) {
     () => sale?.commissionBasis ?? "PROFIT"
   );
   const [notes, setNotes] = useState(sale?.notes ?? "");
+  const [linkedInquiryId, setLinkedInquiryId] = useState(inquiryId ?? "");
   const canOnBehalf = hasPermission(user, "sales.on_behalf");
 
   /** Rep for API/UI: explicit pick, or logged-in user on new sales once auth loads. */
@@ -202,6 +211,50 @@ export function SaleForm({ sale }: { sale?: Sale }) {
         : Promise.resolve([]),
     [paymentAccountType]
   );
+
+  useEffect(() => {
+    if (isEdit || !inquiryId) return;
+    let cancelled = false;
+    api<Inquiry>(`/inquiries/${inquiryId}`)
+      .then((inquiry) => {
+        if (cancelled) return;
+        setLinkedInquiryId(inquiry.id);
+        if (inquiry.customerId) setCustomerId(inquiry.customerId);
+        const noteParts = [
+          `From inquiry: ${inquiry.subject}`,
+          inquiry.companyName ? `Company: ${inquiry.companyName}` : null,
+          inquiry.contactName ? `Contact: ${inquiry.contactName}` : null,
+        ].filter(Boolean);
+        setNotes((prev) => prev || noteParts.join(" · "));
+        const interest = (inquiry.lines ?? []).filter((l) => l.itemId);
+        if (interest.length > 0) {
+          setLines(
+            interest.map((l) => {
+              const item = l.item
+                ? resolveItem(l.itemId, l.item)
+                : undefined;
+              return {
+                itemId: l.itemId,
+                quantity:
+                  l.quantity != null && String(l.quantity).trim() !== ""
+                    ? String(Number(l.quantity))
+                    : "1",
+                unitPrice: "",
+                uomId: defaultUomIdForItem(item, "sales") ?? "",
+                item,
+                width: "",
+                height: "",
+                pieces: "1",
+              };
+            })
+          );
+        }
+      })
+      .catch((err) => toast.error(errorMessage(err)));
+    return () => {
+      cancelled = true;
+    };
+  }, [inquiryId, isEdit]);
 
   useAutoPaymentAccount(
     paymentMethod,
@@ -397,10 +450,24 @@ export function SaleForm({ sale }: { sale?: Sale }) {
           method: "POST",
           body,
         });
+        if (linkedInquiryId) {
+          try {
+            await api(`/inquiries/${linkedInquiryId}`, {
+              method: "PATCH",
+              body: { convertedSaleId: res.id, status: "CONVERTED" },
+            });
+          } catch {
+            toast.warning(
+              "Sale created, but inquiry could not be marked converted"
+            );
+          }
+        }
         if (res.stockWarnings?.length) {
           toast.warning(res.stockWarnings.join("; "));
         } else {
-          toast.success("Sale recorded");
+          toast.success(
+            linkedInquiryId ? "Sale recorded · inquiry converted" : "Sale recorded"
+          );
         }
         requestNotificationsRefresh();
         router.push(`/sales/${res.id}`);

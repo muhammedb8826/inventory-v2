@@ -24,6 +24,7 @@ import { useAuth } from "@/lib/auth";
 import { api } from "@/lib/api";
 import {
   buildUpdateInquiryBody,
+  contactPatchFromCustomer,
   inquiryToFormValues,
   validateInquiryContact,
   type InquiryFormValues,
@@ -53,6 +54,7 @@ export function InquiryDetailDialog({
   const [acting, setActing] = useState(false);
 
   const {
+    customers,
     customerOptions,
     userOptions,
     itemOptions,
@@ -213,18 +215,26 @@ export function InquiryDetailDialog({
               ) : null}
               <InquiryFormFields
                 mode="edit"
+                inquiryId={inquiryId}
                 idPrefix="inquiry-edit"
                 values={values}
                 onChange={(patch) =>
                   setValues((prev) => (prev ? { ...prev, ...patch } : prev))
                 }
+                customers={customers}
                 customerOptions={customerOptions}
                 userOptions={userOptions}
                 itemOptions={itemOptions}
                 onCustomerCreated={(customer) => {
                   setCustomers((prev) => [...(prev ?? []), customer]);
                   setValues((prev) =>
-                    prev ? { ...prev, customerId: customer.id } : prev
+                    prev
+                      ? {
+                          ...prev,
+                          customerId: customer.id,
+                          ...contactPatchFromCustomer(customer, prev),
+                        }
+                      : prev
                   );
                   reloadCustomers();
                 }}
