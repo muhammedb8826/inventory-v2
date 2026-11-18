@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import {
   FrappeDocument,
   FrappeField,
@@ -12,8 +13,8 @@ import {
 } from "@/components/frappe";
 import { EntitySelectField } from "@/components/shared/entity-select-field";
 import { ItemSearchSelect } from "@/components/shared/item-search-select";
-import type { ItemSearchOption } from "@/components/shared/item-search-select";
 import { QuickCustomerDialog } from "@/components/customers/quick-customer-dialog";
+import type { InquiryItemOption } from "@/hooks/use-inquiry-form-options";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
@@ -33,8 +34,16 @@ import {
   type InquiryFormLine,
   type InquiryFormValues,
 } from "@/lib/inquiries";
-import type { Customer, InquiryPriority, InquiryStatus } from "@/lib/types";
+import { ITEM_TYPE_OPTIONS } from "@/lib/item-types";
+import type {
+  Customer,
+  InquiryPriority,
+  InquiryStatus,
+  ItemType,
+} from "@/lib/types";
 import type { EntityOption } from "@/components/shared/entity-select-field";
+
+const ALL_ITEM_TYPES = "__all__";
 
 export function InquiryFormFields({
   values,
@@ -58,9 +67,25 @@ export function InquiryFormFields({
   /** Full customer rows for contact prefill when linking a customer. */
   customers?: Customer[];
   userOptions: EntityOption[];
-  itemOptions: ItemSearchOption[];
+  itemOptions: InquiryItemOption[];
   onCustomerCreated: (customer: Customer) => void;
 }) {
+  /** Inquiries default to finished goods (what customers ask for). */
+  const [itemTypeFilter, setItemTypeFilter] = useState<ItemType | typeof ALL_ITEM_TYPES>(
+    "FINISHED"
+  );
+
+  const filteredItemOptions = useMemo(() => {
+    const selectedIds = new Set(
+      values.lines.map((l) => l.itemId).filter(Boolean)
+    );
+    if (itemTypeFilter === ALL_ITEM_TYPES) return itemOptions;
+    return itemOptions.filter(
+      (opt) =>
+        opt.itemType === itemTypeFilter || selectedIds.has(opt.itemId)
+    );
+  }, [itemOptions, itemTypeFilter, values.lines]);
+
   function set<K extends keyof InquiryFormValues>(
     key: K,
     value: InquiryFormValues[K]
@@ -207,8 +232,34 @@ export function InquiryFormFields({
 
       <FrappeSection
         title="Interested items"
-        description="Optional catalog lines for this RFQ. Leave empty for a general question."
+        description="Optional catalog lines for this RFQ. Defaults to finished goods — change the filter to see other types."
       >
+        <div className="mb-3 flex max-w-xs flex-col gap-1.5">
+          <label className="text-xs font-medium text-[var(--frappe-text-muted)]">
+            Show item type
+          </label>
+          <Select
+            value={itemTypeFilter}
+            onValueChange={(v) =>
+              setItemTypeFilter(v as ItemType | typeof ALL_ITEM_TYPES)
+            }
+          >
+            <SelectTrigger className="h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="FINISHED">Finished good</SelectItem>
+              {ITEM_TYPE_OPTIONS.filter((o) => o.value !== "FINISHED").map(
+                (option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                )
+              )}
+              <SelectItem value={ALL_ITEM_TYPES}>All types</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <FrappeGridTable
           columns={[
             { key: "item", label: "Item" },
@@ -250,9 +301,14 @@ export function InquiryFormFields({
                   <ItemSearchSelect
                     value={line.itemId}
                     onValueChange={(itemId) => updateLine(index, { itemId })}
-                    options={itemOptions}
-                    placeholder="Select item…"
+                    options={filteredItemOptions}
+                    placeholder="Select finished good…"
                     searchPlaceholder="Search catalog…"
+                    emptyMessage={
+                      itemTypeFilter === "FINISHED"
+                        ? "No finished goods found. Change the type filter or create a finished item."
+                        : "No items found for this type."
+                    }
                   />
                 </FrappeGridCell>
                 <FrappeGridCell>

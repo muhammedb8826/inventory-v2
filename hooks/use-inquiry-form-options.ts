@@ -6,9 +6,13 @@ import { apiList } from "@/lib/list-response";
 import { fetchAllInventory, uniqueItemsFromStock } from "@/lib/inventory-fetch";
 import { useAuth } from "@/lib/auth";
 import { hasAnyPermission, hasPermission } from "@/lib/permissions";
-import type { Customer, UserAdmin } from "@/lib/types";
+import type { Customer, Item, ItemType, UserAdmin } from "@/lib/types";
 import { useFetch } from "@/hooks/use-fetch";
 import type { ItemSearchOption } from "@/components/shared/item-search-select";
+
+export type InquiryItemOption = ItemSearchOption & {
+  itemType?: ItemType | null;
+};
 
 export function useInquiryFormOptions() {
   const { user } = useAuth();
@@ -62,15 +66,21 @@ export function useInquiryFormOptions() {
     [assignees]
   );
 
-  const itemOptions: ItemSearchOption[] = useMemo(
+  const catalogItems: Item[] = useMemo(
+    () => uniqueItemsFromStock(stock ?? []),
+    [stock]
+  );
+
+  const itemOptions: InquiryItemOption[] = useMemo(
     () =>
-      uniqueItemsFromStock(stock ?? []).map((item) => ({
+      catalogItems.map((item) => ({
         itemId: item.id,
         label: item.sku
           ? `${item.description} (${item.sku})`
           : item.description,
+        itemType: item.itemType ?? null,
       })),
-    [stock]
+    [catalogItems]
   );
 
   return {
