@@ -18,6 +18,7 @@ import {
   ClipboardList,
   Factory,
   MessageSquare,
+  MessagesSquare,
   Palette,
   Ruler,
   Tags,
@@ -79,6 +80,12 @@ export const mainNav: NavItem[] = [
     href: "/inquiries",
     icon: MessageSquare,
     permission: "inquiries.read",
+  },
+  {
+    title: "Messages",
+    href: "/messages",
+    icon: MessagesSquare,
+    permission: "messages.read",
   },
   {
     title: "Credits",

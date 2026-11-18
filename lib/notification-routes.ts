@@ -32,6 +32,8 @@ export function notificationHref(
       return "/inventory";
     case "inquiry":
       return `/inquiries?id=${encodeURIComponent(entityId)}`;
+    case "staff_message":
+      return `/messages?with=${encodeURIComponent(entityId)}`;
     default:
       return null;
   }
@@ -45,5 +47,6 @@ export const NOTIFICATION_MODULES = [
   { value: "credits", label: "Credits" },
   { value: "expenses", label: "Expenses" },
   { value: "inquiries", label: "Inquiries" },
+  { value: "messages", label: "Messages" },
   { value: "system", label: "System" },
 ] as const;
