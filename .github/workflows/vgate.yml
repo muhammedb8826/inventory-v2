@@ -1,4 +1,4 @@
-name: Deploy MohaFuture Next.js App to cPanel via FTP
+name: Deploy VGATE Next.js App to cPanel via FTP
 
 on:
   push:
@@ -25,7 +25,7 @@ jobs:
       run: |
         rm -f .env.production
         {
-          echo "NEXT_PUBLIC_API_URL=https://api.mohafuture.com/api";
+          echo "NEXT_PUBLIC_API_URL=https://api.vgatefurnishing.com/api";
         } >> .env.production
 
     - name: Build Next.js app
@@ -34,10 +34,10 @@ jobs:
     - name: Deploy to cPanel via FTP
       uses: SamKirkland/FTP-Deploy-Action@v4.3.5
       with:
-        server: ${{ secrets.FTP_SERVER_MOHAFUTURE }}
-        username: ${{ secrets.FTP_USERNAME_MOHAFUTURE }}
-        password: ${{ secrets.FTP_PASSWORD_MOHAFUTURE }}
-        server-dir: ${{ secrets.CPANEL_DIR_MOHAFUTURE }}
+        server: ${{ secrets.FTP_SERVER_VGATE  }}
+        username: ${{ secrets.FTP_USERNAME_VGATE }}
+        password: ${{ secrets.FTP_PASSWORD_VGATE }}
+        server-dir: ${{ secrets.CPANEL_DIR_VGATE }}
         local-dir: ./
         protocol: ftp
         exclude: |
