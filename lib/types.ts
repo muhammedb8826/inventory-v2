@@ -120,6 +120,8 @@ export interface UomCategory {
   name: string;
   description?: string | null;
   isActive?: boolean;
+  /** When true, items may set constant roll width and use W×H / Length→Area. */
+  hasConstantWidth?: boolean;
   uoms?: Uom[];
 }
 
@@ -176,9 +178,9 @@ export interface Item {
   purchaseUomId?: string | null;
   /** Length→Area width (area per 1 length-base unit) */
   uomWidth?: string | null;
-  /** Cut pricing: AREA (per m²) or PIECE. Null = non-dimensional. */
+  /** Legacy; unused in UI. Cuts always convert/stock by area; line rate is on the document. */
   dimensionPriceMode?: "AREA" | "PIECE" | null;
-  /** Length UOM for W×H cuts (m/cm/mm). Null = meters. */
+  /** Legacy; unused. Line UOM is the dimension unit on documents. */
   dimensionUomId?: string | null;
   stockUom?: Uom | null;
   salesUom?: Uom | null;
@@ -213,6 +215,9 @@ export interface StockRecord {
   location: Location;
   /** True when stock UOM is frozen (ERP: after stock or document history). */
   stockUomLocked?: boolean;
+  /** Linear equivalent when item has constant width (area / width). */
+  quantityLinear?: string | null;
+  linearUomSymbol?: string | null;
 }
 
 /** Response when create generates 2+ product variants. */

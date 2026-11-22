@@ -8,6 +8,7 @@ import { PermissionGate } from "@/components/permission-gate";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
@@ -22,6 +23,7 @@ export default function NewUomCategoryPage() {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [hasConstantWidth, setHasConstantWidth] = useState(false);
   const [saving, setSaving] = useState(false);
 
   async function handleSave(e: React.FormEvent) {
@@ -37,6 +39,7 @@ export default function NewUomCategoryPage() {
         code: code.trim(),
         name: name.trim(),
         description: description.trim() || undefined,
+        hasConstantWidth,
       });
       toast.success("Category created");
       router.replace(`/settings/uom/${cat.id}`);
@@ -119,6 +122,20 @@ export default function NewUomCategoryPage() {
               placeholder="Optional"
               className="max-w-md"
             />
+            <Label className="pt-2 text-sm font-normal text-[var(--erp-text-muted)]">
+              Has constant width
+            </Label>
+            <div className="flex max-w-md items-start gap-3">
+              <Switch
+                checked={hasConstantWidth}
+                onCheckedChange={setHasConstantWidth}
+              />
+              <p className="text-xs text-[var(--erp-text-muted)]">
+                Enable for fabric/roll categories. Items can set a constant
+                width; documents may show cut width/height. Off = never show
+                width or height.
+              </p>
+            </div>
           </div>
           <div className="border-t border-[var(--erp-border)] bg-[var(--erp-section-head)]/40 px-5 py-3 text-xs text-[var(--erp-text-muted)]">
             After save you can add units on the category form.

@@ -52,7 +52,7 @@ import { isLowStockRow } from "@/lib/inventory-stock";
 import { resolveItemImageUrl } from "@/lib/inventory-media";
 import { ItemImage } from "@/components/shared/item-image";
 import { formatMoney, formatQty, errorMessage } from "@/lib/format";
-import { formatItemStockQty } from "@/lib/uom";
+import { formatItemStockQtyWithLinear } from "@/lib/uom";
 import type {
   InventoryListTotals,
   LowStockRecord,
@@ -363,7 +363,7 @@ export default function InventoryPage() {
                       Qty
                     </span>
                     <span className="font-semibold tabular-nums">
-                      {formatItemStockQty(r.quantity, r.item, formatQty)}
+                      {formatItemStockQtyWithLinear(r, formatQty)}
                     </span>
                   </div>
                   <div className="flex items-baseline justify-between gap-2">
@@ -495,7 +495,7 @@ export default function InventoryPage() {
                   return (
                     <div className="flex flex-col items-end gap-1">
                       <span>
-                        {formatItemStockQty(r.quantity, r.item, formatQty)}
+                        {formatItemStockQtyWithLinear(r, formatQty)}
                       </span>
                       {showLowBadge ? (
                         <Badge

@@ -24,7 +24,10 @@ import { ItemImage } from "@/components/shared/item-image";
 import { isLowStockRow } from "@/lib/inventory-stock";
 import { itemTypeLabel } from "@/lib/item-types";
 import { errorMessage, formatMoney, formatQty } from "@/lib/format";
-import { formatItemStockQty, itemStockUnit } from "@/lib/uom";
+import {
+  formatItemStockQtyWithLinear,
+  itemStockUnit,
+} from "@/lib/uom";
 import type { LowStockRecord, StockRecord } from "@/lib/types";
 import { toast } from "sonner";
 import { EyeIcon } from "lucide-react";
@@ -182,11 +185,7 @@ export function StockDetailDialog({
                   <FrappeField label="On hand">
                     <div className="flex min-h-8 flex-wrap items-center gap-2">
                       <span className="text-sm font-medium tabular-nums text-[var(--frappe-text)]">
-                        {formatItemStockQty(
-                          shown.quantity,
-                          shown.item,
-                          formatQty
-                        )}
+                        {formatItemStockQtyWithLinear(shown, formatQty)}
                       </span>
                       {outOfStock ? (
                         <Badge variant="destructive" className="text-[10px]">

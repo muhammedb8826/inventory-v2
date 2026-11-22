@@ -100,9 +100,6 @@ export function StockFormDialog({
     record?.item.purchaseUomId ?? null
   );
   const [uomWidth, setUomWidth] = useState(record?.item.uomWidth ?? "");
-  const [dimensionPriceMode, setDimensionPriceMode] = useState<
-    "" | "AREA" | "PIECE"
-  >(record?.item.dimensionPriceMode ?? "");
   const [stockUomLocked, setStockUomLocked] = useState(
     Boolean(record?.stockUomLocked)
   );
@@ -139,6 +136,25 @@ export function StockFormDialog({
     );
   }, [stockUomId, allUoms, record?.item.stockUom?.categoryId]);
 
+  const stockCategoryHasConstantWidth = useMemo(() => {
+    if (!stockUomId) return false;
+    const uom =
+      allUoms?.find((u) => u.id === stockUomId) ??
+      record?.item.stockUom ??
+      null;
+    if (uom?.category?.hasConstantWidth) return true;
+    const catId = uom?.categoryId ?? stockUomCategoryId;
+    if (!catId || !allUoms?.length) return false;
+    return Boolean(
+      allUoms.find((u) => u.categoryId === catId)?.category?.hasConstantWidth
+    );
+  }, [stockUomId, allUoms, record?.item.stockUom, stockUomCategoryId]);
+
+  useEffect(() => {
+    if (stockCategoryHasConstantWidth) return;
+    setUomWidth("");
+  }, [stockCategoryHasConstantWidth]);
+
   useEffect(() => {
     return () => {
       if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
@@ -163,7 +179,6 @@ export function StockFormDialog({
     setSalesUomId(defaultUomId);
     setPurchaseUomId(defaultUomId);
     setUomWidth("");
-    setDimensionPriceMode("");
     setStockUomLocked(false);
     setItemType(DEFAULT_ITEM_TYPE);
     setQuantity(DEFAULT_OPENING_QTY);
@@ -190,7 +205,6 @@ export function StockFormDialog({
         setSalesUomId(record.item.salesUomId ?? null);
         setPurchaseUomId(record.item.purchaseUomId ?? null);
         setUomWidth(record.item.uomWidth ?? "");
-        setDimensionPriceMode(record.item.dimensionPriceMode ?? "");
         setStockUomLocked(Boolean(record.stockUomLocked));
         setItemType(record.item.itemType ?? "");
         setQuantity(record.quantity ?? "");
@@ -260,8 +274,11 @@ export function StockFormDialog({
           sku: optionalStringBodyValue(sku),
           salesUomId,
           purchaseUomId,
-          uomWidth: uomWidth.trim() ? parseFloat(uomWidth) : null,
-          dimensionPriceMode: dimensionPriceMode || null,
+          uomWidth:
+            stockCategoryHasConstantWidth && uomWidth.trim()
+              ? parseFloat(uomWidth)
+              : null,
+          dimensionPriceMode: null,
           itemType: itemType || null,
           purchasePrice: parseFloat(purchasePrice),
           reorderPoint: reorderValue,
@@ -303,8 +320,10 @@ export function StockFormDialog({
           attributeValueIds:
             attributeValueIdsFromSelections(attributeSelections),
         };
-        if (uomWidth.trim()) body.uomWidth = parseFloat(uomWidth);
-        if (dimensionPriceMode) body.dimensionPriceMode = dimensionPriceMode;
+        if (stockCategoryHasConstantWidth && uomWidth.trim()) {
+          body.uomWidth = parseFloat(uomWidth);
+        }
+        body.dimensionPriceMode = null;
         if (reorderValue !== null) {
           body.reorderPoint = reorderValue;
         }
@@ -490,44 +509,23 @@ export function StockFormDialog({
                 />
               </div>
             </div>
-            <div className="grid gap-2">
-              <Label>Roll width (Length → Area)</Label>
-              <Input
-                type="number"
-                step="any"
-                min="0"
-                value={uomWidth}
-                onChange={(e) => setUomWidth(e.target.value)}
-                placeholder="e.g. 1.5 for fabric"
-              />
-              <p className="text-xs text-muted-foreground">
-                When stock is Area (sqm) and you buy rolls by Length (m): area =
-                length × width.
-              </p>
-            </div>
-            <div className="grid gap-2">
-              <Label>Cut pricing</Label>
-              <Select
-                value={dimensionPriceMode || "__none__"}
-                onValueChange={(v) =>
-                  setDimensionPriceMode(
-                    v === "__none__" ? "" : (v as "AREA" | "PIECE")
-                  )
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="None" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">None (plain qty)</SelectItem>
-                  <SelectItem value="AREA">By area (m²)</SelectItem>
-                  <SelectItem value="PIECE">By piece</SelectItem>
-                </SelectContent>
-              </Select>
-              <p className="text-xs text-muted-foreground">
-                Enables W×H cuts on sales/purchases. Stock moves in m².
-              </p>
-            </div>
+            {stockCategoryHasConstantWidth ? (
+              <div className="grid gap-2">
+                <Label>Constant width</Label>
+                <Input
+                  type="number"
+                  step="any"
+                  min="0"
+                  value={uomWidth}
+                  onChange={(e) => setUomWidth(e.target.value)}
+                  placeholder="e.g. 1.5 for fabric"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Area = length × width. Document line rate is set on each
+                  purchase/sale.
+                </p>
+              </div>
+            ) : null}
             <div className="grid gap-2">
               <Label>Item type</Label>
               <Select

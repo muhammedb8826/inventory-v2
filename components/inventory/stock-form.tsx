@@ -44,7 +44,6 @@ import {
 } from "@/lib/inventory-stock";
 import { ITEM_TYPE_OPTIONS } from "@/lib/item-types";
 import { errorMessage, formatQty } from "@/lib/format";
-import { formatItemStockQty } from "@/lib/uom";
 import { requestNotificationsRefresh } from "@/lib/notification-events";
 import type {
   InventoryVariantCreateResult,
@@ -66,7 +65,7 @@ import {
 import { QuickLocationDialog } from "@/components/locations/quick-location-dialog";
 import { useLocations } from "@/hooks/use-locations";
 import { useFetch } from "@/hooks/use-fetch";
-import { fetchUoms, findDefaultLengthUomId, lengthUoms } from "@/lib/uom";
+import { fetchUoms, formatItemStockQty } from "@/lib/uom";
 import { toast } from "sonner";
 import { ImageIcon, Trash2Icon, UploadIcon } from "lucide-react";
 
@@ -107,12 +106,6 @@ export function StockForm({
     record?.item.purchaseUomId ?? null
   );
   const [uomWidth, setUomWidth] = useState(record?.item.uomWidth ?? "");
-  const [dimensionPriceMode, setDimensionPriceMode] = useState<
-    "" | "AREA" | "PIECE"
-  >(record?.item.dimensionPriceMode ?? "");
-  const [dimensionUomId, setDimensionUomId] = useState<string | null>(
-    record?.item.dimensionUomId ?? null
-  );
   const [stockUomLocked, setStockUomLocked] = useState(
     Boolean(record?.stockUomLocked)
   );
@@ -150,17 +143,27 @@ export function StockForm({
     );
   }, [stockUomId, allUoms, record?.item.stockUom?.categoryId]);
 
-  const lengthCategoryId = useMemo(
-    () => lengthUoms(allUoms ?? [])[0]?.categoryId ?? null,
-    [allUoms]
-  );
+  const stockCategoryHasConstantWidth = useMemo(() => {
+    if (!stockUomId) return false;
+    const uom =
+      allUoms?.find((u) => u.id === stockUomId) ??
+      record?.item.stockUom ??
+      null;
+    if (uom?.category?.hasConstantWidth) return true;
+    const catId = uom?.categoryId ?? stockUomCategoryId;
+    if (catId && allUoms?.length) {
+      const peer = allUoms.find((u) => u.categoryId === catId);
+      if (peer?.category?.hasConstantWidth) return true;
+      if (peer?.category?.code === "AREA") return true;
+      if (uom?.category?.code === "AREA") return true;
+    }
+    return uom?.category?.code === "AREA";
+  }, [stockUomId, allUoms, record?.item.stockUom, stockUomCategoryId]);
 
   useEffect(() => {
-    if (!dimensionPriceMode) return;
-    if (dimensionUomId) return;
-    const id = findDefaultLengthUomId(allUoms ?? []);
-    if (id) setDimensionUomId(id);
-  }, [dimensionPriceMode, dimensionUomId, allUoms]);
+    if (stockCategoryHasConstantWidth) return;
+    setUomWidth("");
+  }, [stockCategoryHasConstantWidth]);
 
   const variantCount = useMemo(
     () => countVariantCombinations(multiAttributeSelections),
@@ -207,8 +210,6 @@ export function StockForm({
         setSalesUomId(fresh.item.salesUomId ?? null);
         setPurchaseUomId(fresh.item.purchaseUomId ?? null);
         setUomWidth(fresh.item.uomWidth ?? "");
-        setDimensionPriceMode(fresh.item.dimensionPriceMode ?? "");
-        setDimensionUomId(fresh.item.dimensionUomId ?? null);
         setQuantity(fresh.quantity ?? "");
         setPurchasePrice(fresh.purchasePrice ?? "");
         setReorderPoint(fresh.reorderPoint ?? "");
@@ -277,10 +278,6 @@ export function StockForm({
     }
 
     if (isEdit && record) {
-      if (dimensionPriceMode && !dimensionUomId) {
-        toast.error("Select Cut dimensions in (m, cm, or mm)");
-        return;
-      }
       setSaving(true);
       try {
         const body: Record<string, unknown> = {
@@ -288,9 +285,12 @@ export function StockForm({
           sku: optionalStringBodyValue(sku),
           salesUomId,
           purchaseUomId,
-          uomWidth: uomWidth.trim() ? parseFloat(uomWidth) : null,
-          dimensionPriceMode: dimensionPriceMode || null,
-          dimensionUomId: dimensionPriceMode ? dimensionUomId : null,
+          uomWidth:
+            stockCategoryHasConstantWidth && uomWidth.trim()
+              ? parseFloat(uomWidth)
+              : null,
+          dimensionPriceMode: null,
+          dimensionUomId: null,
           itemType: itemType || null,
           purchasePrice: price,
           reorderPoint: reorderValue,
@@ -333,11 +333,6 @@ export function StockForm({
       toast.error("Too many variants (max 100). Narrow your attribute selections.");
       return;
     }
-    if (dimensionPriceMode && !dimensionUomId) {
-      toast.error("Select Cut dimensions in (m, cm, or mm)");
-      return;
-    }
-
     setSaving(true);
     try {
       const body: Record<string, unknown> = {
@@ -351,14 +346,11 @@ export function StockForm({
         salesUomId: salesUomId ?? undefined,
         purchaseUomId: purchaseUomId ?? undefined,
       };
-      if (uomWidth.trim()) body.uomWidth = parseFloat(uomWidth);
-      if (dimensionPriceMode) {
-        body.dimensionPriceMode = dimensionPriceMode;
-        body.dimensionUomId = dimensionUomId;
-      } else {
-        body.dimensionPriceMode = null;
-        body.dimensionUomId = null;
+      if (stockCategoryHasConstantWidth && uomWidth.trim()) {
+        body.uomWidth = parseFloat(uomWidth);
       }
+      body.dimensionPriceMode = null;
+      body.dimensionUomId = null;
       if (reorderValue !== null) body.reorderPoint = reorderValue;
 
       const variantAttributes = variantAttributesFromMulti(
@@ -660,58 +652,18 @@ export function StockForm({
                     onChange={(e) => setReorderPoint(e.target.value)}
                   />
                 </FrappeField>
-                <FrappeField
-                  label="Roll width (Length → Area)"
-                  hint="For buying rolls by the meter. Area = length × width."
-                >
-                  <Input
-                    type="number"
-                    step="any"
-                    min="0"
-                    value={uomWidth}
-                    onChange={(e) => setUomWidth(e.target.value)}
-                    placeholder="e.g. 1.5"
-                  />
-                </FrappeField>
-                <FrappeField
-                  label="Cut pricing"
-                  hint="Requires Area stock UOM (m²). Use roll width for Length purchases; W×H cuts on sales/purchases/BoM."
-                >
-                  <Select
-                    value={dimensionPriceMode || "__none__"}
-                    onValueChange={(v) => {
-                      const next =
-                        v === "__none__" ? "" : (v as "AREA" | "PIECE");
-                      setDimensionPriceMode(next);
-                      if (!next) setDimensionUomId(null);
-                      else if (!dimensionUomId) {
-                        setDimensionUomId(
-                          findDefaultLengthUomId(allUoms ?? [])
-                        );
-                      }
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="None" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">None (plain qty)</SelectItem>
-                      <SelectItem value="AREA">By area (m²)</SelectItem>
-                      <SelectItem value="PIECE">By piece</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </FrappeField>
-                {dimensionPriceMode ? (
+                {stockCategoryHasConstantWidth ? (
                   <FrappeField
-                    label="Cut dimensions in"
-                    hint="W×H on sales/purchases/BoM are entered in this unit, then converted to m² stock."
+                    label="Constant width"
+                    hint="Roll/banner width in meters. On purchases/sales pick m/cm/roll on the line — qty converts to stock (e.g. m²). Blank cut width uses this value."
                   >
-                    <UomSelect
-                      value={dimensionUomId}
-                      onValueChange={setDimensionUomId}
-                      categoryId={lengthCategoryId}
-                      requireCategory
-                      placeholder="Meters"
+                    <Input
+                      type="number"
+                      step="any"
+                      min="0"
+                      value={uomWidth}
+                      onChange={(e) => setUomWidth(e.target.value)}
+                      placeholder="e.g. 1.5"
                     />
                   </FrappeField>
                 ) : null}

@@ -81,7 +81,6 @@ interface LineRow {
   item?: Item;
   width: string;
   height: string;
-  pieces: string;
 }
 
 function emptyLine(): LineRow {
@@ -92,7 +91,6 @@ function emptyLine(): LineRow {
     uomId: "",
     width: "",
     height: "",
-    pieces: "1",
   };
 }
 
@@ -100,15 +98,15 @@ function linesFromSale(sale: Sale): LineRow[] {
   const rows = (sale.lines ?? []).map((l) => {
     const itemId = productItemId({ itemId: l.itemId, item: l.item });
     const item = l.item ? resolveItem(itemId, l.item) : undefined;
+    const isCut = Boolean(l.dimWidth || l.dimHeight);
     return {
       itemId,
-      quantity: l.quantity,
+      quantity: isCut && l.dimPieces ? String(l.dimPieces) : l.quantity,
       unitPrice: l.unitPrice,
       uomId: l.uomId ?? defaultUomIdForItem(item, "sales") ?? "",
       item,
       width: l.dimWidth ?? "",
       height: l.dimHeight ?? "",
-      pieces: l.dimPieces ?? "1",
     };
   });
   return rows.length > 0 ? rows : [emptyLine()];
@@ -244,7 +242,6 @@ export function SaleForm({
                 item,
                 width: "",
                 height: "",
-                pieces: "1",
               };
             })
           );
@@ -681,7 +678,6 @@ export function SaleForm({
                 { key: "uom", label: "UOM", className: "w-24" },
                 { key: "w", label: "W", className: "w-20" },
                 { key: "h", label: "H", className: "w-20" },
-                { key: "pcs", label: "Pcs", className: "w-16" },
                 { key: "qty", label: "Qty", className: "w-20" },
                 { key: "rate", label: "Rate", className: "w-24" },
               ]}
@@ -690,13 +686,24 @@ export function SaleForm({
             >
               {lines.map((line, i) => {
                 const cut = itemAllowsCuts(line.item, uoms);
+                const hasDefaultWidth =
+                  line.item?.uomWidth != null &&
+                  Number.isFinite(parseFloat(String(line.item.uomWidth))) &&
+                  parseFloat(String(line.item.uomWidth)) > 0;
                 const isCutFilled = Boolean(
-                  line.width.trim() && line.height.trim()
+                  line.height.trim() &&
+                    (line.width.trim() || hasDefaultWidth)
                 );
+                const lineUom =
+                  uoms.find((u) => u.id === line.uomId) ||
+                  line.item?.salesUom ||
+                  line.item?.stockUom ||
+                  null;
                 const dimSymbol =
-                  line.item?.dimensionUom?.symbol ||
-                  line.item?.dimensionUom?.code ||
-                  "m";
+                  lineUom?.symbol || lineUom?.code || "m";
+                const widthPlaceholder = hasDefaultWidth
+                  ? `W (default ${line.item?.uomWidth})`
+                  : `W (${dimSymbol})`;
                 return (
                 <FrappeGridRow
                   key={i}
@@ -720,7 +727,7 @@ export function SaleForm({
                           uomId: defaultUomIdForItem(item, "sales") ?? "",
                           width: "",
                           height: "",
-                          pieces: "1",
+                          quantity: "1",
                         });
                       }}
                       options={itemOptions}
@@ -747,25 +754,16 @@ export function SaleForm({
                     />
                   </FrappeGridCell>
                   <FrappeGridCell>
-                    {cut ? (
-                      <span
-                        className="text-xs text-[var(--frappe-text-muted)]"
-                        title="Stock UOM comes from the item (e.g. m²)"
-                      >
-                        —
-                      </span>
-                    ) : (
-                      <LineUomSelect
-                        value={line.uomId || null}
-                        onValueChange={(uomId) =>
-                          updateLine(i, { uomId: uomId ?? "" })
-                        }
-                        item={line.item}
-                        uoms={uoms}
-                        loading={uomsLoading}
-                        disabled={!locationId}
-                      />
-                    )}
+                    <LineUomSelect
+                      value={line.uomId || null}
+                      onValueChange={(uomId) =>
+                        updateLine(i, { uomId: uomId ?? "" })
+                      }
+                      item={line.item}
+                      uoms={uoms}
+                      loading={uomsLoading}
+                      disabled={!locationId}
+                    />
                   </FrappeGridCell>
                   <FrappeGridCell>
                     {cut ? (
@@ -778,8 +776,12 @@ export function SaleForm({
                         onChange={(e) =>
                           updateLine(i, { width: e.target.value })
                         }
-                        placeholder={`W (${dimSymbol})`}
-                        title={`Width in ${dimSymbol}`}
+                        placeholder={widthPlaceholder}
+                        title={
+                          hasDefaultWidth
+                            ? `Width in ${dimSymbol}; blank uses item constant width`
+                            : `Width in ${dimSymbol}`
+                        }
                         disabled={notesOnly}
                       />
                     ) : (
@@ -810,25 +812,6 @@ export function SaleForm({
                     )}
                   </FrappeGridCell>
                   <FrappeGridCell>
-                    {cut ? (
-                      <Input
-                        type="number"
-                        min="1"
-                        step="any"
-                        className="h-8"
-                        value={line.pieces}
-                        onChange={(e) =>
-                          updateLine(i, { pieces: e.target.value })
-                        }
-                        disabled={notesOnly}
-                      />
-                    ) : (
-                      <span className="text-xs text-[var(--frappe-text-muted)]">
-                        —
-                      </span>
-                    )}
-                  </FrappeGridCell>
-                  <FrappeGridCell>
                     <Input
                       type="number"
                       min="0"
@@ -838,13 +821,14 @@ export function SaleForm({
                       onChange={(e) =>
                         updateLine(i, { quantity: e.target.value })
                       }
-                      required={!isCutFilled}
-                      disabled={notesOnly || (cut && isCutFilled)}
+                      required
+                      disabled={notesOnly}
                       title={
-                        cut && isCutFilled
-                          ? "Qty from W×H×pieces"
-                          : undefined
+                        isCutFilled
+                          ? "Number of pieces of this size"
+                          : `Quantity in ${dimSymbol}`
                       }
+                      placeholder={isCutFilled ? "Pcs" : "Qty"}
                     />
                   </FrappeGridCell>
                   <FrappeGridCell>

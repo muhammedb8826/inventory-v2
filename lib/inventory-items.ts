@@ -69,9 +69,13 @@ export function preferRicherItem(
       salesUomId: current.salesUomId ?? next.salesUomId,
       purchaseUomId: current.purchaseUomId ?? next.purchaseUomId,
       uomWidth: current.uomWidth ?? next.uomWidth,
+      dimensionPriceMode:
+        current.dimensionPriceMode ?? next.dimensionPriceMode,
+      dimensionUomId: current.dimensionUomId ?? next.dimensionUomId,
       stockUom: current.stockUom ?? next.stockUom,
       salesUom: current.salesUom ?? next.salesUom,
       purchaseUom: current.purchaseUom ?? next.purchaseUom,
+      dimensionUom: current.dimensionUom ?? next.dimensionUom,
       itemUoms: current.itemUoms ?? next.itemUoms,
     };
   }
@@ -82,9 +86,13 @@ export function preferRicherItem(
     salesUomId: next.salesUomId ?? current.salesUomId,
     purchaseUomId: next.purchaseUomId ?? current.purchaseUomId,
     uomWidth: next.uomWidth ?? current.uomWidth,
+    dimensionPriceMode:
+      next.dimensionPriceMode ?? current.dimensionPriceMode,
+    dimensionUomId: next.dimensionUomId ?? current.dimensionUomId,
     stockUom: next.stockUom ?? current.stockUom,
     salesUom: next.salesUom ?? current.salesUom,
     purchaseUom: next.purchaseUom ?? current.purchaseUom,
+    dimensionUom: next.dimensionUom ?? current.dimensionUom,
     itemUoms: next.itemUoms ?? current.itemUoms,
   };
 }
@@ -126,7 +134,6 @@ export interface DocumentLineInput {
   uomId?: string | null;
   width?: string | number | null;
   height?: string | number | null;
-  pieces?: string | number | null;
 }
 
 export interface DocumentLineBody {
@@ -165,29 +172,19 @@ export function parseDocumentLines(
     const width = parseOptionalPositive(line.width);
     const height = parseOptionalPositive(line.height);
     const isCut = width != null || height != null;
-    if (isCut && (width == null || height == null)) {
-      return { error: "Cut lines need both width and height." };
-    }
-    let pieces: number | undefined;
-    if (isCut) {
-      const p = parseOptionalPositive(line.pieces);
-      pieces = p ?? 1;
-      if (pieces < 1) {
-        return { error: "Pieces must be at least 1." };
-      }
+    if (isCut && height == null) {
+      return {
+        error:
+          "Cut lines need a height (width is optional when the item has constant width).",
+      };
     }
 
-    let quantity: number;
-    if (isCut) {
-      quantity = pieces!;
-    } else {
-      quantity =
-        typeof line.quantity === "number"
-          ? line.quantity
-          : parseFloat(String(line.quantity));
-      if (Number.isNaN(quantity) || quantity <= 0) {
-        return { error: "Enter a valid quantity for each line." };
-      }
+    const quantity =
+      typeof line.quantity === "number"
+        ? line.quantity
+        : parseFloat(String(line.quantity));
+    if (Number.isNaN(quantity) || quantity <= 0) {
+      return { error: "Enter a valid quantity for each line." };
     }
 
     const unitPriceRaw = line.unitPrice ?? "";
@@ -200,10 +197,11 @@ export function parseDocumentLines(
     }
     const entry: DocumentLineBody = { itemId, quantity, unitPrice };
     if (line.uomId) entry.uomId = line.uomId;
-    if (isCut && width != null && height != null) {
-      entry.width = width;
+    if (isCut && height != null) {
+      if (width != null) entry.width = width;
       entry.height = height;
-      entry.pieces = pieces;
+      // Qty is the piece count when cutting.
+      entry.pieces = quantity;
     }
     parsed.push(entry);
   }

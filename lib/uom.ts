@@ -27,6 +27,7 @@ export async function createUomCategory(body: {
   code: string;
   name: string;
   description?: string;
+  hasConstantWidth?: boolean;
 }): Promise<UomCategory> {
   return api<UomCategory>("/uom/categories", { method: "POST", body });
 }
@@ -38,6 +39,7 @@ export async function updateUomCategory(
     name?: string;
     description?: string | null;
     isActive?: boolean;
+    hasConstantWidth?: boolean;
   }
 ): Promise<UomCategory> {
   return api<UomCategory>(`/uom/categories/${id}`, { method: "PATCH", body });
@@ -131,15 +133,37 @@ export function itemStockUomCategoryCode(
   return stockUom?.category?.code ?? null;
 }
 
+/** Whether the item's stock UOM category allows constant width / W×H. */
+export function itemHasConstantWidthCategory(
+  item: Item | undefined | null,
+  uoms: Uom[] = []
+): boolean {
+  if (!item) return false;
+  if (item.stockUom?.category?.hasConstantWidth) return true;
+  const stockUom =
+    item.stockUom ?? uoms.find((u) => u.id === item.stockUomId) ?? null;
+  if (stockUom?.category?.hasConstantWidth) return true;
+  // Resolve category from flat UOM list when nested category missing
+  const catId =
+    stockUom?.categoryId ??
+    item.stockUom?.categoryId ??
+    itemStockUomCategoryId(item, uoms);
+  if (catId) {
+    const peer = uoms.find((u) => u.categoryId === catId && u.category);
+    if (peer?.category?.hasConstantWidth) return true;
+  }
+  // Fallback: classic AREA stock before/without migration flag populated
+  return itemStockUomCategoryCode(item, uoms) === "AREA";
+}
+
 /**
- * W×H cut columns on sales/purchases: needs cut pricing + Area stock UOM.
+ * W×H cut columns on sales/purchases/BoM when stock UOM category has constant width.
  */
 export function itemAllowsCuts(
   item: Item | undefined | null,
   uoms: Uom[] = []
 ): boolean {
-  if (!item?.dimensionPriceMode) return false;
-  return itemStockUomCategoryCode(item, uoms) === "AREA";
+  return itemHasConstantWidthCategory(item, uoms);
 }
 
 /** Length UOMs for cut dimension entry (m, cm, mm, …). */
@@ -178,15 +202,17 @@ export function allowedUomCategoryIds(
 
   const stockUom =
     item?.stockUom ?? uoms.find((u) => u.id === item?.stockUomId) ?? null;
-  const stockCode =
-    stockUom?.category?.code ??
-    uoms.find((u) => u.categoryId === stockCat)?.category?.code;
+  const stockHasWidth =
+    Boolean(stockUom?.category?.hasConstantWidth) ||
+    itemHasConstantWidthCategory(item, uoms);
 
-  if (stockCode === "AREA") {
-    const length = uoms.find((u) => u.category?.code === "LENGTH");
+  if (stockHasWidth) {
+    const length = uoms.find(
+      (u) => u.category?.code === "LENGTH" && !u.category?.hasConstantWidth
+    );
     if (length?.categoryId) ids.add(length.categoryId);
-  } else if (stockCode === "LENGTH") {
-    const area = uoms.find((u) => u.category?.code === "AREA");
+  } else {
+    const area = uoms.find((u) => u.category?.hasConstantWidth);
     if (area?.categoryId) ids.add(area.categoryId);
   }
 
@@ -230,6 +256,30 @@ export function formatItemStockQty(
   if (qty === undefined || qty === null || qty === "") return "—";
   const unit = itemStockUnit(item);
   return `${formatQty(qty)}${unit ? ` ${unit}` : ""}`;
+}
+
+/** Stock qty plus linear equivalent when API provided quantityLinear. */
+export function formatItemStockQtyWithLinear(
+  record: {
+    quantity?: string | number | null;
+    quantityLinear?: string | number | null;
+    linearUomSymbol?: string | null;
+    item?: {
+      unit?: string | null;
+      stockUom?: { symbol?: string | null } | null;
+    } | null;
+  },
+  formatQty: (v: string | number | undefined) => string
+): string {
+  const primary = formatItemStockQty(record.quantity, record.item, formatQty);
+  if (
+    record.quantityLinear == null ||
+    record.quantityLinear === "" ||
+    !record.linearUomSymbol
+  ) {
+    return primary;
+  }
+  return `${primary} (≈ ${formatQty(record.quantityLinear)} ${record.linearUomSymbol})`;
 }
 
 type LineQtySource = {

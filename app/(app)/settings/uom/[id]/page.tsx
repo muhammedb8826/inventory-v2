@@ -64,6 +64,7 @@ export default function UomCategoryDetailPage() {
   const [code, setCode] = useState("");
   const [description, setDescription] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [hasConstantWidth, setHasConstantWidth] = useState(false);
   const [categoryDirty, setCategoryDirty] = useState(false);
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -76,6 +77,7 @@ export default function UomCategoryDetailPage() {
       setCode(cat.code);
       setDescription(cat.description ?? "");
       setIsActive(cat.isActive ?? true);
+      setHasConstantWidth(Boolean(cat.hasConstantWidth));
       setCategoryDirty(false);
       const next = sortUnits(cat.uoms ?? []).map((u) => uomToDraft(u));
       setLines(next);
@@ -203,6 +205,7 @@ export default function UomCategoryDetailPage() {
           code: code.trim(),
           description: description.trim() || null,
           isActive,
+          hasConstantWidth,
         });
       }
 
@@ -356,6 +359,24 @@ export default function UomCategoryDetailPage() {
                 className="h-9 max-w-md"
                 placeholder="Optional"
               />
+              <Label className="text-sm font-normal text-[var(--erp-text-muted)]">
+                Has constant width
+              </Label>
+              <div className="flex max-w-md items-start gap-3">
+                <Switch
+                  checked={hasConstantWidth}
+                  disabled={!canWrite}
+                  onCheckedChange={(v) => {
+                    setHasConstantWidth(v);
+                    setCategoryDirty(true);
+                  }}
+                />
+                <p className="text-xs text-[var(--erp-text-muted)]">
+                  Items in this category can set a constant roll width; document
+                  lines may show cut width/height. Off hides width/height
+                  everywhere.
+                </p>
+              </div>
             </div>
 
             <div className="flex flex-wrap items-end justify-between gap-2 border-b border-[var(--erp-border)] bg-[var(--erp-section-head)] px-5">
