@@ -1,6 +1,8 @@
 import { Badge } from "@/components/ui/badge";
 import {
   inquiryAssignmentLabel,
+  inquiryPriorityLabel,
+  inquirySourceLabel,
   inquiryStatusLabel,
 } from "@/lib/inquiries";
 import type {
@@ -12,13 +14,15 @@ import type {
 
 export function InquiryStatusBadge({ status }: { status: InquiryStatus }) {
   const variant =
-    status === "NEW"
-      ? "destructive"
-      : status === "CONVERTED" || status === "CLOSED"
-        ? "secondary"
-        : status === "CANCELLED"
-          ? "outline"
-          : "default";
+    status === "DRAFT"
+      ? "secondary"
+      : status === "QUOTED"
+        ? "default"
+        : status === "ORDERED"
+          ? "default"
+          : status === "LOST" || status === "CANCELLED"
+            ? "outline"
+            : "secondary";
 
   return <Badge variant={variant}>{inquiryStatusLabel(status)}</Badge>;
 }
@@ -48,13 +52,13 @@ export function InquiryPriorityBadge({
 }) {
   const variant =
     priority === "URGENT" || priority === "HIGH" ? "destructive" : "outline";
-  return <Badge variant={variant}>{priority}</Badge>;
+  return <Badge variant={variant}>{inquiryPriorityLabel(priority)}</Badge>;
 }
 
 export function InquirySourceBadge({ source }: { source: InquirySource }) {
   return (
     <Badge variant={source === "PUBLIC" ? "secondary" : "outline"}>
-      {source}
+      {inquirySourceLabel(source)}
     </Badge>
   );
 }

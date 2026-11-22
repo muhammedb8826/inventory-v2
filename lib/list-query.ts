@@ -134,6 +134,7 @@ export type InquiriesListQueryParams = GenericListQueryParams & {
   priority?: InquiryPriority;
   customerId?: string;
   assignedToUserId?: string;
+  createdById?: string;
   assignmentStatus?: InquiryAssignmentStatus;
   itemId?: string;
 };

@@ -76,7 +76,7 @@ export const mainNav: NavItem[] = [
     permission: "sales.read",
   },
   {
-    title: "Inquiries",
+    title: "Quotations",
     href: "/inquiries",
     icon: MessageSquare,
     permission: "inquiries.read",

@@ -1,12 +1,11 @@
 "use client";
 
 import { useMemo } from "react";
-import { api } from "@/lib/api";
 import { apiList } from "@/lib/list-response";
 import { fetchAllInventory, uniqueItemsFromStock } from "@/lib/inventory-fetch";
 import { useAuth } from "@/lib/auth";
-import { hasAnyPermission, hasPermission } from "@/lib/permissions";
-import type { Customer, Item, ItemType, UserAdmin } from "@/lib/types";
+import { hasPermission } from "@/lib/permissions";
+import type { Customer, Item, ItemType } from "@/lib/types";
 import { useFetch } from "@/hooks/use-fetch";
 import type { ItemSearchOption } from "@/components/shared/item-search-select";
 
@@ -17,12 +16,6 @@ export type InquiryItemOption = ItemSearchOption & {
 export function useInquiryFormOptions() {
   const { user } = useAuth();
   const canCustomers = hasPermission(user, "customers.read");
-  const canAssignees = hasAnyPermission(user, [
-    "users.read",
-    "inquiries.read",
-    "inquiries.write",
-    "sales.write",
-  ]);
   const canInventory = hasPermission(user, "inventory.read");
 
   const {
@@ -33,12 +26,6 @@ export function useInquiryFormOptions() {
     () => apiList<Customer>("/customers"),
     [],
     { enabled: canCustomers }
-  );
-
-  const { data: assignees } = useFetch(
-    () => api<UserAdmin[]>("/users/assignees"),
-    [],
-    { enabled: canAssignees }
   );
 
   const { data: stock } = useFetch(
@@ -53,17 +40,6 @@ export function useInquiryFormOptions() {
         .filter((c) => c.isActive !== false)
         .map((c) => ({ id: c.id, label: c.name })),
     [customers]
-  );
-
-  const userOptions = useMemo(
-    () =>
-      (assignees ?? [])
-        .filter((u) => u.isActive !== false)
-        .map((u) => ({
-          id: u.id,
-          label: u.fullName || u.email,
-        })),
-    [assignees]
   );
 
   const catalogItems: Item[] = useMemo(
@@ -86,7 +62,6 @@ export function useInquiryFormOptions() {
   return {
     customers: customers ?? [],
     customerOptions,
-    userOptions,
     itemOptions,
     reloadCustomers,
     setCustomers,

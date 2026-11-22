@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useMemo, useState } from "react";
 import {
   FrappeDocument,
@@ -16,8 +15,6 @@ import { ItemSearchSelect } from "@/components/shared/item-search-select";
 import { QuickCustomerDialog } from "@/components/customers/quick-customer-dialog";
 import type { InquiryItemOption } from "@/hooks/use-inquiry-form-options";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -25,66 +22,73 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   EMPTY_INQUIRY_LINE,
-  INQUIRY_PRIORITIES,
-  INQUIRY_STATUSES,
   contactPatchFromCustomer,
-  inquiryStatusLabel,
+  inquiryFormSubtotal,
   type InquiryFormLine,
   type InquiryFormValues,
 } from "@/lib/inquiries";
 import { ITEM_TYPE_OPTIONS } from "@/lib/item-types";
-import type {
-  Customer,
-  InquiryPriority,
-  InquiryStatus,
-  ItemType,
-} from "@/lib/types";
+import { formatMoney } from "@/lib/format";
+import type { Customer, ItemType } from "@/lib/types";
 import type { EntityOption } from "@/components/shared/entity-select-field";
 
 const ALL_ITEM_TYPES = "__all__";
 
+function lineAmount(line: InquiryFormLine): number | null {
+  if (!line.itemId.trim() || !line.unitPrice.trim()) return null;
+  const qty = parseFloat(line.quantity);
+  const price = parseFloat(line.unitPrice);
+  if (Number.isNaN(price) || price < 0) return null;
+  return (Number.isNaN(qty) || qty <= 0 ? 1 : qty) * price;
+}
+
 export function InquiryFormFields({
   values,
   onChange,
-  mode,
-  inquiryId,
   idPrefix = "inquiry",
   customerOptions,
   customers = [],
-  userOptions,
   itemOptions,
   onCustomerCreated,
 }: {
   values: InquiryFormValues;
   onChange: (patch: Partial<InquiryFormValues>) => void;
-  mode: "create" | "edit";
-  /** Required in edit mode for Convert to sale. */
-  inquiryId?: string | null;
+  mode?: "create" | "edit";
   idPrefix?: string;
   customerOptions: EntityOption[];
-  /** Full customer rows for contact prefill when linking a customer. */
   customers?: Customer[];
-  userOptions: EntityOption[];
   itemOptions: InquiryItemOption[];
   onCustomerCreated: (customer: Customer) => void;
 }) {
-  /** Inquiries default to finished goods (what customers ask for). */
-  const [itemTypeFilter, setItemTypeFilter] = useState<ItemType | typeof ALL_ITEM_TYPES>(
-    "FINISHED"
-  );
+  const [itemTypeFilter, setItemTypeFilter] = useState<
+    ItemType | typeof ALL_ITEM_TYPES
+  >("FINISHED");
 
   const filteredItemOptions = useMemo(() => {
     const selectedIds = new Set(
       values.lines.map((l) => l.itemId).filter(Boolean)
     );
-    if (itemTypeFilter === ALL_ITEM_TYPES) return itemOptions;
-    return itemOptions.filter(
-      (opt) =>
-        opt.itemType === itemTypeFilter || selectedIds.has(opt.itemId)
-    );
+    const filtered =
+      itemTypeFilter === ALL_ITEM_TYPES
+        ? itemOptions
+        : itemOptions.filter(
+            (opt) =>
+              opt.itemType === itemTypeFilter || selectedIds.has(opt.itemId)
+          );
+    return [...filtered].sort((a, b) => {
+      const aFin = a.itemType === "FINISHED" ? 0 : 1;
+      const bFin = b.itemType === "FINISHED" ? 0 : 1;
+      if (aFin !== bFin) return aFin - bFin;
+      return a.label.localeCompare(b.label);
+    });
   }, [itemOptions, itemTypeFilter, values.lines]);
+
+  const subtotal = inquiryFormSubtotal(values.lines);
+  const hasCustomer = Boolean(values.customerId.trim());
+  const selectedCustomer = customers.find((c) => c.id === values.customerId);
 
   function set<K extends keyof InquiryFormValues>(
     key: K,
@@ -103,25 +107,21 @@ export function InquiryFormFields({
   }
 
   function onCustomerChange(customerId: string) {
+    if (!customerId) {
+      onChange({ customerId: "" });
+      return;
+    }
     const customer = customers.find((c) => c.id === customerId);
     onChange({
       customerId,
-      ...contactPatchFromCustomer(customer, values),
+      ...contactPatchFromCustomer(customer),
     });
   }
 
-  const canConvert =
-    mode === "edit" &&
-    values.status !== "CANCELLED" &&
-    values.status !== "CONVERTED" &&
-    !values.convertedSaleId.trim();
-
   return (
     <FrappeDocument>
-      <FrappeSection
-        title="Party"
-        description="Link a customer when known; contact details stay on the inquiry for walk-ins."
-      >
+      {/* Header — Odoo-style party / dates */}
+      <FrappeSection title="Customer">
         <FrappeFormGrid columns={2}>
           <EntitySelectField
             label="Customer"
@@ -138,296 +138,235 @@ export function InquiryFormFields({
                   onCustomerCreated(customer);
                   onChange({
                     customerId: customer.id,
-                    ...contactPatchFromCustomer(customer, values),
+                    ...contactPatchFromCustomer(customer),
                   });
                 }}
               />
             }
           />
           <FrappeField
-            label="Company"
-            hint="Organization name (optional). Prefills from customer when empty."
+            label="Expiration"
+            hint="Required when status is Quotation"
           >
             <Input
-              id={`${idPrefix}-company`}
-              value={values.companyName}
-              onChange={(e) => set("companyName", e.target.value)}
-              placeholder="e.g. Acme Trading"
-            />
-          </FrappeField>
-          <FrappeField label="Contact name" required>
-            <Input
-              id={`${idPrefix}-name`}
-              required
-              value={values.contactName}
-              onChange={(e) => set("contactName", e.target.value)}
-            />
-          </FrappeField>
-          <FrappeField label="Phone">
-            <Input
-              id={`${idPrefix}-phone`}
-              type="tel"
-              placeholder="0911…"
-              value={values.phone}
-              onChange={(e) => set("phone", e.target.value)}
-            />
-          </FrappeField>
-          <FrappeField label="Email">
-            <Input
-              id={`${idPrefix}-email`}
-              type="email"
-              value={values.email}
-              onChange={(e) => set("email", e.target.value)}
-            />
-          </FrappeField>
-        </FrappeFormGrid>
-        <p className="mt-3 text-[11px] text-[var(--frappe-text-muted)]">
-          Include at least a phone number or email so the team can follow up.
-        </p>
-      </FrappeSection>
-
-      <FrappeSection title="Request">
-        <FrappeFormGrid columns={2}>
-          <FrappeField label="Subject" required fullWidth>
-            <Input
-              id={`${idPrefix}-subject`}
-              required
-              value={values.subject}
-              onChange={(e) => set("subject", e.target.value)}
-            />
-          </FrappeField>
-          <FrappeField label="Message" required fullWidth>
-            <Textarea
-              id={`${idPrefix}-message`}
-              required
-              rows={4}
-              value={values.message}
-              onChange={(e) => set("message", e.target.value)}
-            />
-          </FrappeField>
-          <FrappeField
-            label="Required by"
-            hint="When the customer needs a decision / delivery (optional)."
-          >
-            <Input
-              id={`${idPrefix}-required-by`}
+              id={`${idPrefix}-valid-until`}
               type="date"
-              value={values.requiredByAt}
-              onChange={(e) => set("requiredByAt", e.target.value)}
+              value={values.validUntil}
+              onChange={(e) => set("validUntil", e.target.value)}
             />
           </FrappeField>
-          <FrappeField
-            label="Follow-up"
-            hint="Internal reminder to contact them again."
-          >
-            <Input
-              id={`${idPrefix}-follow-up`}
-              type="datetime-local"
-              value={values.followUpAt}
-              onChange={(e) => set("followUpAt", e.target.value)}
-            />
-          </FrappeField>
+
+          {hasCustomer ? (
+            <FrappeField label="Contact" fullWidth>
+              <div className="rounded-md border border-[var(--frappe-border)] bg-[var(--frappe-section-head)]/40 px-3 py-2 text-sm text-[var(--frappe-text)]">
+                <div className="font-medium">
+                  {values.contactName || selectedCustomer?.name || "—"}
+                </div>
+                <div className="mt-0.5 text-xs text-[var(--frappe-text-muted)]">
+                  {[values.phone, values.email].filter(Boolean).join(" · ") ||
+                    "No phone or email on this customer"}
+                </div>
+              </div>
+            </FrappeField>
+          ) : (
+            <>
+              <FrappeField label="Contact name" required>
+                <Input
+                  id={`${idPrefix}-name`}
+                  required
+                  value={values.contactName}
+                  onChange={(e) => set("contactName", e.target.value)}
+                  placeholder="Walk-in name"
+                />
+              </FrappeField>
+              <FrappeField label="Phone" required>
+                <Input
+                  id={`${idPrefix}-phone`}
+                  type="tel"
+                  required
+                  placeholder="0911…"
+                  value={values.phone}
+                  onChange={(e) => set("phone", e.target.value)}
+                />
+              </FrappeField>
+            </>
+          )}
         </FrappeFormGrid>
       </FrappeSection>
 
-      <FrappeSection
-        title="Interested items"
-        description="Optional catalog lines for this RFQ. Defaults to finished goods — change the filter to see other types."
-      >
-        <div className="mb-3 flex max-w-xs flex-col gap-1.5">
-          <label className="text-xs font-medium text-[var(--frappe-text-muted)]">
-            Show item type
-          </label>
-          <Select
-            value={itemTypeFilter}
-            onValueChange={(v) =>
-              setItemTypeFilter(v as ItemType | typeof ALL_ITEM_TYPES)
-            }
+      <Tabs defaultValue="lines" className="gap-0">
+        <div className="border-b border-[var(--frappe-border)] px-4 sm:px-5">
+          <TabsList
+            variant="line"
+            className="h-10 w-full justify-start rounded-none bg-transparent p-0"
           >
-            <SelectTrigger className="h-8">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="FINISHED">Finished good</SelectItem>
-              {ITEM_TYPE_OPTIONS.filter((o) => o.value !== "FINISHED").map(
-                (option) => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                )
-              )}
-              <SelectItem value={ALL_ITEM_TYPES}>All types</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <FrappeGridTable
-          columns={[
-            { key: "item", label: "Item" },
-            { key: "qty", label: "Qty", className: "w-24" },
-            { key: "notes", label: "Notes", className: "w-40" },
-          ]}
-          onAddRow={() =>
-            set("lines", [...values.lines, { ...EMPTY_INQUIRY_LINE }])
-          }
-          addLabel="Add item"
-        >
-          {values.lines.length === 0 ? (
-            <FrappeGridRow canRemove={false}>
-              <FrappeGridCell>
-                <span className="text-xs text-[var(--frappe-text-muted)]">
-                  No items — add a line or leave blank.
-                </span>
-              </FrappeGridCell>
-              <FrappeGridCell>
-                <span className="text-xs text-[var(--frappe-text-muted)]">—</span>
-              </FrappeGridCell>
-              <FrappeGridCell>
-                <span className="text-xs text-[var(--frappe-text-muted)]">—</span>
-              </FrappeGridCell>
-            </FrappeGridRow>
-          ) : (
-            values.lines.map((line, index) => (
-              <FrappeGridRow
-                key={index}
-                canRemove
-                onRemove={() =>
-                  set(
-                    "lines",
-                    values.lines.filter((_, i) => i !== index)
-                  )
-                }
-              >
-                <FrappeGridCell>
-                  <ItemSearchSelect
-                    value={line.itemId}
-                    onValueChange={(itemId) => updateLine(index, { itemId })}
-                    options={filteredItemOptions}
-                    placeholder="Select finished good…"
-                    searchPlaceholder="Search catalog…"
-                    emptyMessage={
-                      itemTypeFilter === "FINISHED"
-                        ? "No finished goods found. Change the type filter or create a finished item."
-                        : "No items found for this type."
-                    }
-                  />
-                </FrappeGridCell>
-                <FrappeGridCell>
-                  <Input
-                    type="number"
-                    step="any"
-                    min="0"
-                    value={line.quantity}
-                    onChange={(e) =>
-                      updateLine(index, { quantity: e.target.value })
-                    }
-                    className="h-8"
-                  />
-                </FrappeGridCell>
-                <FrappeGridCell>
-                  <Input
-                    value={line.notes}
-                    onChange={(e) =>
-                      updateLine(index, { notes: e.target.value })
-                    }
-                    placeholder="Optional"
-                    className="h-8"
-                  />
-                </FrappeGridCell>
-              </FrappeGridRow>
-            ))
-          )}
-        </FrappeGridTable>
-      </FrappeSection>
-
-      <FrappeSection title="Assignment">
-        <FrappeFormGrid columns={2} className="gap-5">
-          <FrappeField label="Priority">
-            <Select
-              value={values.priority}
-              onValueChange={(v) => set("priority", v as InquiryPriority)}
+            <TabsTrigger
+              value="lines"
+              className="rounded-none px-3 data-active:text-[var(--erp-accent)]"
             >
-              <SelectTrigger>
+              Order Lines
+            </TabsTrigger>
+            <TabsTrigger
+              value="other"
+              className="rounded-none px-3 data-active:text-[var(--erp-accent)]"
+            >
+              Other Info
+            </TabsTrigger>
+          </TabsList>
+        </div>
+
+        <TabsContent value="lines" className="mt-0 p-4 sm:p-5">
+          <div className="mb-3 flex flex-wrap items-center justify-end gap-2">
+            <span className="text-[11px] text-[var(--frappe-text-muted)]">
+              Item type
+            </span>
+            <Select
+              value={itemTypeFilter}
+              onValueChange={(v) =>
+                setItemTypeFilter(v as ItemType | typeof ALL_ITEM_TYPES)
+              }
+            >
+              <SelectTrigger className="h-8 w-[160px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {INQUIRY_PRIORITIES.map((p) => (
-                  <SelectItem key={p} value={p}>
-                    {p}
+                <SelectItem value={ALL_ITEM_TYPES}>All types</SelectItem>
+                {ITEM_TYPE_OPTIONS.map((option) => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-          </FrappeField>
-          <EntitySelectField
-            label="Assign to"
-            fullWidth
-            value={values.assignedToUserId}
-            onValueChange={(id) => set("assignedToUserId", id)}
-            options={userOptions}
-            listHref="/users"
-            listLabel="View all users"
-            emptyMessage="No users"
-          />
-          <FrappeField label="Internal notes" fullWidth>
-            <Textarea
-              id={`${idPrefix}-notes`}
-              rows={3}
-              value={values.internalNotes}
-              onChange={(e) => set("internalNotes", e.target.value)}
-              placeholder="Staff-only notes"
-            />
-          </FrappeField>
-        </FrappeFormGrid>
-      </FrappeSection>
+          </div>
 
-      {mode === "edit" ? (
-        <FrappeSection
-          title="Workflow"
-          description="Advance the pipeline, or convert to a sales invoice when ready."
-        >
-          <FrappeFormGrid columns={2}>
-            <FrappeField label="Status">
-              <Select
-                value={values.status}
-                onValueChange={(v) => set("status", v as InquiryStatus)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {INQUIRY_STATUSES.map((s) => (
-                    <SelectItem key={s} value={s}>
-                      {inquiryStatusLabel(s)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FrappeField>
-            <FrappeField label="Sale">
-              {values.convertedSaleId.trim() ? (
-                <div className="flex h-9 items-center gap-3">
-                  <Link
-                    href={`/sales/${values.convertedSaleId.trim()}`}
-                    className="text-sm text-[var(--frappe-primary)] hover:underline"
+          <FrappeGridTable
+            columns={[
+              { key: "item", label: "Item" },
+              { key: "qty", label: "Qty", className: "w-24" },
+              { key: "rate", label: "Unit price", className: "w-32" },
+              { key: "amount", label: "Amount", className: "w-28 text-right" },
+            ]}
+            onAddRow={() =>
+              set("lines", [...values.lines, { ...EMPTY_INQUIRY_LINE }])
+            }
+            addLabel="Add a line"
+          >
+            {values.lines.length === 0 ? (
+              <FrappeGridRow canRemove={false}>
+                <FrappeGridCell>
+                  <span className="text-xs text-[var(--frappe-text-muted)]">
+                    No items yet — add at least one line.
+                  </span>
+                </FrappeGridCell>
+                <FrappeGridCell>
+                  <span className="text-xs text-[var(--frappe-text-muted)]">
+                    —
+                  </span>
+                </FrappeGridCell>
+                <FrappeGridCell>
+                  <span className="text-xs text-[var(--frappe-text-muted)]">
+                    —
+                  </span>
+                </FrappeGridCell>
+                <FrappeGridCell>
+                  <span className="text-xs text-[var(--frappe-text-muted)]">
+                    —
+                  </span>
+                </FrappeGridCell>
+              </FrappeGridRow>
+            ) : (
+              values.lines.map((line, index) => {
+                const amount = lineAmount(line);
+                return (
+                  <FrappeGridRow
+                    key={index}
+                    canRemove={values.lines.length > 1}
+                    onRemove={() =>
+                      set(
+                        "lines",
+                        values.lines.filter((_, i) => i !== index)
+                      )
+                    }
                   >
-                    Open linked sale
-                  </Link>
-                </div>
-              ) : canConvert && inquiryId ? (
-                <Button asChild variant="outline" className="h-8 text-xs">
-                  <Link href={`/sales/new?inquiryId=${inquiryId}`}>
-                    Convert to sale
-                  </Link>
-                </Button>
-              ) : (
-                <span className="text-xs text-[var(--frappe-text-muted)]">
-                  Not converted
-                </span>
-              )}
+                    <FrappeGridCell>
+                      <ItemSearchSelect
+                        value={line.itemId}
+                        onValueChange={(itemId) =>
+                          updateLine(index, { itemId })
+                        }
+                        options={filteredItemOptions}
+                        placeholder="Select item…"
+                        searchPlaceholder="Search catalog…"
+                        emptyMessage={
+                          itemTypeFilter === ALL_ITEM_TYPES
+                            ? "No items found."
+                            : "No items for this type — try All types."
+                        }
+                      />
+                    </FrappeGridCell>
+                    <FrappeGridCell>
+                      <Input
+                        type="number"
+                        step="any"
+                        min="0"
+                        value={line.quantity}
+                        onChange={(e) =>
+                          updateLine(index, { quantity: e.target.value })
+                        }
+                        className="h-8"
+                      />
+                    </FrappeGridCell>
+                    <FrappeGridCell>
+                      <Input
+                        type="number"
+                        step="any"
+                        min="0"
+                        value={line.unitPrice}
+                        onChange={(e) =>
+                          updateLine(index, { unitPrice: e.target.value })
+                        }
+                        placeholder="0.00"
+                        className="h-8"
+                      />
+                    </FrappeGridCell>
+                    <FrappeGridCell>
+                      <div className="flex h-8 items-center justify-end text-sm tabular-nums text-[var(--frappe-text)]">
+                        {amount != null ? formatMoney(amount) : "—"}
+                      </div>
+                    </FrappeGridCell>
+                  </FrappeGridRow>
+                );
+              })
+            )}
+          </FrappeGridTable>
+
+          <div className="mt-4 flex justify-end border-t border-[var(--frappe-border)] pt-3">
+            <div className="min-w-[10rem] text-right">
+              <div className="text-[11px] font-medium uppercase tracking-wide text-[var(--frappe-text-muted)]">
+                Total
+              </div>
+              <div className="text-xl font-semibold tabular-nums text-[var(--frappe-text)]">
+                {formatMoney(subtotal)}
+              </div>
+            </div>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="other" className="mt-0 p-4 sm:p-5">
+          <FrappeFormGrid columns={2}>
+            <FrappeField label="Reference" hint="Customer PO or external ref">
+              <Input
+                id={`${idPrefix}-reference`}
+                value={values.reference}
+                onChange={(e) => set("reference", e.target.value)}
+                placeholder="e.g. PO-1042"
+                maxLength={100}
+              />
             </FrappeField>
           </FrappeFormGrid>
-        </FrappeSection>
-      ) : null}
+        </TabsContent>
+      </Tabs>
     </FrappeDocument>
   );
 }

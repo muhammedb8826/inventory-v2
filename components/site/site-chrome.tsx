@@ -47,16 +47,7 @@ export function SiteHeader() {
               onHero ? "opacity-90" : "hover:text-[var(--site-ink)]"
             )}
           >
-            Help
-          </a>
-          <a
-            href={onHero ? "#inquire" : "/#inquire"}
-            className={cn(
-              "hidden font-medium transition-opacity hover:opacity-100 sm:inline",
-              onHero ? "opacity-90" : "hover:text-[var(--site-ink)]"
-            )}
-          >
-            Request a quote
+            Contact
           </a>
           <Link
             href="/login"

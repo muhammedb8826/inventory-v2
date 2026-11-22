@@ -1,12 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { DataCardTable } from "@/components/shared/data-card-table";
 import { PageLoading } from "@/components/shared/page-loading";
 import { PermissionGate } from "@/components/permission-gate";
-import { FrappeFilterBar, FrappeListToolbar } from "@/components/frappe";
+import {
+  FrappeButtonPrimary,
+  FrappeFilterBar,
+  FrappeListToolbar,
+} from "@/components/frappe";
 import { DateRangeFilter } from "@/components/shared/date-range-filter";
 import { ListSearchField } from "@/components/shared/list-search-field";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -17,37 +22,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { InquiryCreateDialog } from "@/components/inquiries/inquiry-create-dialog";
-import { InquiryDetailDialog } from "@/components/inquiries/inquiry-detail-dialog";
 import { ListRowActions } from "@/components/shared/list-row-actions";
-import { EyeIcon } from "lucide-react";
-import {
-  InquiryAssignmentBadge,
-  InquiryPriorityBadge,
-  InquirySourceBadge,
-  InquiryStatusBadge,
-} from "@/components/inquiries/inquiry-status-badge";
+import { EyeIcon, PlusIcon } from "lucide-react";
+import { InquiryStatusBadge } from "@/components/inquiries/inquiry-status-badge";
 import { buildInquiriesListPath } from "@/lib/list-query";
 import { api } from "@/lib/api";
 import { useAuth } from "@/lib/auth";
 import { fetchCustomers } from "@/lib/party-fetch";
 import { useFetch } from "@/hooks/use-fetch";
 import {
-  INQUIRY_ASSIGNMENT_STATUSES,
-  INQUIRY_PRIORITIES,
   INQUIRY_STATUSES,
   inquiryItemsSummary,
+  inquiryStatusLabel,
 } from "@/lib/inquiries";
 import { formatDate } from "@/lib/format";
 import { hasPermission } from "@/lib/permissions";
-import type {
-  Inquiry,
-  InquiryAssignmentStatus,
-  InquiryPriority,
-  InquirySource,
-  InquiryStatus,
-  UserAdmin,
-} from "@/lib/types";
+import type { Inquiry, InquiryStatus, UserAdmin } from "@/lib/types";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
 import { AccessDenied } from "@/components/shared/access-denied";
 
@@ -61,15 +51,8 @@ export default function InquiriesPage() {
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
   const [status, setStatus] = useState<InquiryStatus | "">("");
-  const [source, setSource] = useState<InquirySource | "">("");
-  const [priority, setPriority] = useState<InquiryPriority | "">("");
-  const [assignmentStatus, setAssignmentStatus] = useState<
-    InquiryAssignmentStatus | ""
-  >("");
   const [customerId, setCustomerId] = useState("");
-  const [assignedToUserId, setAssignedToUserId] = useState("");
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [detailOpen, setDetailOpen] = useState(false);
+  const [createdById, setCreatedById] = useState("");
   const debouncedSearch = useDebouncedValue(search);
   const canRead = hasPermission(user, "inquiries.read");
   const { data: customers } = useFetch(
@@ -84,11 +67,10 @@ export default function InquiriesPage() {
   );
   useEffect(() => {
     if (!deepLinkId) return;
-    setSelectedId(deepLinkId);
-    setDetailOpen(true);
-  }, [deepLinkId]);
+    router.replace(`/inquiries/${deepLinkId}`);
+  }, [deepLinkId, router]);
 
-  const { rows, meta, setPage, setLimit, loading, reload } =
+  const { rows, meta, setPage, setLimit, loading } =
     usePaginatedList<Inquiry>(
       (page, limit) =>
         canRead
@@ -98,11 +80,8 @@ export default function InquiriesPage() {
                 to: to || undefined,
                 search: debouncedSearch || undefined,
                 status: status || undefined,
-                source: source || undefined,
-                priority: priority || undefined,
-                assignmentStatus: assignmentStatus || undefined,
                 customerId: customerId || undefined,
-                assignedToUserId: assignedToUserId || undefined,
+                createdById: createdById || undefined,
               },
               page,
               limit
@@ -114,29 +93,14 @@ export default function InquiriesPage() {
         to,
         debouncedSearch,
         status,
-        source,
-        priority,
-        assignmentStatus,
         customerId,
-        assignedToUserId,
+        createdById,
       ]
     );
 
-  function openInquiry(id: string) {
-    setSelectedId(id);
-    setDetailOpen(true);
-  }
-
-  function handleDetailOpenChange(open: boolean) {
-    setDetailOpen(open);
-    if (!open && deepLinkId) {
-      router.replace("/inquiries");
-    }
-  }
-
   if (authLoading) {
     return (
-      <AppShell title="Inquiries">
+      <AppShell title="Quotations">
         <PageLoading />
       </AppShell>
     );
@@ -144,7 +108,7 @@ export default function InquiriesPage() {
 
   if (!canRead) {
     return (
-      <AppShell title="Inquiries">
+      <AppShell title="Quotations">
         <AccessDenied />
       </AppShell>
     );
@@ -152,20 +116,20 @@ export default function InquiriesPage() {
 
   return (
     <AppShell
-      title="Inquiries"
-      subtitle="Leads and product questions from the website and walk-ins"
+      title="Quotations"
+      subtitle="Staff-created customer quotations"
       breadcrumbs={[
-        { label: "Home", href: "/dashboard" },
-        { label: "Inquiries" },
+        { label: "Qenenia ERP", href: "/dashboard" },
+        { label: "Quotations" },
       ]}
       actions={
         <PermissionGate permission="inquiries.write">
-          <InquiryCreateDialog
-            onSuccess={(inquiry) => {
-              reload();
-              if (inquiry?.id) openInquiry(inquiry.id);
-            }}
-          />
+          <FrappeButtonPrimary asChild>
+            <Link href="/inquiries/new">
+              <PlusIcon className="size-3.5" />
+              New
+            </Link>
+          </FrappeButtonPrimary>
         </PermissionGate>
       }
     >
@@ -176,7 +140,7 @@ export default function InquiriesPage() {
               variant="toolbar"
               value={search}
               onChange={setSearch}
-              placeholder="Search name, phone, email, subject…"
+              placeholder="Search contact, phone, email, items, reference…"
             />
           }
         >
@@ -199,60 +163,7 @@ export default function InquiriesPage() {
               <SelectItem value="__all__">All statuses</SelectItem>
               {INQUIRY_STATUSES.map((s) => (
                 <SelectItem key={s} value={s}>
-                  {s.replaceAll("_", " ")}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={source || "__all__"}
-            onValueChange={(v) =>
-              setSource(v === "__all__" ? "" : (v as InquirySource))
-            }
-          >
-            <SelectTrigger className="h-9 w-full">
-              <SelectValue placeholder="Source" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All sources</SelectItem>
-              <SelectItem value="PUBLIC">Public</SelectItem>
-              <SelectItem value="INTERNAL">Internal</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select
-            value={priority || "__all__"}
-            onValueChange={(v) =>
-              setPriority(v === "__all__" ? "" : (v as InquiryPriority))
-            }
-          >
-            <SelectTrigger className="h-9 w-full">
-              <SelectValue placeholder="Priority" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All priorities</SelectItem>
-              {INQUIRY_PRIORITIES.map((p) => (
-                <SelectItem key={p} value={p}>
-                  {p}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            value={assignmentStatus || "__all__"}
-            onValueChange={(v) =>
-              setAssignmentStatus(
-                v === "__all__" ? "" : (v as InquiryAssignmentStatus)
-              )
-            }
-          >
-            <SelectTrigger className="h-9 w-full">
-              <SelectValue placeholder="Assignment" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">All assignments</SelectItem>
-              {INQUIRY_ASSIGNMENT_STATUSES.map((s) => (
-                <SelectItem key={s} value={s}>
-                  {s.replaceAll("_", " ")}
+                  {inquiryStatusLabel(s)}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -274,16 +185,14 @@ export default function InquiriesPage() {
             </SelectContent>
           </Select>
           <Select
-            value={assignedToUserId || "__all__"}
-            onValueChange={(v) =>
-              setAssignedToUserId(v === "__all__" ? "" : v)
-            }
+            value={createdById || "__all__"}
+            onValueChange={(v) => setCreatedById(v === "__all__" ? "" : v)}
           >
             <SelectTrigger className="h-9 w-full">
-              <SelectValue placeholder="Anyone assigned" />
+              <SelectValue placeholder="Created by" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="__all__">Anyone assigned</SelectItem>
+              <SelectItem value="__all__">All creators</SelectItem>
               {(users ?? []).map((u) => (
                 <SelectItem key={u.id} value={u.id}>
                   {u.fullName || u.email}
@@ -295,7 +204,7 @@ export default function InquiriesPage() {
 
         <FrappeListToolbar>
           <span className="text-[var(--frappe-text-muted)]">
-            {meta.total} inquir{meta.total === 1 ? "y" : "ies"}
+            {meta.total} quotation{meta.total === 1 ? "" : "s"}
           </span>
         </FrappeListToolbar>
 
@@ -304,8 +213,8 @@ export default function InquiriesPage() {
         ) : (
           <DataCardTable
             rows={rows}
-            emptyTitle="No inquiries"
-            emptyDescription="Public website forms and walk-in leads will show up here."
+            emptyTitle="No quotations"
+            emptyDescription="Create a quotation for a customer or walk-in."
             pagination={{
               meta,
               onPageChange: setPage,
@@ -319,12 +228,12 @@ export default function InquiriesPage() {
                 cell: (r) => formatDate(r.createdAt),
               },
               {
-                key: "contact",
-                header: "Contact",
+                key: "customer",
+                header: "Customer",
                 cell: (r) => (
                   <div className="min-w-0">
                     <div className="font-medium text-[var(--frappe-text)]">
-                      {r.contactName}
+                      {r.customer?.name || r.contactName || "—"}
                     </div>
                     <div className="text-xs text-[var(--frappe-text-muted)]">
                       {r.phone || r.email || "—"}
@@ -333,27 +242,27 @@ export default function InquiriesPage() {
                 ),
               },
               {
-                key: "subject",
-                header: "Subject",
-                cell: (r) => (
-                  <button
-                    type="button"
-                    className="max-w-[280px] truncate text-left font-medium text-[var(--frappe-primary)] hover:underline"
-                    onClick={() => openInquiry(r.id)}
-                  >
-                    {r.subject}
-                  </button>
-                ),
-              },
-              {
                 key: "items",
                 header: "Items",
+                cell: (r) => {
+                  const summary = inquiryItemsSummary(r);
+                  return (
+                    <Link
+                      href={`/inquiries/${r.id}`}
+                      className="line-clamp-2 max-w-[280px] font-medium text-[var(--frappe-primary)] hover:underline"
+                      title={summary}
+                    >
+                      {summary !== "—" ? summary : r.subject || "Quotation"}
+                    </Link>
+                  );
+                },
+              },
+              {
+                key: "reference",
+                header: "Reference",
                 cell: (r) => (
-                  <span
-                    className="line-clamp-2 max-w-[220px] text-sm text-[var(--frappe-text-muted)]"
-                    title={inquiryItemsSummary(r)}
-                  >
-                    {inquiryItemsSummary(r)}
+                  <span className="text-sm text-[var(--frappe-text-muted)]">
+                    {r.reference?.trim() || "—"}
                   </span>
                 ),
               },
@@ -363,29 +272,10 @@ export default function InquiriesPage() {
                 cell: (r) => <InquiryStatusBadge status={r.status} />,
               },
               {
-                key: "assignment",
-                header: "Assignment",
-                cell: (r) => (
-                  <InquiryAssignmentBadge status={r.assignmentStatus} />
-                ),
-              },
-              {
-                key: "priority",
-                header: "Priority",
-                cell: (r) => <InquiryPriorityBadge priority={r.priority} />,
-              },
-              {
-                key: "source",
-                header: "Source",
-                cell: (r) => <InquirySourceBadge source={r.source} />,
-              },
-              {
-                key: "assigned",
-                header: "Assigned",
+                key: "createdBy",
+                header: "Created by",
                 cell: (r) =>
-                  r.assignedTo?.fullName ||
-                  r.assignedTo?.email ||
-                  "—",
+                  r.createdBy?.fullName || r.createdBy?.email || "—",
               },
               {
                 key: "actions",
@@ -397,7 +287,7 @@ export default function InquiriesPage() {
                       {
                         label: "Open",
                         icon: EyeIcon,
-                        onSelect: () => openInquiry(r.id),
+                        onSelect: () => router.push(`/inquiries/${r.id}`),
                       },
                     ]}
                   />
@@ -406,13 +296,6 @@ export default function InquiriesPage() {
             ]}
           />
         )}
-
-        <InquiryDetailDialog
-          inquiryId={selectedId}
-          open={detailOpen}
-          onOpenChange={handleDetailOpenChange}
-          onChanged={reload}
-        />
       </>
     </AppShell>
   );

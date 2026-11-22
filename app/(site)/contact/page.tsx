@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { SiteInquiryForm } from "@/components/site/site-inquiry-form";
 import { useBranding } from "@/components/branding/branding-provider";
+import { VENDOR } from "@/lib/vendor";
+import { MailIcon, PhoneIcon } from "lucide-react";
 
 export default function ContactPage() {
   const { appName } = useBranding();
@@ -15,45 +16,43 @@ export default function ContactPage() {
             ← Back to {appName}
           </Link>
         </p>
-        <h1
-          id="contact-heading"
-          className="site-display mt-4 text-4xl font-semibold text-[var(--site-ink)] sm:text-5xl"
-        >
+        <h1 className="site-display mt-4 text-4xl font-semibold text-[var(--site-ink)] sm:text-5xl">
           Contact
         </h1>
         <p className="mt-3 text-[var(--site-ink-soft)] leading-relaxed">
-          Send a product question or quote request. We will follow up shortly.
+          Reach us by phone or email. Staff create quotations inside the app
+          after signing in.
         </p>
       </div>
 
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] lg:gap-16">
-        <aside className="space-y-4 text-sm text-[var(--site-ink-soft)]">
-          <p>
-            Prefer the short path? The same form lives on the{" "}
-            <Link
-              href="/#inquire"
-              className="font-medium text-[var(--site-accent)] underline-offset-4 hover:underline"
-            >
-              home page
-            </Link>
-            .
-          </p>
-          <p>
-            Include a phone number or email so our team can reach you. Staff
-            members should{" "}
-            <Link
-              href="/login"
-              className="font-medium text-[var(--site-accent)] underline-offset-4 hover:underline"
-            >
-              sign in
-            </Link>{" "}
-            instead.
-          </p>
-        </aside>
-
-        <div className="rounded-xl border border-[var(--site-line)] bg-[var(--site-surface)] p-6 sm:p-8">
-          <SiteInquiryForm headingId="contact-heading" />
-        </div>
+      <div className="max-w-md space-y-4 text-sm">
+        {VENDOR.phones.map((phone) => (
+          <a
+            key={phone.tel}
+            href={`tel:${phone.tel}`}
+            className="flex items-center gap-3 text-[var(--site-ink)] hover:text-[var(--site-accent)]"
+          >
+            <PhoneIcon className="size-4 text-[var(--site-ink-soft)]" />
+            <span className="tabular-nums">{phone.display}</span>
+          </a>
+        ))}
+        <a
+          href={`mailto:${VENDOR.email}`}
+          className="flex items-center gap-3 break-all text-[var(--site-ink)] hover:text-[var(--site-accent)]"
+        >
+          <MailIcon className="size-4 shrink-0 text-[var(--site-ink-soft)]" />
+          {VENDOR.email}
+        </a>
+        <p className="pt-4 text-[var(--site-ink-soft)]">
+          Staff members should{" "}
+          <Link
+            href="/login"
+            className="font-medium text-[var(--site-accent)] underline-offset-4 hover:underline"
+          >
+            sign in
+          </Link>{" "}
+          to create quotations.
+        </p>
       </div>
     </div>
   );

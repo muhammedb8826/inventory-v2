@@ -894,12 +894,12 @@ export interface NotificationUnreadCount {
   count: number;
 }
 
+/** Quotation lifecycle (ERP-style). */
 export type InquiryStatus =
-  | "NEW"
-  | "IN_PROGRESS"
+  | "DRAFT"
   | "QUOTED"
-  | "CONVERTED"
-  | "CLOSED"
+  | "ORDERED"
+  | "LOST"
   | "CANCELLED";
 
 export type InquirySource = "PUBLIC" | "INTERNAL";
@@ -917,6 +917,7 @@ export interface InquiryLine {
   id?: string;
   itemId: string;
   quantity?: string | null;
+  unitPrice?: string | null;
   notes?: string | null;
   item?: Item | null;
 }
@@ -924,6 +925,7 @@ export interface InquiryLine {
 export interface InquiryLineInput {
   itemId: string;
   quantity?: number;
+  unitPrice?: number;
   notes?: string;
 }
 
@@ -949,6 +951,14 @@ export interface Inquiry {
   internalNotes?: string | null;
   followUpAt?: string | null;
   requiredByAt?: string | null;
+  /** Quote expiry when status is QUOTED */
+  validUntil?: string | null;
+  quotedAt?: string | null;
+  subtotal?: string | null;
+  total?: string | null;
+  quoteTerms?: string | null;
+  /** Customer / external reference (PO number, etc.) */
+  reference?: string | null;
   convertedSaleId?: string | null;
   customer?: Customer | null;
   /** @deprecated Prefer `lines` */
@@ -985,13 +995,26 @@ export interface CreatePublicInquiryBody {
   itemId?: string;
 }
 
-export interface CreateInquiryBody extends CreatePublicInquiryBody {
+/** Staff create — subject/message optional; API titles from order lines. */
+export interface CreateInquiryBody {
+  contactName: string;
+  companyName?: string;
+  subject?: string;
+  message?: string;
+  phone?: string;
+  email?: string;
+  lines?: InquiryLineInput[];
+  /** @deprecated Prefer `lines` */
+  itemId?: string;
   priority?: InquiryPriority;
   customerId?: string;
   assignedToUserId?: string;
   internalNotes?: string;
   followUpAt?: string;
   requiredByAt?: string;
+  validUntil?: string;
+  quoteTerms?: string;
+  reference?: string;
 }
 
 export interface UpdateInquiryBody {
@@ -1011,6 +1034,9 @@ export interface UpdateInquiryBody {
   internalNotes?: string | null;
   followUpAt?: string | null;
   requiredByAt?: string | null;
+  validUntil?: string | null;
+  quoteTerms?: string | null;
+  reference?: string | null;
   convertedSaleId?: string | null;
 }
 

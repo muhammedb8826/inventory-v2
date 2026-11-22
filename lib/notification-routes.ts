@@ -46,7 +46,7 @@ export const NOTIFICATION_MODULES = [
   { value: "stock_transfers", label: "Stock transfers" },
   { value: "credits", label: "Credits" },
   { value: "expenses", label: "Expenses" },
-  { value: "inquiries", label: "Inquiries" },
+  { value: "inquiries", label: "Quotations" },
   { value: "messages", label: "Messages" },
   { value: "system", label: "System" },
 ] as const;

@@ -237,7 +237,10 @@ export function SaleForm({
                   l.quantity != null && String(l.quantity).trim() !== ""
                     ? String(Number(l.quantity))
                     : "1",
-                unitPrice: "",
+                unitPrice:
+                  l.unitPrice != null && String(l.unitPrice).trim() !== ""
+                    ? String(Number(l.unitPrice))
+                    : "",
                 uomId: defaultUomIdForItem(item, "sales") ?? "",
                 item,
                 width: "",
@@ -451,7 +454,7 @@ export function SaleForm({
           try {
             await api(`/inquiries/${linkedInquiryId}`, {
               method: "PATCH",
-              body: { convertedSaleId: res.id, status: "CONVERTED" },
+              body: { convertedSaleId: res.id, status: "ORDERED" },
             });
           } catch {
             toast.warning(
