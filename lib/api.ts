@@ -5,11 +5,13 @@ const API_BASE =
 
 export class ApiRequestError extends Error {
   status: number;
+  data?: unknown;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, data?: unknown) {
     super(message);
     this.name = "ApiRequestError";
     this.status = status;
+    this.data = data;
   }
 }
 
@@ -129,13 +131,14 @@ export async function api<T>(
 
   if (!res.ok) {
     let message = res.statusText;
+    let data: unknown;
     try {
-      const data = (await res.json()) as ApiError;
-      message = parseErrorMessage(data);
+      data = (await res.json()) as ApiError;
+      message = parseErrorMessage(data as ApiError);
     } catch {
       /* ignore */
     }
-    throw new ApiRequestError(message || "Request failed", res.status);
+    throw new ApiRequestError(message || "Request failed", res.status, data);
   }
 
   if (res.status === 204) return undefined as T;

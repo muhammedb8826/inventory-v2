@@ -24,6 +24,7 @@ import {
 import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { useTheme } from "next-themes";
+import { useIsClient } from "@/hooks/use-is-client";
 import {
   BellIcon,
   EllipsisVerticalIcon,
@@ -47,6 +48,8 @@ export function NavUser({
   const { isMobile } = useSidebar();
   const { logout } = useAuth();
   const { theme, setTheme } = useTheme();
+  const isClient = useIsClient();
+  const themeValue = isClient ? (theme ?? "system") : "system";
   const initials = user.name
     .split(" ")
     .map((n) => n[0])
@@ -61,22 +64,24 @@ export function NavUser({
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+              className="text-sidebar-foreground data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarFallback className="rounded-lg">{initials}</AvatarFallback>
+                <AvatarFallback className="rounded-lg bg-white/15 text-sidebar-foreground">
+                  {initials}
+                </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
-                <span className="truncate text-xs text-muted-foreground">
+                <span className="truncate text-xs text-sidebar-foreground/65">
                   {user.email}
                 </span>
               </div>
-              <EllipsisVerticalIcon className="ml-auto size-4" />
+              <EllipsisVerticalIcon className="ml-auto size-4 text-sidebar-foreground/65" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg border-[var(--erp-border)] bg-[var(--erp-surface)] text-[var(--erp-text)]"
             side={isMobile ? "bottom" : "right"}
             align="end"
             sideOffset={4}
@@ -84,13 +89,15 @@ export function NavUser({
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarFallback className="rounded-lg">
+                  <AvatarFallback className="rounded-lg bg-[var(--qenenia-navy)] text-white dark:bg-[var(--qenenia-orange)] dark:text-[var(--qenenia-navy-deep)]">
                     {initials}
                   </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.name}</span>
-                  <span className="truncate text-xs text-muted-foreground">
+                  <span className="truncate font-medium text-[var(--erp-text)]">
+                    {user.name}
+                  </span>
+                  <span className="truncate text-xs text-[var(--erp-text-muted)]">
                     {user.email}
                   </span>
                 </div>
@@ -98,16 +105,19 @@ export function NavUser({
             </DropdownMenuLabel>
             {user.role ? (
               <>
-                <DropdownMenuSeparator />
+                <DropdownMenuSeparator className="bg-[var(--erp-border)]" />
                 <DropdownMenuGroup>
-                  <DropdownMenuItem disabled>
+                  <DropdownMenuItem
+                    disabled
+                    className="text-[var(--erp-text-muted)]"
+                  >
                     <ShieldIcon />
                     {user.role}
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
               </>
             ) : null}
-            <DropdownMenuSeparator />
+            <DropdownMenuSeparator className="bg-[var(--erp-border)]" />
             <DropdownMenuItem asChild>
               <Link href="/notifications">
                 <BellIcon />
@@ -120,12 +130,12 @@ export function NavUser({
                 Account settings
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel className="text-xs text-muted-foreground">
-              Theme
+            <DropdownMenuSeparator className="bg-[var(--erp-border)]" />
+            <DropdownMenuLabel className="px-2 py-1.5 text-xs font-medium text-[var(--erp-text-muted)]">
+              Appearance
             </DropdownMenuLabel>
             <DropdownMenuRadioGroup
-              value={theme ?? "system"}
+              value={themeValue}
               onValueChange={setTheme}
             >
               <DropdownMenuRadioItem value="light">
@@ -141,7 +151,7 @@ export function NavUser({
                 System
               </DropdownMenuRadioItem>
             </DropdownMenuRadioGroup>
-            <DropdownMenuSeparator />
+            <DropdownMenuSeparator className="bg-[var(--erp-border)]" />
             <DropdownMenuItem onClick={() => logout()}>
               <LogOutIcon />
               Log out

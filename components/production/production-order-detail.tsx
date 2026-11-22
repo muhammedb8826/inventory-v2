@@ -232,6 +232,21 @@ export function ProductionOrderDetail({
               label="Location"
               value={order.location?.name ?? "—"}
             />
+            {order.saleId ? (
+              <DetailField
+                label="Source sale"
+                value={
+                  <Link
+                    href={`/sales/${order.saleId}`}
+                    className="text-[var(--frappe-primary)] hover:underline"
+                  >
+                    {order.sale?.customer?.name
+                      ? `Sale — ${order.sale.customer.name}`
+                      : order.saleId.slice(0, 8)}
+                  </Link>
+                }
+              />
+            ) : null}
             <DetailField
               label="Planned qty"
               value={`${formatQty(order.quantityPlanned)}${

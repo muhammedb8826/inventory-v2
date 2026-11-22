@@ -26,9 +26,19 @@ import {
   FrappeButtonPrimary,
   FrappeButtonLink,
 } from "@/components/frappe";
-import { api } from "@/lib/api";
+import { api, ApiRequestError } from "@/lib/api";
 import { apiList } from "@/lib/list-response";
 import { creditHasPayments, needsBankAccount } from "@/lib/document-utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   bankAccountSelectOptions,
   bankAccountsUrl,
@@ -46,7 +56,7 @@ import { fetchInventoryForLocation } from "@/lib/inventory-fetch";
 import { buildItemOptionMap, itemOptionsFromMap, parseDocumentLines, productItemId, resolveItem, type DocumentLineBody } from "@/lib/inventory-items";
 import { defaultUomIdForItem, fetchUoms, itemAllowsCuts } from "@/lib/uom";
 import { saleRepUser } from "@/lib/sale-utils";
-import { errorMessage } from "@/lib/format";
+import { errorMessage, formatQty } from "@/lib/format";
 import {
   COMMISSION_BASIS_OPTIONS,
   PAYMENT_METHOD_OPTIONS,
@@ -61,6 +71,7 @@ import type {
   Item,
   Location,
   PaymentMethod,
+  ProductionSuggestion,
   Sale,
   StockRecord,
   UserAdmin,
@@ -173,6 +184,10 @@ export function SaleForm({
   );
   const uoms = uomsData ?? [];
   const [saving, setSaving] = useState(false);
+  const [productionPrompt, setProductionPrompt] = useState<{
+    suggestions: ProductionSuggestion[];
+    body: Record<string, unknown>;
+  } | null>(null);
 
   const {
     data: customers,
@@ -392,6 +407,77 @@ export function SaleForm({
     return body;
   }
 
+  function isProductionRequiredError(
+    err: unknown
+  ): err is ApiRequestError & {
+    data: { code: string; productionSuggestions: ProductionSuggestion[] };
+  } {
+    if (!(err instanceof ApiRequestError) || err.status !== 409) return false;
+    const data = err.data as {
+      code?: string;
+      productionSuggestions?: ProductionSuggestion[];
+    } | null;
+    return (
+      data?.code === "PRODUCTION_REQUIRED" &&
+      Array.isArray(data.productionSuggestions) &&
+      data.productionSuggestions.length > 0
+    );
+  }
+
+  async function submitSaleBody(body: Record<string, unknown>) {
+    if (isEdit && sale) {
+      const updated = await api<Sale>(`/sales/${sale.id}`, {
+        method: "PATCH",
+        body,
+      });
+      const poCount = updated.productionOrders?.filter(
+        (po) => po.status !== "CANCELLED"
+      ).length;
+      if (poCount) {
+        toast.success(
+          `Sale updated · ${poCount} draft production order${poCount === 1 ? "" : "s"} created`
+        );
+      } else if (updated.stockWarnings?.length) {
+        toast.warning(updated.stockWarnings.join("; "));
+      } else {
+        toast.success("Sale updated");
+      }
+      requestNotificationsRefresh();
+      router.push(`/sales/${sale.id}`);
+      return;
+    }
+
+    const res = await api<Sale>("/sales", { method: "POST", body });
+    if (linkedInquiryId) {
+      try {
+        await api(`/inquiries/${linkedInquiryId}`, {
+          method: "PATCH",
+          body: { convertedSaleId: res.id, status: "ORDERED" },
+        });
+      } catch {
+        toast.warning(
+          "Sale created, but inquiry could not be marked converted"
+        );
+      }
+    }
+    const poCount = res.productionOrders?.filter(
+      (po) => po.status !== "CANCELLED"
+    ).length;
+    if (poCount) {
+      toast.success(
+        `${linkedInquiryId ? "Sale recorded · inquiry converted" : "Sale recorded"} · ${poCount} draft production order${poCount === 1 ? "" : "s"} created`
+      );
+    } else if (res.stockWarnings?.length) {
+      toast.warning(res.stockWarnings.join("; "));
+    } else {
+      toast.success(
+        linkedInquiryId ? "Sale recorded · inquiry converted" : "Sale recorded"
+      );
+    }
+    requestNotificationsRefresh();
+    router.push(`/sales/${res.id}`);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (paymentMethod === "CREDIT" && !customerId) {
@@ -434,44 +520,31 @@ export function SaleForm({
     }
     setSaving(true);
     try {
-      if (isEdit && sale) {
-        const updated = await api<Sale & { stockWarnings?: string[] }>(
-          `/sales/${sale.id}`,
-          { method: "PATCH", body }
-        );
-        if (updated.stockWarnings?.length) {
-          toast.warning(updated.stockWarnings.join("; "));
-        } else {
-          toast.success("Sale updated");
-        }
-        router.push(`/sales/${sale.id}`);
-      } else {
-        const res = await api<Sale & { stockWarnings?: string[] }>("/sales", {
-          method: "POST",
+      await submitSaleBody(body);
+    } catch (err) {
+      if (isProductionRequiredError(err)) {
+        setProductionPrompt({
+          suggestions: err.data.productionSuggestions,
           body,
         });
-        if (linkedInquiryId) {
-          try {
-            await api(`/inquiries/${linkedInquiryId}`, {
-              method: "PATCH",
-              body: { convertedSaleId: res.id, status: "ORDERED" },
-            });
-          } catch {
-            toast.warning(
-              "Sale created, but inquiry could not be marked converted"
-            );
-          }
-        }
-        if (res.stockWarnings?.length) {
-          toast.warning(res.stockWarnings.join("; "));
-        } else {
-          toast.success(
-            linkedInquiryId ? "Sale recorded · inquiry converted" : "Sale recorded"
-          );
-        }
-        requestNotificationsRefresh();
-        router.push(`/sales/${res.id}`);
+        return;
       }
+      toast.error(errorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function confirmProductionAndSave() {
+    if (!productionPrompt) return;
+    const body = {
+      ...productionPrompt.body,
+      proceedWithProduction: true,
+    };
+    setProductionPrompt(null);
+    setSaving(true);
+    try {
+      await submitSaleBody(body);
     } catch (err) {
       toast.error(errorMessage(err));
     } finally {
@@ -855,6 +928,56 @@ export function SaleForm({
           </FrappeSection>
         ) : null}
       </FrappeDocument>
+
+      <AlertDialog
+        open={!!productionPrompt}
+        onOpenChange={(open) => {
+          if (!open) setProductionPrompt(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Create draft production order?</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 text-sm text-muted-foreground">
+                <p>
+                  Stock is short for items that can be manufactured. Create draft
+                  production orders and continue this sale? Production managers
+                  will be notified so they can release and start production.
+                </p>
+                {productionPrompt ? (
+                  <ul className="list-disc space-y-1 pl-5 text-foreground">
+                    {productionPrompt.suggestions.map((s) => (
+                      <li key={`${s.itemId}-${s.bomId}`}>
+                        <span className="font-medium">{s.itemDescription}</span>
+                        {": need "}
+                        {formatQty(s.quantityNeeded)}
+                        {", available "}
+                        {formatQty(s.available)}
+                        {" — produce "}
+                        {formatQty(s.shortage)}
+                        {s.bomName ? ` (${s.bomName})` : ""}
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={saving}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={saving}
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmProductionAndSave();
+              }}
+            >
+              {saving ? "Saving…" : "Create draft & save sale"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </form>
   );
 }

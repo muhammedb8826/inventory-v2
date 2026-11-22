@@ -521,6 +521,10 @@ export interface Sale {
   /** @deprecated Prefer `credit` */
   customerCredit?: LinkedCredit;
   lines?: SaleLine[];
+  /** Stock shortage messages when sale posted with allowNegativeStock. */
+  stockWarnings?: string[] | null;
+  /** Draft/open production orders auto-created for Manufacture BoM shortages. */
+  productionOrders?: ProductionOrder[];
 }
 
 export interface SalesCommissionSummaryRow {
@@ -837,6 +841,8 @@ export interface ProductionOrder {
   bomId: string;
   locationId: string;
   finishedItemId?: string;
+  /** Originating sale when created from stock shortage (MTO). */
+  saleId?: string | null;
   quantityPlanned: string;
   quantityCompleted?: string;
   status: ProductionOrderStatus;
@@ -844,6 +850,7 @@ export interface ProductionOrder {
   bom?: Bom;
   location?: Location;
   finishedItem?: Item;
+  sale?: Pick<Sale, "id" | "customer"> | null;
   lines?: ProductionOrderLine[];
   createdAt?: string;
   updatedAt?: string;
@@ -858,10 +865,23 @@ export interface UserAdmin {
   isActive?: boolean;
 }
 
+export interface ProductionSuggestion {
+  itemId: string;
+  itemDescription: string;
+  bomId: string;
+  bomName: string;
+  locationId: string;
+  quantityNeeded: number;
+  available: number;
+  shortage: number;
+}
+
 export interface ApiError {
   statusCode: number;
   message: string | string[];
   error?: string;
+  code?: string;
+  productionSuggestions?: ProductionSuggestion[];
 }
 
 export type NotificationType =
@@ -872,7 +892,8 @@ export type NotificationType =
   | "CREDIT_DUE"
   | "EXPENSE"
   | "SYSTEM"
-  | "INQUIRY";
+  | "INQUIRY"
+  | "PRODUCTION";
 
 export interface Notification {
   id: string;

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UserMenu } from "@/components/user-menu";
-import { VendorPoweredBy } from "@/components/vendor/vendor-help";
 import {
   Sidebar,
   SidebarContent,
@@ -119,9 +118,8 @@ export function AppSidebar({
           </SidebarGroup>
         ) : null}
       </SidebarContent>
-      <SidebarFooter className="gap-2">
+      <SidebarFooter className="border-t border-sidebar-border/60 p-2">
         {user ? <UserMenu /> : null}
-        <VendorPoweredBy className="px-2 pb-1" />
       </SidebarFooter>
     </Sidebar>
   );

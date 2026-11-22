@@ -22,6 +22,7 @@ import {
   formatTxnQtyLabel,
   stockQtyDiffers,
 } from "@/lib/uom";
+import { productionStatusLabel } from "@/lib/production";
 import type { Sale, SaleLine } from "@/lib/types";
 
 function DetailField({
@@ -75,6 +76,10 @@ export function SaleDetail({
   const isVoided = sale.status === "VOIDED";
   const soldBy = saleRepUser(sale);
   const credit = sale.credit ?? null;
+  const stockWarnings = sale.stockWarnings ?? [];
+  const productionOrders = (sale.productionOrders ?? []).filter(
+    (po) => po.status !== "CANCELLED"
+  );
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
@@ -184,6 +189,62 @@ export function SaleDetail({
             ) : null}
           </FrappeFormGrid>
         </FrappeSection>
+
+        {stockWarnings.length > 0 ? (
+          <FrappeSection
+            title="Stock shortages"
+            description="Posted with insufficient stock"
+          >
+            <ul className="list-disc space-y-1 pl-5 text-sm text-[var(--frappe-text)]">
+              {stockWarnings.map((w) => (
+                <li key={w}>{w}</li>
+              ))}
+            </ul>
+          </FrappeSection>
+        ) : null}
+
+        {productionOrders.length > 0 ? (
+          <FrappeSection
+            title="Production orders"
+            description="Created for Manufacture BoM shortages"
+          >
+            <div className="overflow-x-auto">
+              <table className="frappe-list-table">
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th className="text-right tabular-nums">Planned</th>
+                    <th>Status</th>
+                    <th>BoM</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {productionOrders.map((po) => (
+                    <tr key={po.id}>
+                      <td>
+                        <Link
+                          href={`/production-orders/${po.id}`}
+                          className="text-[var(--frappe-primary)] hover:underline"
+                        >
+                          {po.finishedItem?.description ??
+                            po.finishedItemId ??
+                            po.id.slice(0, 8)}
+                        </Link>
+                      </td>
+                      <td className="text-right tabular-nums">
+                        {formatQty(po.quantityPlanned)}
+                      </td>
+                      <td>{productionStatusLabel(po.status)}</td>
+                      <td className="text-[var(--frappe-text-muted)]">
+                        {po.bom?.name ?? "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </FrappeSection>
+        ) : null}
 
         <FrappeSection
           title="Items"

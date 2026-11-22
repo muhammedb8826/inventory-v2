@@ -34,6 +34,9 @@ export function notificationHref(
       return `/inquiries?id=${encodeURIComponent(entityId)}`;
     case "staff_message":
       return `/messages?with=${encodeURIComponent(entityId)}`;
+    case "production_order":
+    case "production":
+      return `/production-orders/${entityId}`;
     default:
       return null;
   }
@@ -47,6 +50,7 @@ export const NOTIFICATION_MODULES = [
   { value: "credits", label: "Credits" },
   { value: "expenses", label: "Expenses" },
   { value: "inquiries", label: "Quotations" },
+  { value: "production", label: "Production" },
   { value: "messages", label: "Messages" },
   { value: "system", label: "System" },
 ] as const;
