@@ -10,7 +10,6 @@ import { FrappeFilterBar, FrappeListToolbar } from "@/components/frappe";
 import { DateRangeFilter } from "@/components/shared/date-range-filter";
 import { ListSearchField } from "@/components/shared/list-search-field";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -20,6 +19,8 @@ import {
 } from "@/components/ui/select";
 import { InquiryCreateDialog } from "@/components/inquiries/inquiry-create-dialog";
 import { InquiryDetailDialog } from "@/components/inquiries/inquiry-detail-dialog";
+import { ListRowActions } from "@/components/shared/list-row-actions";
+import { EyeIcon } from "lucide-react";
 import {
   InquiryAssignmentBadge,
   InquiryPriorityBadge,
@@ -389,16 +390,17 @@ export default function InquiriesPage() {
               {
                 key: "actions",
                 header: "",
-                className: "w-20 text-right",
+                className: "w-12 text-right",
                 cell: (r) => (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => openInquiry(r.id)}
-                  >
-                    Open
-                  </Button>
+                  <ListRowActions
+                    items={[
+                      {
+                        label: "Open",
+                        icon: EyeIcon,
+                        onSelect: () => openInquiry(r.id),
+                      },
+                    ]}
+                  />
                 ),
               },
             ]}

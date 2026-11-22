@@ -318,11 +318,11 @@
 
 .erp-list-table th,
 .frappe-list-table th {
-  padding: 10px 12px;
-  font-weight: 600;
-  font-size: 11px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  padding: 12px 14px;
+  font-weight: 500;
+  font-size: 12px;
+  letter-spacing: 0.01em;
+  text-transform: none;
   color: var(--erp-text-muted);
   white-space: nowrap;
   vertical-align: middle;
@@ -330,8 +330,8 @@
 
 .erp-list-table td,
 .frappe-list-table td {
-  padding: 11px 12px;
-  border-bottom: 1px solid var(--erp-border);
+  padding: 13px 14px;
+  border-bottom: 1px solid color-mix(in oklab, var(--erp-border) 85%, transparent);
   color: var(--erp-text);
   vertical-align: middle;
 }
@@ -343,11 +343,16 @@
   transition: background-color 150ms ease;
 }
 
+.erp-list-table tbody tr:last-child td,
+.frappe-list-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
 .erp-list-table tbody tr:hover,
 .frappe-list-table tbody tr:hover {
   background: color-mix(
     in oklab,
-    var(--erp-highlight) 5%,
+    var(--qenenia-navy) 3.5%,
     var(--erp-surface)
   );
 }

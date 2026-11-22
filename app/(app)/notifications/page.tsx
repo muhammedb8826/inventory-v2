@@ -30,7 +30,8 @@ import {
 } from "@/lib/notification-routes";
 import { errorMessage, formatDate, formatRelativeDate } from "@/lib/format";
 import type { Notification } from "@/lib/types";
-import { CheckCheckIcon, Trash2Icon } from "lucide-react";
+import { ListRowActions } from "@/components/shared/list-row-actions";
+import { CheckCheckIcon, CheckIcon, Trash2Icon } from "lucide-react";
 import { toast } from "sonner";
 
 type ReadFilter = "" | "true" | "false";
@@ -276,31 +277,24 @@ export default function NotificationsPage() {
             {
               key: "actions",
               header: "",
-              className: "w-28 text-right",
+              className: "w-12 text-right",
               cell: (n) => (
-                <div className="flex justify-end gap-1">
-                  {!n.isRead ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8 text-xs"
-                      onClick={() => void handleMarkRead(n.id)}
-                    >
-                      Read
-                    </Button>
-                  ) : null}
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="size-8 text-[var(--frappe-text-muted)] hover:text-destructive"
-                    onClick={() => void handleDismiss(n.id)}
-                    aria-label="Dismiss"
-                  >
-                    <Trash2Icon className="size-4" />
-                  </Button>
-                </div>
+                <ListRowActions
+                  items={[
+                    {
+                      label: "Mark read",
+                      icon: CheckIcon,
+                      onSelect: () => void handleMarkRead(n.id),
+                      hidden: n.isRead,
+                    },
+                    {
+                      label: "Dismiss",
+                      icon: Trash2Icon,
+                      destructive: true,
+                      onSelect: () => void handleDismiss(n.id),
+                    },
+                  ]}
+                />
               ),
             },
           ]}

@@ -321,7 +321,8 @@ export default function PurchasesPage() {
               {
                 key: "total",
                 header: "Amount",
-                className: "text-right",
+                secondary: true,
+                className: "text-right tabular-nums",
                 cell: (r) => formatMoney(documentTotal(r)),
               },
             ]}

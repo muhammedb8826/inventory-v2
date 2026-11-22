@@ -45,7 +45,6 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { api } from "@/lib/api";
 import { buildInventoryListPath, buildLowStockListPath } from "@/lib/list-query";
@@ -62,6 +61,7 @@ import type {
 import { itemTypeLabel } from "@/lib/item-types";
 import { formatItemAttributeLabel } from "@/lib/item-attributes";
 import { ListPageTotals } from "@/components/shared/list-page-totals";
+import { ListRowActions } from "@/components/shared/list-row-actions";
 import { useLocations } from "@/hooks/use-locations";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
 import { Badge } from "@/components/ui/badge";
@@ -73,7 +73,14 @@ import { StockDetailDialog } from "@/components/inventory/stock-detail-dialog";
 import { useAuth } from "@/lib/auth";
 import { hasPermission } from "@/lib/permissions";
 import { toast } from "sonner";
-import { PlusIcon, UploadIcon, PencilIcon, Trash2Icon } from "lucide-react";
+import {
+  ArrowLeftRightIcon,
+  EyeIcon,
+  PencilIcon,
+  PlusIcon,
+  Trash2Icon,
+  UploadIcon,
+} from "lucide-react";
 
 const ALL_LOCATIONS = "__all__";
 const VIEW_ALL = "all";
@@ -390,23 +397,7 @@ export default function InventoryPage() {
                 </div>
               )}
               renderActions={(r) => (
-                <>
-                  <StockDetailDialog record={r} />
-                  {hasPermission(user, "inventory.adjust") ? (
-                    <StockAdjustDialog record={r} onSuccess={reload} />
-                  ) : null}
-                  {hasPermission(user, "inventory.write") ? (
-                    <Button size="icon" variant="ghost" asChild>
-                      <Link href={`/inventory/${r.id}/edit`}>
-                        <PencilIcon className="size-4" />
-                        <span className="sr-only">Edit</span>
-                      </Link>
-                    </Button>
-                  ) : null}
-                  {hasPermission(user, "inventory.delete") ? (
-                    <DeleteStockButton id={r.id} onSuccess={reload} />
-                  ) : null}
-                </>
+                <StockRowActions record={r} onSuccess={reload} />
               )}
               onCardClick={(r) => setDetailRecord(r)}
             />
@@ -495,6 +486,7 @@ export default function InventoryPage() {
               {
                 key: "qty",
                 header: "Quantity",
+                secondary: true,
                 className: "w-28 text-right tabular-nums",
                 cell: (r) => {
                   const lowRow = r as LowStockRecord;
@@ -563,25 +555,9 @@ export default function InventoryPage() {
               {
                 key: "actions",
                 header: "",
-                className: "w-40 text-right",
+                className: "w-12 text-right",
                 cell: (r) => (
-                  <div className="flex justify-end gap-1">
-                    <StockDetailDialog record={r} />
-                    {hasPermission(user, "inventory.adjust") ? (
-                      <StockAdjustDialog record={r} onSuccess={reload} />
-                    ) : null}
-                    {hasPermission(user, "inventory.write") ? (
-                      <Button size="icon" variant="ghost" asChild>
-                        <Link href={`/inventory/${r.id}/edit`}>
-                          <PencilIcon className="size-4" />
-                          <span className="sr-only">Edit</span>
-                        </Link>
-                      </Button>
-                    ) : null}
-                    {hasPermission(user, "inventory.delete") ? (
-                      <DeleteStockButton id={r.id} onSuccess={reload} />
-                    ) : null}
-                  </div>
+                  <StockRowActions record={r} onSuccess={reload} />
                 ),
               },
             ]}
@@ -669,20 +645,25 @@ function ImportDialog({
   );
 }
 
-function DeleteStockButton({
-  id,
+function StockRowActions({
+  record,
   onSuccess,
 }: {
-  id: string;
+  record: StockRecord | LowStockRecord;
   onSuccess: () => void;
 }) {
+  const { user } = useAuth();
+  const [detailOpen, setDetailOpen] = useState(false);
+  const [adjustOpen, setAdjustOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   async function handleDelete() {
     setDeleting(true);
     try {
-      await api(`/inventory/${id}`, { method: "DELETE" });
+      await api(`/inventory/${record.id}`, { method: "DELETE" });
       toast.success("Deleted");
+      setDeleteOpen(false);
       onSuccess();
     } catch (err) {
       toast.error(errorMessage(err));
@@ -692,26 +673,62 @@ function DeleteStockButton({
   }
 
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button size="icon" variant="ghost">
-          <Trash2Icon className="size-4 text-destructive" />
-        </Button>
-      </AlertDialogTrigger>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Delete stock record?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This removes the stock entry for this location.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction onClick={handleDelete} disabled={deleting}>
-            Delete
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <>
+      <ListRowActions
+        items={[
+          {
+            label: "View",
+            icon: EyeIcon,
+            onSelect: () => setDetailOpen(true),
+          },
+          {
+            label: "Adjust",
+            icon: ArrowLeftRightIcon,
+            onSelect: () => setAdjustOpen(true),
+            hidden: !hasPermission(user, "inventory.adjust"),
+          },
+          {
+            label: "Edit",
+            icon: PencilIcon,
+            href: `/inventory/${record.id}/edit`,
+            hidden: !hasPermission(user, "inventory.write"),
+          },
+          {
+            label: "Delete",
+            icon: Trash2Icon,
+            destructive: true,
+            onSelect: () => setDeleteOpen(true),
+            hidden: !hasPermission(user, "inventory.delete"),
+          },
+        ]}
+      />
+      <StockDetailDialog
+        record={record}
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+      />
+      <StockAdjustDialog
+        record={record}
+        onSuccess={onSuccess}
+        open={adjustOpen}
+        onOpenChange={setAdjustOpen}
+      />
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete stock record?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This removes the stock entry for this location.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} disabled={deleting}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

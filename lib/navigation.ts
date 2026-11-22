@@ -119,6 +119,34 @@ export const mainNav: NavItem[] = [
   },
 ];
 
+/** Primary tabs for the mobile bottom bar (More is handled in the UI). */
+export const mobilePrimaryNav: NavItem[] = [
+  {
+    title: "Home",
+    href: "/dashboard",
+    icon: LayoutDashboard,
+    permission: "dashboard.read",
+  },
+  {
+    title: "Inventory",
+    href: "/inventory",
+    icon: Package,
+    permission: "inventory.read",
+  },
+  {
+    title: "Sales",
+    href: "/sales",
+    icon: Receipt,
+    permission: "sales.read",
+  },
+  {
+    title: "Purchases",
+    href: "/purchases",
+    icon: ShoppingCart,
+    permission: "purchase.read",
+  },
+];
+
 export const masterNav: NavItem[] = [
   {
     title: "Locations",

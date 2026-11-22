@@ -17,12 +17,21 @@ export interface Column<T> {
   className?: string;
   /** Prefer showing this field first in the mobile card layout */
   primary?: boolean;
+  /** Preferred metric shown on the right of mobile rows */
+  secondary?: boolean;
   /** Hide this column on small screens (still shown in desktop table) */
   hideOnMobile?: boolean;
 }
 
 function cellClass(className?: string) {
   return cn("text-left", className);
+}
+
+function plainText(node: React.ReactNode): string {
+  if (node == null || typeof node === "boolean") return "";
+  if (typeof node === "string" || typeof node === "number") return String(node);
+  if (Array.isArray(node)) return node.map(plainText).filter(Boolean).join(" · ");
+  return "";
 }
 
 export function DataCardTable<T extends { id: string }>({
@@ -45,9 +54,25 @@ export function DataCardTable<T extends { id: string }>({
   const showPagination = pagination && pagination.meta.total > 0;
   const primaryCol = columns.find((c) => c.primary) ?? columns[0];
   const actionCol = columns.find((c) => c.key === "actions");
-  const mobileCols = columns.filter(
-    (c) => !c.hideOnMobile && c.key !== primaryCol?.key
-  );
+  const secondaryCol =
+    columns.find((c) => c.secondary && c.key !== primaryCol?.key) ??
+    columns.find(
+      (c) =>
+        c.key !== primaryCol?.key &&
+        c.key !== "actions" &&
+        !c.hideOnMobile &&
+        c.header
+    );
+  const subtitleCols = columns
+    .filter(
+      (c) =>
+        c.key !== primaryCol?.key &&
+        c.key !== secondaryCol?.key &&
+        c.key !== "actions" &&
+        !c.hideOnMobile &&
+        c.header
+    )
+    .slice(0, 2);
   const gridMetaCols = columns.filter(
     (c) => c.key !== primaryCol?.key && c.key !== "actions" && c.header
   );
@@ -63,18 +88,21 @@ export function DataCardTable<T extends { id: string }>({
           {list.map((row) => (
             <article
               key={row.id}
-              className="flex flex-col overflow-hidden rounded-xl border border-[var(--erp-border)] bg-[var(--erp-surface)] shadow-sm transition-shadow hover:shadow-md"
+              className="flex flex-col overflow-hidden rounded-2xl border border-[var(--erp-border)] bg-[var(--erp-surface)] shadow-sm transition-shadow hover:shadow-md"
             >
-              <div className="border-b border-[var(--erp-border)] bg-[var(--erp-section-head)] px-3 py-3">
+              <div className="flex items-start justify-between gap-2 border-b border-[var(--erp-border)] bg-[var(--erp-section-head)]/60 px-3.5 py-3">
                 <div className="min-w-0 text-sm font-semibold text-[var(--erp-text)]">
                   {primaryCol ? primaryCol.cell(row) : null}
                 </div>
+                {actionCol ? (
+                  <div className="shrink-0">{actionCol.cell(row)}</div>
+                ) : null}
               </div>
               {gridMetaCols.length > 0 ? (
-                <dl className="grid flex-1 grid-cols-2 gap-x-3 gap-y-2.5 p-3">
+                <dl className="grid flex-1 grid-cols-2 gap-x-3 gap-y-2.5 p-3.5">
                   {gridMetaCols.map((col) => (
                     <div key={col.key} className={cn("min-w-0", col.className)}>
-                      <dt className="text-[10px] font-semibold tracking-wide text-[var(--erp-text-muted)] uppercase">
+                      <dt className="text-[11px] text-[var(--erp-text-muted)]">
                         {col.header}
                       </dt>
                       <dd className="mt-0.5 text-sm text-[var(--erp-text)]">
@@ -84,16 +112,11 @@ export function DataCardTable<T extends { id: string }>({
                   ))}
                 </dl>
               ) : null}
-              {actionCol ? (
-                <div className="mt-auto flex items-center justify-end gap-0.5 border-t border-[var(--erp-border)] px-2 py-1.5">
-                  {actionCol.cell(row)}
-                </div>
-              ) : null}
             </article>
           ))}
         </div>
         {showPagination ? (
-          <div className="overflow-hidden rounded-xl border border-[var(--erp-border)] bg-[var(--erp-surface)] shadow-sm">
+          <div className="overflow-hidden rounded-2xl border border-[var(--erp-border)] bg-[var(--erp-surface)] shadow-sm">
             <TablePagination
               meta={pagination.meta}
               onPageChange={pagination.onPageChange}
@@ -107,30 +130,46 @@ export function DataCardTable<T extends { id: string }>({
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-[var(--erp-border)] bg-[var(--erp-surface)] shadow-sm">
-      {/* Mobile cards */}
+    <div className="overflow-hidden rounded-2xl border border-[var(--erp-border)] bg-[var(--erp-surface)] shadow-sm">
+      {/* Mobile list — compact Odoo-like rows */}
       <div className="divide-y divide-[var(--erp-border)] md:hidden">
-        {list.map((row) => (
-          <div key={row.id} className="space-y-2.5 p-4">
-            {primaryCol ? (
-              <div className="min-w-0 text-sm font-medium text-[var(--erp-text)]">
-                {primaryCol.cell(row)}
-              </div>
-            ) : null}
-            <dl className="grid grid-cols-2 gap-x-3 gap-y-2">
-              {mobileCols.map((col) => (
-                <div key={col.key} className={cn("min-w-0", col.className)}>
-                  <dt className="text-[10px] font-semibold tracking-wide text-[var(--erp-text-muted)] uppercase">
-                    {col.header || "\u00a0"}
-                  </dt>
-                  <dd className="mt-0.5 text-sm text-[var(--erp-text)]">
-                    {col.cell(row)}
-                  </dd>
+        {list.map((row) => {
+          const subtitle = subtitleCols
+            .map((col) => plainText(col.cell(row)))
+            .filter(Boolean)
+            .join(" · ");
+
+          return (
+            <div
+              key={row.id}
+              className="flex items-center gap-3 px-3.5 py-3 transition-colors active:bg-[var(--erp-section-head)]/70"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="min-w-0 text-sm font-medium text-[var(--erp-text)]">
+                  {primaryCol ? primaryCol.cell(row) : null}
                 </div>
-              ))}
-            </dl>
-          </div>
-        ))}
+                {subtitle ? (
+                  <p className="mt-0.5 truncate text-xs text-[var(--erp-text-muted)]">
+                    {subtitle}
+                  </p>
+                ) : null}
+              </div>
+              {secondaryCol ? (
+                <div
+                  className={cn(
+                    "shrink-0 text-right text-sm font-medium tabular-nums text-[var(--erp-text)]",
+                    secondaryCol.className
+                  )}
+                >
+                  {secondaryCol.cell(row)}
+                </div>
+              ) : null}
+              {actionCol ? (
+                <div className="shrink-0">{actionCol.cell(row)}</div>
+              ) : null}
+            </div>
+          );
+        })}
       </div>
 
       {/* Desktop table */}

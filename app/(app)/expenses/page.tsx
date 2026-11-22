@@ -38,8 +38,11 @@ import {
 import { formatMoney, formatDate, errorMessage } from "@/lib/format";
 import type { BankAccount, Expense, ExpenseCategory, ExpenseListTotals } from "@/lib/types";
 import { ListPageTotals } from "@/components/shared/list-page-totals";
+import { ListRowActions } from "@/components/shared/list-row-actions";
 import { useFetch } from "@/hooks/use-fetch";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
+import { useAuth } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 import { toast } from "sonner";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 
@@ -191,6 +194,7 @@ export default function ExpensesPage() {
               {
                 key: "category",
                 header: "Category",
+                primary: true,
                 cell: (r) => r.category?.name ?? "—",
               },
               {
@@ -201,17 +205,16 @@ export default function ExpensesPage() {
               {
                 key: "amount",
                 header: "Amount",
-                className: "text-right",
+                secondary: true,
+                className: "text-right tabular-nums",
                 cell: (r) => formatMoney(r.amount),
               },
               {
                 key: "actions",
                 header: "",
-                className: "w-16 text-right",
+                className: "w-12 text-right",
                 cell: (r) => (
-                  <PermissionGate permission="expense.write">
-                    <DeleteExpenseButton id={r.id} onSuccess={reload} />
-                  </PermissionGate>
+                  <ExpenseRowActions id={r.id} onSuccess={reload} />
                 ),
               },
             ]}
@@ -222,13 +225,14 @@ export default function ExpensesPage() {
   );
 }
 
-function DeleteExpenseButton({
+function ExpenseRowActions({
   id,
   onSuccess,
 }: {
   id: string;
   onSuccess: () => void;
 }) {
+  const { user } = useAuth();
   const [deleting, setDeleting] = useState(false);
 
   async function handleDelete() {
@@ -246,17 +250,18 @@ function DeleteExpenseButton({
   }
 
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      className="size-8 text-destructive"
-      disabled={deleting}
-      onClick={handleDelete}
-    >
-      <Trash2Icon className="size-4" />
-      <span className="sr-only">Delete</span>
-    </Button>
+    <ListRowActions
+      items={[
+        {
+          label: "Delete",
+          icon: Trash2Icon,
+          destructive: true,
+          disabled: deleting,
+          onSelect: () => void handleDelete(),
+          hidden: !hasPermission(user, "expense.write"),
+        },
+      ]}
+    />
   );
 }
 

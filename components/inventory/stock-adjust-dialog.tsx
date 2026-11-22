@@ -39,12 +39,18 @@ export function StockAdjustDialog({
   record,
   onSuccess,
   trigger,
+  open: openProp,
+  onOpenChange,
 }: {
   record: StockRecord;
   onSuccess: () => void;
   trigger?: React.ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = openProp ?? uncontrolledOpen;
+  const setOpen = onOpenChange ?? setUncontrolledOpen;
   const [direction, setDirection] = useState<StockAdjustmentDirection>("out");
   const [reason, setReason] = useState<StockAdjustmentReason>("DAMAGE");
   const [quantity, setQuantity] = useState("");
@@ -120,16 +126,20 @@ export function StockAdjustDialog({
     }
   }
 
+  const showTrigger = openProp === undefined || trigger != null;
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        {trigger ?? (
-          <Button size="icon" variant="ghost" title="Adjust quantity">
-            <ArrowLeftRightIcon className="size-4" />
-            <span className="sr-only">Adjust quantity</span>
-          </Button>
-        )}
-      </DialogTrigger>
+      {showTrigger ? (
+        <DialogTrigger asChild>
+          {trigger ?? (
+            <Button size="icon" variant="ghost" title="Adjust quantity">
+              <ArrowLeftRightIcon className="size-4" />
+              <span className="sr-only">Adjust quantity</span>
+            </Button>
+          )}
+        </DialogTrigger>
+      ) : null}
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit}>
           <DialogHeader>

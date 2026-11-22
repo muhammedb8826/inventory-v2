@@ -226,6 +226,7 @@ export default function ProductionOrdersPage() {
               {
                 key: "finished",
                 header: "Finished item",
+                primary: true,
                 cell: (r) =>
                   r.finishedItem?.description ??
                   r.bom?.finishedItem?.description ??
@@ -245,6 +246,7 @@ export default function ProductionOrdersPage() {
               {
                 key: "status",
                 header: "Status",
+                secondary: true,
                 cell: (r) => (
                   <Badge variant="outline">
                     {productionStatusLabel(r.status)}

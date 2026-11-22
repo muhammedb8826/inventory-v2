@@ -145,6 +145,7 @@ export default function BomsPage() {
               {
                 key: "name",
                 header: "Reference",
+                primary: true,
                 cell: (r) => (
                   <Link
                     href={`/boms/${r.id}`}
@@ -175,6 +176,7 @@ export default function BomsPage() {
               {
                 key: "status",
                 header: "Status",
+                secondary: true,
                 cell: (r) => (
                   <Badge
                     variant={r.isActive === false ? "secondary" : "outline"}

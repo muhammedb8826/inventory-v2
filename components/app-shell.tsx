@@ -2,6 +2,7 @@
 
 import { AppSidebar } from "@/components/app-sidebar";
 import { AppTopBar } from "@/components/app-top-bar";
+import { MobileBottomNav } from "@/components/mobile-bottom-nav";
 import { SiteHeader } from "@/components/site-header";
 import {
   FrappePageBody,
@@ -51,7 +52,7 @@ export function AppShell({
     >
       <TooltipProvider>
         <AppSidebar variant="inset" />
-        <SidebarInset className="flex min-w-0 flex-col bg-[var(--erp-desk)]">
+        <SidebarInset className="flex min-w-0 flex-col bg-[var(--erp-desk)] pb-14 md:pb-0">
           <AppTopBar />
           {useErpChrome ? (
             <div className="erp-page frappe-page flex min-h-0 min-w-0 flex-1 flex-col">
@@ -85,6 +86,7 @@ export function AppShell({
             </>
           )}
         </SidebarInset>
+        <MobileBottomNav />
       </TooltipProvider>
     </SidebarProvider>
   );

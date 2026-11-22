@@ -75,6 +75,7 @@ import { useFetch } from "@/hooks/use-fetch";
 import { useClientPaginatedList } from "@/hooks/use-client-paginated-list";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
 import { toast } from "sonner";
+import { ListRowActions } from "@/components/shared/list-row-actions";
 import { PencilIcon, PlusIcon } from "lucide-react";
 
 export default function BanksPage() {
@@ -317,10 +318,13 @@ export default function BanksPage() {
                   {
                     key: "actions",
                     header: "",
-                    className: "w-16 text-right",
+                    className: "w-12 text-right",
                     cell: (r) => (
                       <PermissionGate permission="bank.write">
-                        <EditAccountDialog account={r} onSuccess={refreshAll} />
+                        <BankAccountRowActions
+                          account={r}
+                          onSuccess={refreshAll}
+                        />
                       </PermissionGate>
                     ),
                   },
@@ -551,7 +555,7 @@ function AccountDialog({ onSuccess }: { onSuccess: () => void }) {
   );
 }
 
-function EditAccountDialog({
+function BankAccountRowActions({
   account,
   onSuccess,
 }: {
@@ -559,8 +563,45 @@ function EditAccountDialog({
   onSuccess: () => void;
 }) {
   const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <ListRowActions
+        items={[
+          {
+            label: "Edit",
+            icon: PencilIcon,
+            onSelect: () => setOpen(true),
+          },
+        ]}
+      />
+      <EditAccountDialog
+        account={account}
+        onSuccess={onSuccess}
+        open={open}
+        onOpenChange={setOpen}
+      />
+    </>
+  );
+}
+
+function EditAccountDialog({
+  account,
+  onSuccess,
+  open: openProp,
+  onOpenChange,
+}: {
+  account: BankAccount;
+  onSuccess: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = openProp ?? uncontrolledOpen;
+  const setOpen = onOpenChange ?? setUncontrolledOpen;
   const [values, setValues] = useState(() => bankAccountFormFromRecord(account));
   const [saving, setSaving] = useState(false);
+  const showTrigger = openProp === undefined;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -592,12 +633,14 @@ function EditAccountDialog({
         if (next) setValues(bankAccountFormFromRecord(account));
       }}
     >
-      <DialogTrigger asChild>
-        <Button type="button" variant="ghost" size="icon" className="size-8">
-          <PencilIcon className="size-4" />
-          <span className="sr-only">Edit</span>
-        </Button>
-      </DialogTrigger>
+      {showTrigger ? (
+        <DialogTrigger asChild>
+          <Button type="button" variant="ghost" size="icon" className="size-8">
+            <PencilIcon className="size-4" />
+            <span className="sr-only">Edit</span>
+          </Button>
+        </DialogTrigger>
+      ) : null}
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-md">
         <form onSubmit={handleSubmit}>
           <DialogHeader>

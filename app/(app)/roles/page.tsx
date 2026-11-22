@@ -36,6 +36,7 @@ import {
 import type { Permission, Role } from "@/lib/types";
 import { useFetch } from "@/hooks/use-fetch";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
+import { ListRowActions } from "@/components/shared/list-row-actions";
 import { toast } from "sonner";
 import { PencilIcon, PlusIcon, SearchIcon, Trash2Icon } from "lucide-react";
 
@@ -187,13 +188,10 @@ function RolesPageContent() {
               {
                 key: "actions",
                 header: "",
-                className: "w-24 text-right",
+                className: "w-12 text-right",
                 cell: (r) => (
                   <PermissionGate permission="roles.write">
-                    <div className="flex justify-end gap-1">
-                      <RoleDialog mode="edit" role={r} onSuccess={reload} />
-                      <DeleteRoleButton role={r} onSuccess={reload} />
-                    </div>
+                    <RoleRowActions role={r} onSuccess={reload} />
                   </PermissionGate>
                 ),
               },
@@ -205,16 +203,81 @@ function RolesPageContent() {
   );
 }
 
+function RoleRowActions({
+  role,
+  onSuccess,
+}: {
+  role: Role;
+  onSuccess: () => void;
+}) {
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    if (
+      !confirm(
+        `Delete role "${role.name}"? Users assigned to this role may lose access.`
+      )
+    ) {
+      return;
+    }
+    setDeleting(true);
+    try {
+      await api(`/roles/${role.id}`, { method: "DELETE" });
+      toast.success("Role deleted");
+      onSuccess();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <>
+      <ListRowActions
+        items={[
+          {
+            label: "Edit",
+            icon: PencilIcon,
+            onSelect: () => setEditOpen(true),
+          },
+          {
+            label: "Delete",
+            icon: Trash2Icon,
+            destructive: true,
+            disabled: deleting,
+            onSelect: () => void handleDelete(),
+          },
+        ]}
+      />
+      <RoleDialog
+        mode="edit"
+        role={role}
+        onSuccess={onSuccess}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
+    </>
+  );
+}
+
 function RoleDialog({
   mode,
   role,
   onSuccess,
+  open: openProp,
+  onOpenChange,
 }: {
   mode: "create" | "edit";
   role?: Role;
   onSuccess: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = openProp ?? uncontrolledOpen;
+  const setOpen = onOpenChange ?? setUncontrolledOpen;
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [permSearch, setPermSearch] = useState("");
@@ -314,22 +377,25 @@ function RoleDialog({
 
   const selectedCount = selectedIds.size;
   const totalCount = catalog?.length ?? 0;
+  const showTrigger = openProp === undefined;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        {mode === "create" ? (
-          <FrappeButtonPrimary type="button">
-            <PlusIcon className="size-3.5" />
-            Add role
-          </FrappeButtonPrimary>
-        ) : (
-          <Button type="button" variant="ghost" size="icon" className="size-8">
-            <PencilIcon className="size-4" />
-            <span className="sr-only">Edit</span>
-          </Button>
-        )}
-      </DialogTrigger>
+      {showTrigger ? (
+        <DialogTrigger asChild>
+          {mode === "create" ? (
+            <FrappeButtonPrimary type="button">
+              <PlusIcon className="size-3.5" />
+              Add role
+            </FrappeButtonPrimary>
+          ) : (
+            <Button type="button" variant="ghost" size="icon" className="size-8">
+              <PencilIcon className="size-4" />
+              <span className="sr-only">Edit</span>
+            </Button>
+          )}
+        </DialogTrigger>
+      ) : null}
       <DialogContent className="flex max-h-[min(90vh,720px)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col">
           <DialogHeader className="shrink-0 border-b border-[var(--frappe-border)] bg-[var(--frappe-section-head)] px-5 py-4">
@@ -503,46 +569,3 @@ function RoleDialog({
   );
 }
 
-function DeleteRoleButton({
-  role,
-  onSuccess,
-}: {
-  role: Role;
-  onSuccess: () => void;
-}) {
-  const [deleting, setDeleting] = useState(false);
-
-  async function handleDelete() {
-    if (
-      !confirm(
-        `Delete role "${role.name}"? Users assigned to this role may lose access.`
-      )
-    ) {
-      return;
-    }
-    setDeleting(true);
-    try {
-      await api(`/roles/${role.id}`, { method: "DELETE" });
-      toast.success("Role deleted");
-      onSuccess();
-    } catch (err) {
-      toast.error(errorMessage(err));
-    } finally {
-      setDeleting(false);
-    }
-  }
-
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      className="size-8 text-destructive"
-      disabled={deleting}
-      onClick={handleDelete}
-    >
-      <Trash2Icon className="size-4" />
-      <span className="sr-only">Delete</span>
-    </Button>
-  );
-}

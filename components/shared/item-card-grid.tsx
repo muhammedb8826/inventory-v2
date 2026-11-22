@@ -54,7 +54,7 @@ export function ItemCardGrid<T extends { id: string }>({
             <article
               key={row.id}
               className={cn(
-                "group flex flex-col overflow-hidden rounded-xl border border-[var(--erp-border)] bg-[var(--erp-surface)] shadow-sm transition-shadow hover:shadow-md",
+                "group flex flex-col overflow-hidden rounded-2xl border border-[var(--erp-border)] bg-[var(--erp-surface)] shadow-sm transition-shadow hover:shadow-md",
                 clickable && "cursor-pointer"
               )}
               onClick={clickable ? () => onCardClick?.(row) : undefined}
@@ -84,9 +84,18 @@ export function ItemCardGrid<T extends { id: string }>({
                     {renderBadges(row)}
                   </div>
                 ) : null}
+                {renderActions ? (
+                  <div
+                    className="absolute top-1.5 right-1.5 rounded-full bg-[var(--erp-surface)]/90 shadow-sm"
+                    onClick={(e) => e.stopPropagation()}
+                    onKeyDown={(e) => e.stopPropagation()}
+                  >
+                    {renderActions(row)}
+                  </div>
+                ) : null}
               </div>
 
-              <div className="flex flex-1 flex-col gap-2 p-3">
+              <div className="flex flex-1 flex-col gap-2 p-3.5">
                 <div className="min-w-0">
                   <h3 className="line-clamp-2 text-sm font-semibold text-[var(--erp-text)]">
                     {getTitle(row)}
@@ -101,16 +110,6 @@ export function ItemCardGrid<T extends { id: string }>({
                 {renderMeta ? (
                   <div className="mt-auto space-y-1 text-sm">{renderMeta(row)}</div>
                 ) : null}
-
-                {renderActions ? (
-                  <div
-                    className="flex items-center justify-end gap-0.5 border-t border-[var(--erp-border)] pt-2"
-                    onClick={(e) => e.stopPropagation()}
-                    onKeyDown={(e) => e.stopPropagation()}
-                  >
-                    {renderActions(row)}
-                  </div>
-                ) : null}
               </div>
             </article>
           );
@@ -118,7 +117,7 @@ export function ItemCardGrid<T extends { id: string }>({
       </div>
 
       {showPagination ? (
-        <div className="overflow-hidden rounded-xl border border-[var(--erp-border)] bg-[var(--erp-surface)] shadow-sm">
+        <div className="overflow-hidden rounded-2xl border border-[var(--erp-border)] bg-[var(--erp-surface)] shadow-sm">
           <TablePagination
             meta={pagination.meta}
             onPageChange={pagination.onPageChange}

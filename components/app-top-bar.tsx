@@ -20,8 +20,8 @@ export function AppTopBar() {
         className="mr-1 hidden h-5 sm:block data-[orientation=vertical]:h-5"
       />
       <BrandLogo
-        className="hidden min-w-0 sm:inline-flex"
-        imgClassName="h-7 w-auto max-w-[160px]"
+        className="min-w-0 inline-flex"
+        imgClassName="h-7 w-auto max-w-[140px] sm:max-w-[160px]"
         alt={appName}
       />
       <div className="ml-auto flex items-center gap-0.5 sm:gap-1">

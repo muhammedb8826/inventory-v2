@@ -37,6 +37,7 @@ import { hasPermission } from "@/lib/permissions";
 import type { Role, UserAdmin } from "@/lib/types";
 import { useFetch } from "@/hooks/use-fetch";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
+import { ListRowActions } from "@/components/shared/list-row-actions";
 import { toast } from "sonner";
 import { PencilIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { AccessDenied } from "@/components/shared/access-denied";
@@ -184,23 +185,26 @@ function UsersPageContent() {
             onLimitChange: setLimit,
           }}
           columns={[
-            { key: "name", header: "Name", cell: (r) => r.fullName },
+            {
+              key: "name",
+              header: "Name",
+              primary: true,
+              cell: (r) => r.fullName,
+            },
             { key: "email", header: "Email", cell: (r) => r.email },
             {
               key: "role",
               header: "Role",
+              secondary: true,
               cell: (r) => r.role?.name ?? "—",
             },
             {
               key: "actions",
               header: "",
-              className: "w-24 text-right",
+              className: "w-12 text-right",
               cell: (r) =>
                 canWrite ? (
-                  <div className="flex justify-end gap-1">
-                    <UserDialog mode="edit" user={r} onSuccess={reload} />
-                    <DeleteUserButton user={r} onSuccess={reload} />
-                  </div>
+                  <UserRowActions user={r} onSuccess={reload} />
                 ) : null,
             },
           ]}
@@ -210,19 +214,78 @@ function UsersPageContent() {
   );
 }
 
+function UserRowActions({
+  user,
+  onSuccess,
+}: {
+  user: UserAdmin;
+  onSuccess: () => void;
+}) {
+  const [editOpen, setEditOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  async function handleDelete() {
+    if (!confirm(`Delete user "${user.fullName}" (${user.email})?`)) return;
+    setDeleting(true);
+    try {
+      await api(`/users/${user.id}`, { method: "DELETE" });
+      toast.success("User deleted");
+      onSuccess();
+    } catch (err) {
+      toast.error(errorMessage(err));
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <>
+      <ListRowActions
+        items={[
+          {
+            label: "Edit",
+            icon: PencilIcon,
+            onSelect: () => setEditOpen(true),
+          },
+          {
+            label: "Delete",
+            icon: Trash2Icon,
+            destructive: true,
+            disabled: deleting,
+            onSelect: () => void handleDelete(),
+          },
+        ]}
+      />
+      <UserDialog
+        mode="edit"
+        user={user}
+        onSuccess={onSuccess}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
+    </>
+  );
+}
+
 function UserDialog({
   mode,
   user,
   onSuccess,
+  open: openProp,
+  onOpenChange,
 }: {
   mode: "create" | "edit";
   user?: UserAdmin;
   onSuccess: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const { user: me, refreshUser } = useAuth();
   const canLoadRoles =
     hasPermission(me, "users.write") || hasPermission(me, "roles.read");
-  const [open, setOpen] = useState(false);
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = openProp ?? uncontrolledOpen;
+  const setOpen = onOpenChange ?? setUncontrolledOpen;
   const [email, setEmail] = useState(user?.email ?? "");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState(user?.fullName ?? "");
@@ -279,6 +342,8 @@ function UserDialog({
     }
   }
 
+  const showTrigger = openProp === undefined;
+
   return (
     <Dialog
       open={open}
@@ -287,19 +352,21 @@ function UserDialog({
         if (next) resetForm();
       }}
     >
-      <DialogTrigger asChild>
-        {mode === "create" ? (
-          <Button size="sm">
-            <PlusIcon />
-            Add user
-          </Button>
-        ) : (
-          <Button type="button" variant="ghost" size="icon" className="size-8">
-            <PencilIcon className="size-4" />
-            <span className="sr-only">Edit</span>
-          </Button>
-        )}
-      </DialogTrigger>
+      {showTrigger ? (
+        <DialogTrigger asChild>
+          {mode === "create" ? (
+            <Button size="sm">
+              <PlusIcon />
+              Add user
+            </Button>
+          ) : (
+            <Button type="button" variant="ghost" size="icon" className="size-8">
+              <PencilIcon className="size-4" />
+              <span className="sr-only">Edit</span>
+            </Button>
+          )}
+        </DialogTrigger>
+      ) : null}
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
@@ -375,40 +442,3 @@ function UserDialog({
   );
 }
 
-function DeleteUserButton({
-  user,
-  onSuccess,
-}: {
-  user: UserAdmin;
-  onSuccess: () => void;
-}) {
-  const [deleting, setDeleting] = useState(false);
-
-  async function handleDelete() {
-    if (!confirm(`Delete user "${user.fullName}" (${user.email})?`)) return;
-    setDeleting(true);
-    try {
-      await api(`/users/${user.id}`, { method: "DELETE" });
-      toast.success("User deleted");
-      onSuccess();
-    } catch (err) {
-      toast.error(errorMessage(err));
-    } finally {
-      setDeleting(false);
-    }
-  }
-
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon"
-      className="size-8 text-destructive"
-      disabled={deleting}
-      onClick={handleDelete}
-    >
-      <Trash2Icon className="size-4" />
-      <span className="sr-only">Delete</span>
-    </Button>
-  );
-}

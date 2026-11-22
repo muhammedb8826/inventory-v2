@@ -45,6 +45,7 @@ import { buildListPath, type ListQueryParams } from "@/lib/list-query";
 import { errorMessage } from "@/lib/format";
 import { hasPermission } from "@/lib/permissions";
 import { usePaginatedList } from "@/hooks/use-paginated-list";
+import { ListRowActions } from "@/components/shared/list-row-actions";
 import { toast } from "sonner";
 import { PencilIcon, PlusIcon } from "lucide-react";
 
@@ -80,6 +81,7 @@ export function MasterDataPage<
     header: string;
     cell: (row: T) => React.ReactNode;
     primary?: boolean;
+    secondary?: boolean;
     hideOnMobile?: boolean;
     className?: string;
   }[];
@@ -134,10 +136,10 @@ export function MasterDataPage<
     {
       key: "actions",
       header: "",
-      className: "w-20 text-right",
+      className: "w-12 text-right",
       cell: (row: T) => (
         <PermissionGate permission={writePermission}>
-          <EditDialog
+          <MasterRowActions
             title={title}
             endpoint={endpoint}
             fields={fields}
@@ -392,7 +394,9 @@ function CreateDialog({
   );
 }
 
-function EditDialog<T extends { id: string; name: string; isActive?: boolean }>({
+function MasterRowActions<
+  T extends { id: string; name: string; isActive?: boolean },
+>({
   title,
   endpoint,
   fields,
@@ -408,10 +412,59 @@ function EditDialog<T extends { id: string; name: string; isActive?: boolean }>(
   onSuccess: () => void;
 }) {
   const [open, setOpen] = useState(false);
+
+  return (
+    <>
+      <ListRowActions
+        items={[
+          {
+            label: "Edit",
+            icon: PencilIcon,
+            onSelect: () => setOpen(true),
+          },
+        ]}
+      />
+      <EditDialog
+        title={title}
+        endpoint={endpoint}
+        fields={fields}
+        row={row}
+        supportsActive={supportsActive}
+        onSuccess={onSuccess}
+        open={open}
+        onOpenChange={setOpen}
+      />
+    </>
+  );
+}
+
+function EditDialog<T extends { id: string; name: string; isActive?: boolean }>({
+  title,
+  endpoint,
+  fields,
+  row,
+  supportsActive,
+  onSuccess,
+  open: openProp,
+  onOpenChange,
+}: {
+  title: string;
+  endpoint: string;
+  fields: MasterField[];
+  row: T;
+  supportsActive?: boolean;
+  onSuccess: () => void;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}) {
+  const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
+  const open = openProp ?? uncontrolledOpen;
+  const setOpen = onOpenChange ?? setUncontrolledOpen;
   const [values, setValues] = useState<Record<string, string | boolean>>(() =>
     rowToValues(row, fields)
   );
   const [saving, setSaving] = useState(false);
+  const showTrigger = openProp === undefined;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -439,12 +492,14 @@ function EditDialog<T extends { id: string; name: string; isActive?: boolean }>(
         if (next) setValues(rowToValues(row, fields));
       }}
     >
-      <DialogTrigger asChild>
-        <Button type="button" variant="ghost" size="icon" className="size-8">
-          <PencilIcon className="size-4" />
-          <span className="sr-only">Edit</span>
-        </Button>
-      </DialogTrigger>
+      {showTrigger ? (
+        <DialogTrigger asChild>
+          <Button type="button" variant="ghost" size="icon" className="size-8">
+            <PencilIcon className="size-4" />
+            <span className="sr-only">Edit</span>
+          </Button>
+        </DialogTrigger>
+      ) : null}
       <DialogContent className="max-w-lg gap-0 overflow-hidden p-0">
         <DialogHeader className="border-b border-[var(--frappe-border)] bg-[var(--frappe-section-head)] px-4 py-3">
           <DialogTitle className="text-base">Edit {row.name}</DialogTitle>
