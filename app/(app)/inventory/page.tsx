@@ -68,6 +68,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ExportInventoryButton } from "@/components/inventory/export-inventory-button";
 import { InventoryAdjustmentsPanel } from "@/components/inventory/inventory-adjustments-panel";
+import { InventoryMovementsPanel } from "@/components/inventory/inventory-movements-panel";
 import { StockAdjustDialog } from "@/components/inventory/stock-adjust-dialog";
 import { StockDetailDialog } from "@/components/inventory/stock-detail-dialog";
 import { useAuth } from "@/lib/auth";
@@ -197,6 +198,7 @@ export default function InventoryPage() {
         <Tabs defaultValue="stock" className="gap-4">
           <TabsList>
             <TabsTrigger value="stock">Stock</TabsTrigger>
+            <TabsTrigger value="movements">Movements</TabsTrigger>
             <TabsTrigger value="adjustments">Adjustments</TabsTrigger>
           </TabsList>
           <TabsContent value="stock" className="mt-0 space-y-0">
@@ -563,6 +565,9 @@ export default function InventoryPage() {
             ]}
           />
         )}
+          </TabsContent>
+          <TabsContent value="movements" className="mt-0">
+            <InventoryMovementsPanel />
           </TabsContent>
           <TabsContent value="adjustments" className="mt-0">
             <InventoryAdjustmentsPanel />

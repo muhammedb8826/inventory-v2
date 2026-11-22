@@ -19,6 +19,13 @@ export type StockAdjustmentReason =
   | "OPENING"
   | "RETURN"
   | "OTHER";
+export type StockMovementRefType =
+  | "sale"
+  | "purchase"
+  | "stock_transfer"
+  | "stock_adjustment"
+  | "production"
+  | "opening";
 export type ItemType = "RAW" | "SEMI" | "FINISHED" | "OTHER";
 export type ProductionOrderStatus =
   | "DRAFT"
@@ -246,6 +253,23 @@ export interface StockAdjustment {
   reference?: string | null;
   purchasePrice?: string | null;
   createdById?: string;
+  createdBy?: { id: string; fullName?: string; email?: string };
+  item?: Item;
+  location?: Location;
+  createdAt?: string;
+}
+
+export interface StockMovement {
+  id: string;
+  locationId: string;
+  itemId: string;
+  quantityDelta: string;
+  quantityBefore: string;
+  quantityAfter: string;
+  refType?: StockMovementRefType | null;
+  refId?: string | null;
+  notes?: string | null;
+  createdById?: string | null;
   createdBy?: { id: string; fullName?: string; email?: string };
   item?: Item;
   location?: Location;
