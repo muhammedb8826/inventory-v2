@@ -39,6 +39,7 @@ export type CreditStatus = "OPEN" | "PARTIAL" | "PAID";
 export type CreditSource = "SALE" | "PURCHASE" | "OPENING";
 export type DocumentStatus = "POSTED" | "VOIDED";
 export type CommissionBasis = "PROFIT" | "SALES";
+export type TaxMode = "EXCLUSIVE" | "INCLUSIVE";
 
 export type { Currency };
 
@@ -471,6 +472,9 @@ export interface Purchase {
   total?: string;
   /** @deprecated Prefer `total` */
   totalAmount?: string;
+  taxPercent?: string | number;
+  taxAmount?: string;
+  taxMode?: TaxMode;
   createdAt?: string;
   updatedAt?: string;
   supplier?: Supplier;
@@ -527,6 +531,9 @@ export interface Sale {
   total?: string;
   /** @deprecated Prefer `total` */
   totalAmount?: string;
+  taxPercent?: string | number;
+  taxAmount?: string;
+  taxMode?: TaxMode;
   soldByUserId?: string;
   commissionPercent?: string | number;
   commissionBasis?: CommissionBasis;
@@ -1122,4 +1129,32 @@ export interface UpdateCommissionSettingsBody {
   enabled?: boolean;
   defaultPercent?: number;
   defaultBasis?: CommissionBasis;
+}
+
+/** Company tax plan (Settings → Tax). */
+export interface TaxSettings {
+  id: string;
+  enabled: boolean;
+  defaultPercent: number;
+  defaultMode: TaxMode;
+  applyToSales: boolean;
+  applyToPurchases: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface TaxDefaults {
+  enabled: boolean;
+  defaultPercent: number;
+  defaultMode: TaxMode;
+  applyToSales: boolean;
+  applyToPurchases: boolean;
+}
+
+export interface UpdateTaxSettingsBody {
+  enabled?: boolean;
+  defaultPercent?: number;
+  defaultMode?: TaxMode;
+  applyToSales?: boolean;
+  applyToPurchases?: boolean;
 }

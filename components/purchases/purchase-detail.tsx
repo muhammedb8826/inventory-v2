@@ -129,6 +129,19 @@ export function PurchaseDetail({
                 href={`/credits/suppliers/${credit.id}`}
               />
             ) : null}
+            {purchase.subtotal != null ? (
+              <DetailField
+                label="Subtotal"
+                value={formatMoney(purchase.subtotal)}
+              />
+            ) : null}
+            {purchase.taxAmount != null &&
+            parseFloat(String(purchase.taxAmount)) > 0 ? (
+              <DetailField
+                label={`Tax${purchase.taxPercent != null ? ` (${purchase.taxPercent}%)` : ""}`}
+                value={formatMoney(purchase.taxAmount)}
+              />
+            ) : null}
             <DetailField
               label="Total amount"
               value={formatMoney(documentTotal(purchase))}

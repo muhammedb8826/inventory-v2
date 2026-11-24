@@ -18,6 +18,6 @@ export async function updateCommissionSettings(
 ): Promise<CommissionSettings> {
   return api<CommissionSettings>("/settings/commission", {
     method: "PATCH",
-    body: JSON.stringify(body),
+    body,
   });
 }

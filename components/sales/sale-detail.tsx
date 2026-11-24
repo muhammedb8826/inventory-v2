@@ -137,6 +137,19 @@ export function SaleDetail({
                 href={`/credits/customers/${credit.id}`}
               />
             ) : null}
+            {sale.subtotal != null ? (
+              <DetailField
+                label="Subtotal"
+                value={formatMoney(sale.subtotal)}
+              />
+            ) : null}
+            {sale.taxAmount != null &&
+            parseFloat(String(sale.taxAmount)) > 0 ? (
+              <DetailField
+                label={`Tax${sale.taxPercent != null ? ` (${sale.taxPercent}%)` : ""}`}
+                value={formatMoney(sale.taxAmount)}
+              />
+            ) : null}
             <DetailField
               label="Total amount"
               value={formatMoney(documentTotal(sale))}

@@ -53,7 +53,14 @@ import {
 } from "@/lib/inventory-items";
 import { defaultUomIdForItem, fetchUoms, itemAllowsCuts } from "@/lib/uom";
 import { errorMessage, formatMoney } from "@/lib/format";
-import { PAYMENT_METHOD_OPTIONS } from "@/lib/form-select-options";
+import {
+  PAYMENT_METHOD_OPTIONS,
+  TAX_MODE_OPTIONS,
+} from "@/lib/form-select-options";
+import {
+  fetchTaxDefaults,
+  previewDocumentTax,
+} from "@/lib/tax-settings";
 import { fetchSuppliers, partySelectOptions } from "@/lib/party-fetch";
 import { requestNotificationsRefresh } from "@/lib/notification-events";
 import type {
@@ -64,12 +71,15 @@ import type {
   Purchase,
   StockRecord,
   Supplier,
+  TaxMode,
 } from "@/lib/types";
 import { useFetch } from "@/hooks/use-fetch";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useLocations } from "@/hooks/use-locations";
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
+import { useAuth } from "@/lib/auth";
+import { hasPermission } from "@/lib/permissions";
 
 interface LineRow {
   itemId: string;
@@ -112,8 +122,10 @@ function linesFromPurchase(purchase: Purchase): LineRow[] {
 
 export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
   const router = useRouter();
+  const { user } = useAuth();
   const isEdit = !!purchase?.id;
   const notesOnly = isEdit && creditHasPayments(purchase?.supplierCredit);
+  const canTaxOverride = hasPermission(user, "purchase.tax");
 
   const [supplierId, setSupplierId] = useState(purchase?.supplierId ?? "");
   const [locationId, setLocationId] = useState(purchase?.locationId ?? "");
@@ -129,6 +141,15 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
     purchase?.creditDueDate?.slice(0, 10) ?? ""
   );
   const [notes, setNotes] = useState(purchase?.notes ?? "");
+  const [taxPercent, setTaxPercent] = useState(() =>
+    purchase?.taxPercent != null && purchase.taxPercent !== ""
+      ? String(purchase.taxPercent)
+      : ""
+  );
+  const [taxMode, setTaxMode] = useState<TaxMode>(
+    () => purchase?.taxMode ?? "EXCLUSIVE"
+  );
+  const [taxEnabled, setTaxEnabled] = useState(false);
   const [lines, setLines] = useState<LineRow[]>(() =>
     purchase ? linesFromPurchase(purchase) : [emptyLine()]
   );
@@ -209,6 +230,43 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
     }, 0);
   }, [lines]);
 
+  const taxPreview = useMemo(() => {
+    const pct = parseFloat(taxPercent);
+    return previewDocumentTax(
+      subtotal,
+      Number.isNaN(pct) ? 0 : pct,
+      taxMode,
+      taxEnabled
+    );
+  }, [subtotal, taxPercent, taxMode, taxEnabled]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchTaxDefaults()
+      .then((plan) => {
+        if (cancelled) return;
+        const active = plan.enabled && plan.applyToPurchases;
+        setTaxEnabled(active);
+        if (!isEdit) {
+          setTaxPercent(String(plan.defaultPercent));
+          setTaxMode(plan.defaultMode);
+        } else if (
+          purchase?.taxPercent == null ||
+          purchase.taxPercent === ""
+        ) {
+          setTaxPercent(String(plan.defaultPercent));
+          if (!purchase?.taxMode) setTaxMode(plan.defaultMode);
+        }
+      })
+      .catch(() => {
+        /* API applies plan on save */
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEdit, purchase?.id]);
+
   const supplierOptions = partySelectOptions(
     suppliers ?? [],
     supplierId,
@@ -283,6 +341,13 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
     }
     if (paymentMethod === "CREDIT" && creditDueDate) {
       body.creditDueDate = creditDueDate;
+    }
+    if (canTaxOverride && taxPercent.trim()) {
+      const pct = parseFloat(taxPercent);
+      if (!Number.isNaN(pct) && pct >= 0 && pct <= 100) {
+        body.taxPercent = pct;
+        body.taxMode = taxMode;
+      }
     }
     return body;
   }
@@ -686,12 +751,27 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                 </FrappeGridTable>
 
                 <div className="mt-4 flex justify-end border-t border-[var(--frappe-border)] pt-3">
-                  <div className="min-w-[10rem] text-right">
-                    <div className="text-[11px] font-medium uppercase tracking-wide text-[var(--frappe-text-muted)]">
-                      Total
+                  <div className="min-w-[12rem] space-y-1 text-right">
+                    <div className="flex justify-between gap-6 text-sm tabular-nums text-[var(--frappe-text-muted)]">
+                      <span>Subtotal</span>
+                      <span>{formatMoney(subtotal)}</span>
                     </div>
-                    <div className="text-xl font-semibold tabular-nums text-[var(--frappe-text)]">
-                      {formatMoney(subtotal)}
+                    {taxEnabled && taxPreview.taxAmount > 0 ? (
+                      <div className="flex justify-between gap-6 text-sm tabular-nums text-[var(--frappe-text-muted)]">
+                        <span>
+                          Tax
+                          {taxPercent.trim() ? ` (${taxPercent}%)` : ""}
+                        </span>
+                        <span>{formatMoney(taxPreview.taxAmount)}</span>
+                      </div>
+                    ) : null}
+                    <div className="flex justify-between gap-6 pt-1">
+                      <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--frappe-text-muted)]">
+                        Total
+                      </span>
+                      <span className="text-xl font-semibold tabular-nums text-[var(--frappe-text)]">
+                        {formatMoney(taxPreview.total)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -720,6 +800,49 @@ export function PurchaseForm({ purchase }: { purchase?: Purchase }) {
                 }
                 disabled={notesOnly}
               />
+              {!notesOnly ? (
+                <>
+                  <FrappeField
+                    label="Tax mode"
+                    hint={
+                      !taxEnabled
+                        ? "Tax disabled in Settings"
+                        : canTaxOverride
+                          ? "Company plan — override allowed"
+                          : "From company plan (read-only)"
+                    }
+                  >
+                    <SearchSelect
+                      value={taxMode}
+                      onValueChange={(v) => setTaxMode(v as TaxMode)}
+                      options={TAX_MODE_OPTIONS}
+                      searchPlaceholder="Search tax mode…"
+                      disabled={!canTaxOverride || !taxEnabled}
+                    />
+                  </FrappeField>
+                  <FrappeField
+                    label="Tax %"
+                    hint={
+                      !taxEnabled
+                        ? "Plan disabled — tax will be 0"
+                        : taxMode === "INCLUSIVE"
+                          ? "Included in line prices"
+                          : "Added on top of subtotal"
+                    }
+                  >
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={taxEnabled ? taxPercent : "0"}
+                      onChange={(e) => setTaxPercent(e.target.value)}
+                      placeholder="—"
+                      disabled={!canTaxOverride || !taxEnabled}
+                    />
+                  </FrappeField>
+                </>
+              ) : null}
               <FrappeField label="Notes" fullWidth hint="Optional reference">
                 <Input
                   value={notes}

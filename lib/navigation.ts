@@ -20,6 +20,7 @@ import {
   MessageSquare,
   MessagesSquare,
   Palette,
+  BadgePercent,
   Percent,
   Ruler,
   Tags,
@@ -192,6 +193,12 @@ export const adminNav: NavItem[] = [
     title: "Commission",
     href: "/settings/commission",
     icon: Percent,
+    permissions: ["settings.read", "settings.write"],
+  },
+  {
+    title: "Tax",
+    href: "/settings/tax",
+    icon: BadgePercent,
     permissions: ["settings.read", "settings.write"],
   },
   {

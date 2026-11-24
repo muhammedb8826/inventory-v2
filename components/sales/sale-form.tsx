@@ -59,10 +59,15 @@ import { buildItemOptionMap, itemOptionsFromMap, parseDocumentLines, productItem
 import { defaultUomIdForItem, fetchUoms, itemAllowsCuts } from "@/lib/uom";
 import { saleRepUser } from "@/lib/sale-utils";
 import { fetchCommissionDefaults } from "@/lib/commission-settings";
+import {
+  fetchTaxDefaults,
+  previewDocumentTax,
+} from "@/lib/tax-settings";
 import { errorMessage, formatMoney, formatQty } from "@/lib/format";
 import {
   COMMISSION_BASIS_OPTIONS,
   PAYMENT_METHOD_OPTIONS,
+  TAX_MODE_OPTIONS,
 } from "@/lib/form-select-options";
 import { fetchCustomers, partySelectOptions } from "@/lib/party-fetch";
 import { requestNotificationsRefresh } from "@/lib/notification-events";
@@ -77,6 +82,7 @@ import type {
   ProductionSuggestion,
   Sale,
   StockRecord,
+  TaxMode,
   UserAdmin,
 } from "@/lib/types";
 import { useFetch } from "@/hooks/use-fetch";
@@ -170,10 +176,20 @@ export function SaleForm({
     () => sale?.commissionBasis ?? "PROFIT"
   );
   const [commissionEnabled, setCommissionEnabled] = useState(true);
+  const [taxPercent, setTaxPercent] = useState(() =>
+    sale?.taxPercent != null && sale.taxPercent !== ""
+      ? String(sale.taxPercent)
+      : ""
+  );
+  const [taxMode, setTaxMode] = useState<TaxMode>(
+    () => sale?.taxMode ?? "EXCLUSIVE"
+  );
+  const [taxEnabled, setTaxEnabled] = useState(false);
   const [notes, setNotes] = useState(sale?.notes ?? "");
   const [linkedInquiryId, setLinkedInquiryId] = useState(inquiryId ?? "");
   const canOnBehalf = hasPermission(user, "sales.on_behalf");
   const canCommissionOverride = hasPermission(user, "sales.commission");
+  const canTaxOverride = hasPermission(user, "sales.tax");
 
   /** Rep for API/UI: explicit pick, or logged-in user on new sales once auth loads. */
   const effectiveSoldByUserId =
@@ -248,10 +264,33 @@ export function SaleForm({
         }
       })
       .catch(() => {
-        /* keep form usable offline from plan; API applies settings on save */
         if (!cancelled && !isEdit && !commissionPercent) {
           setCommissionPercent("10");
         }
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEdit, sale?.id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchTaxDefaults()
+      .then((plan) => {
+        if (cancelled) return;
+        const active = plan.enabled && plan.applyToSales;
+        setTaxEnabled(active);
+        if (!isEdit) {
+          setTaxPercent(String(plan.defaultPercent));
+          setTaxMode(plan.defaultMode);
+        } else if (sale?.taxPercent == null || sale.taxPercent === "") {
+          setTaxPercent(String(plan.defaultPercent));
+          if (!sale?.taxMode) setTaxMode(plan.defaultMode);
+        }
+      })
+      .catch(() => {
+        /* API applies plan on save */
       });
     return () => {
       cancelled = true;
@@ -349,6 +388,16 @@ export function SaleForm({
       return sum + q * price;
     }, 0);
   }, [lines]);
+
+  const taxPreview = useMemo(() => {
+    const pct = parseFloat(taxPercent);
+    return previewDocumentTax(
+      subtotal,
+      Number.isNaN(pct) ? 0 : pct,
+      taxMode,
+      taxEnabled
+    );
+  }, [subtotal, taxPercent, taxMode, taxEnabled]);
 
   const customerOptions = partySelectOptions(
     customers ?? [],
@@ -455,6 +504,16 @@ export function SaleForm({
         }
         body.commissionPercent = pct;
         body.commissionBasis = commissionBasis;
+      }
+    }
+    if (canTaxOverride && taxPercent.trim()) {
+      const pct = parseFloat(taxPercent);
+      if (!Number.isNaN(pct)) {
+        if (pct < 0 || pct > 100) {
+          return { error: "Tax must be between 0 and 100." };
+        }
+        body.taxPercent = pct;
+        body.taxMode = taxMode;
       }
     }
     return body;
@@ -961,12 +1020,27 @@ export function SaleForm({
                 </FrappeGridTable>
 
                 <div className="mt-4 flex justify-end border-t border-[var(--frappe-border)] pt-3">
-                  <div className="min-w-[10rem] text-right">
-                    <div className="text-[11px] font-medium uppercase tracking-wide text-[var(--frappe-text-muted)]">
-                      Total
+                  <div className="min-w-[12rem] space-y-1 text-right">
+                    <div className="flex justify-between gap-6 text-sm tabular-nums text-[var(--frappe-text-muted)]">
+                      <span>Subtotal</span>
+                      <span>{formatMoney(subtotal)}</span>
                     </div>
-                    <div className="text-xl font-semibold tabular-nums text-[var(--frappe-text)]">
-                      {formatMoney(subtotal)}
+                    {taxEnabled && taxPreview.taxAmount > 0 ? (
+                      <div className="flex justify-between gap-6 text-sm tabular-nums text-[var(--frappe-text-muted)]">
+                        <span>
+                          Tax
+                          {taxPercent.trim() ? ` (${taxPercent}%)` : ""}
+                        </span>
+                        <span>{formatMoney(taxPreview.taxAmount)}</span>
+                      </div>
+                    ) : null}
+                    <div className="flex justify-between gap-6 pt-1">
+                      <span className="text-[11px] font-medium uppercase tracking-wide text-[var(--frappe-text-muted)]">
+                        Total
+                      </span>
+                      <span className="text-xl font-semibold tabular-nums text-[var(--frappe-text)]">
+                        {formatMoney(taxPreview.total)}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -1050,6 +1124,45 @@ export function SaleForm({
                       onChange={(e) => setCommissionPercent(e.target.value)}
                       placeholder="—"
                       disabled={!canCommissionOverride || !commissionEnabled}
+                    />
+                  </FrappeField>
+                  <FrappeField
+                    label="Tax mode"
+                    hint={
+                      !taxEnabled
+                        ? "Tax disabled in Settings"
+                        : canTaxOverride
+                          ? "Company plan — override allowed"
+                          : "From company plan (read-only)"
+                    }
+                  >
+                    <SearchSelect
+                      value={taxMode}
+                      onValueChange={(v) => setTaxMode(v as TaxMode)}
+                      options={TAX_MODE_OPTIONS}
+                      searchPlaceholder="Search tax mode…"
+                      disabled={!canTaxOverride || !taxEnabled}
+                    />
+                  </FrappeField>
+                  <FrappeField
+                    label="Tax %"
+                    hint={
+                      !taxEnabled
+                        ? "Plan disabled — tax will be 0"
+                        : taxMode === "INCLUSIVE"
+                          ? "Included in line prices"
+                          : "Added on top of subtotal"
+                    }
+                  >
+                    <Input
+                      type="number"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                      value={taxEnabled ? taxPercent : "0"}
+                      onChange={(e) => setTaxPercent(e.target.value)}
+                      placeholder="—"
+                      disabled={!canTaxOverride || !taxEnabled}
                     />
                   </FrappeField>
                 </>
