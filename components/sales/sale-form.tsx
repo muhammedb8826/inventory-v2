@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { QuickCustomerDialog } from "@/components/customers/quick-customer-dialog";
 import { QuickLocationDialog } from "@/components/locations/quick-location-dialog";
@@ -14,6 +14,7 @@ import { LineUomSelect } from "@/components/uom/line-uom-select";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   FrappeDocument,
   FrappeField,
@@ -53,10 +54,11 @@ import {
   useAutoPaymentAccount,
 } from "@/hooks/use-payment-bank-account";
 import { fetchInventoryForLocation } from "@/lib/inventory-fetch";
+import { findDefaultLocationId } from "@/lib/inventory-defaults";
 import { buildItemOptionMap, itemOptionsFromMap, parseDocumentLines, productItemId, resolveItem, type DocumentLineBody } from "@/lib/inventory-items";
 import { defaultUomIdForItem, fetchUoms, itemAllowsCuts } from "@/lib/uom";
 import { saleRepUser } from "@/lib/sale-utils";
-import { errorMessage, formatQty } from "@/lib/format";
+import { errorMessage, formatMoney, formatQty } from "@/lib/format";
 import {
   COMMISSION_BASIS_OPTIONS,
   PAYMENT_METHOD_OPTIONS,
@@ -278,6 +280,13 @@ export function SaleForm({
     setBankAccountId
   );
 
+  // New sales: default location to warehouse (or first active).
+  useEffect(() => {
+    if (isEdit || locationId || !locations?.length) return;
+    const defaultId = findDefaultLocationId(locations);
+    if (defaultId) setLocationId(defaultId);
+  }, [isEdit, locationId, locations]);
+
   const {
     data: stock,
     loading: stockLoading,
@@ -297,6 +306,17 @@ export function SaleForm({
     [...lines, ...(sale?.lines ?? [])]
   );
   const itemOptions = itemOptionsFromMap(itemMap);
+
+  const subtotal = useMemo(() => {
+    return lines.reduce((sum, line) => {
+      if (!line.itemId.trim() || !line.unitPrice.trim()) return sum;
+      const qty = parseFloat(line.quantity);
+      const price = parseFloat(line.unitPrice);
+      if (Number.isNaN(price) || price < 0) return sum;
+      const q = Number.isNaN(qty) || qty <= 0 ? 1 : qty;
+      return sum + q * price;
+    }, 0);
+  }, [lines]);
 
   const customerOptions = partySelectOptions(
     customers ?? [],
@@ -484,6 +504,10 @@ export function SaleForm({
       toast.error("Customer is required for credit sales");
       return;
     }
+    if (!notesOnly && !locationId) {
+      toast.error("Location is required — set it under Other Info");
+      return;
+    }
     const resolvedBankId = resolveBankAccountId(
       paymentMethod,
       banks,
@@ -561,14 +585,24 @@ export function SaleForm({
   }
 
   const cancelHref = isEdit && sale ? `/sales/${sale.id}` : "/sales";
+  const selectedCustomer = (customers ?? []).find((c) => c.id === customerId);
+  const locationLabel =
+    (locations ?? []).find((l) => l.id === locationId)?.name ?? null;
 
   return (
-    <form onSubmit={handleSubmit} className="mx-auto max-w-5xl">
+    <form onSubmit={handleSubmit} className="mx-auto max-w-5xl space-y-0">
       <FrappeFormToolbar>
         <FrappeButtonPrimary type="submit" disabled={saving}>
-          {saving ? <Spinner className="size-4" /> : "Save"}
+          {saving ? "Saving…" : isEdit ? "Save" : "Record sale"}
         </FrappeButtonPrimary>
-        <FrappeButtonLink href={cancelHref}>Cancel</FrappeButtonLink>
+        <FrappeButtonLink href={cancelHref}>
+          {isEdit ? "Back" : "Discard"}
+        </FrappeButtonLink>
+        {locationLabel ? (
+          <span className="ml-auto hidden text-xs text-[var(--frappe-text-muted)] sm:inline">
+            Selling from {locationLabel}
+          </span>
+        ) : null}
       </FrappeFormToolbar>
 
       {notesOnly ? (
@@ -578,10 +612,7 @@ export function SaleForm({
       ) : null}
 
       <FrappeDocument>
-        <FrappeSection
-          title="Customer & payment"
-          description="Selling location and how this sale is paid"
-        >
+        <FrappeSection title="Customer">
           <FrappeFormGrid columns={2}>
             <EntitySelectField
               label="Customer"
@@ -593,29 +624,10 @@ export function SaleForm({
               searchPlaceholder="Search by name, phone, or email…"
               listHref="/customers"
               listLabel="All customers"
-              emptyMessage="Create a customer for credit sales."
+              emptyMessage="Optional for cash/bank — required for credit."
               quickCreate={
                 notesOnly ? undefined : (
                   <QuickCustomerDialog onCreated={onCustomerCreated} />
-                )
-              }
-              disabled={notesOnly}
-            />
-            <EntitySelectField
-              label="Location"
-              required={!notesOnly}
-              value={locationId}
-              onValueChange={onLocationChange}
-              options={(locations ?? []).map((l) => ({
-                id: l.id,
-                label: `${l.name} (${l.type})`,
-              }))}
-              listHref="/locations"
-              listLabel="All locations"
-              emptyMessage="Add a location to sell from."
-              quickCreate={
-                notesOnly ? undefined : (
-                  <QuickLocationDialog onCreated={onLocationCreated} />
                 )
               }
               disabled={notesOnly}
@@ -673,260 +685,347 @@ export function SaleForm({
             ) : (
               <div className="hidden md:block" />
             )}
-            {canOnBehalf && !notesOnly ? (
-              <FrappeField label="Sales rep" required>
-                <SearchSelect
-                  value={effectiveSoldByUserId}
-                  onValueChange={setSoldByUserId}
-                  options={salesRepOptions}
-                  placeholder="Select rep"
-                  searchPlaceholder="Search by name…"
-                  emptyMessage="No active users found."
-                />
+            {selectedCustomer ? (
+              <FrappeField label="Contact" fullWidth>
+                <div className="rounded-md border border-[var(--frappe-border)] bg-[var(--frappe-section-head)]/40 px-3 py-2 text-sm text-[var(--frappe-text)]">
+                  <div className="font-medium">{selectedCustomer.name}</div>
+                  <div className="mt-0.5 text-xs text-[var(--frappe-text-muted)]">
+                    {[selectedCustomer.phone, selectedCustomer.email]
+                      .filter(Boolean)
+                      .join(" · ") || "No phone or email on this customer"}
+                  </div>
+                </div>
               </FrappeField>
             ) : null}
-            {!notesOnly ? (
-              <>
-                <FrappeField label="Commission basis">
-                  <SearchSelect
-                    value={commissionBasis}
-                    onValueChange={(v) =>
-                      setCommissionBasis(v as CommissionBasis)
-                    }
-                    options={COMMISSION_BASIS_OPTIONS}
-                    searchPlaceholder="Search commission basis…"
-                  />
-                </FrappeField>
-                <FrappeField label="Commission %">
-                  <Input
-                    type="number"
-                    min="0"
-                    max="100"
-                    step="0.01"
-                    value={commissionPercent}
-                    onChange={(e) => setCommissionPercent(e.target.value)}
-                    placeholder="10"
-                  />
-                  <p className="mt-1 text-xs text-[var(--frappe-text-muted)]">
-                    Rate (0–100) applied to{" "}
-                    {commissionBasis === "SALES"
-                      ? "sale subtotal"
-                      : "gross profit"}
-                    . Default 10%. Clear for no commission.
-                  </p>
-                </FrappeField>
-              </>
-            ) : null}
-            {canNegativeStock && !notesOnly ? (
-              <div className="flex items-center gap-2 sm:col-span-2">
-                <Switch
-                  id="allow-negative"
-                  checked={allowNegativeStock}
-                  onCheckedChange={setAllowNegativeStock}
-                />
-                <Label htmlFor="allow-negative">Allow negative stock</Label>
-              </div>
-            ) : null}
-            <FrappeField label="Notes" fullWidth>
-              <Input
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Optional reference"
-              />
-            </FrappeField>
           </FrappeFormGrid>
         </FrappeSection>
 
-        {!notesOnly ? (
-          <FrappeSection
-            title="Items"
-            description={
-              locationId
-                ? stockLoading
-                  ? "Loading stock at location…"
-                  : `${itemOptions.length} item(s) available`
-                : "Select a location first"
-            }
-          >
-            <FrappeGridTable
-              columns={[
-                { key: "item", label: "Item" },
-                { key: "uom", label: "UOM", className: "w-24" },
-                { key: "w", label: "W", className: "w-20" },
-                { key: "h", label: "H", className: "w-20" },
-                { key: "qty", label: "Qty", className: "w-20" },
-                { key: "rate", label: "Rate", className: "w-24" },
-              ]}
-              onAddRow={() => setLines((prev) => [...prev, emptyLine()])}
-              addLabel="Add Row"
+        <Tabs defaultValue="lines" className="gap-0">
+          <div className="border-b border-[var(--frappe-border)] px-4 sm:px-5">
+            <TabsList
+              variant="line"
+              className="h-10 w-full justify-start rounded-none bg-transparent p-0"
             >
-              {lines.map((line, i) => {
-                const cut = itemAllowsCuts(line.item, uoms);
-                const hasDefaultWidth =
-                  line.item?.uomWidth != null &&
-                  Number.isFinite(parseFloat(String(line.item.uomWidth))) &&
-                  parseFloat(String(line.item.uomWidth)) > 0;
-                const isCutFilled = Boolean(
-                  line.height.trim() &&
-                    (line.width.trim() || hasDefaultWidth)
-                );
-                const lineUom =
-                  uoms.find((u) => u.id === line.uomId) ||
-                  line.item?.salesUom ||
-                  line.item?.stockUom ||
-                  null;
-                const dimSymbol =
-                  lineUom?.symbol || lineUom?.code || "m";
-                const widthPlaceholder = hasDefaultWidth
-                  ? `W (default ${line.item?.uomWidth})`
-                  : `W (${dimSymbol})`;
-                return (
-                <FrappeGridRow
-                  key={i}
-                  canRemove
-                  onRemove={() =>
-                    setLines((prev) =>
-                      prev.length <= 1
-                        ? [emptyLine()]
-                        : prev.filter((_, idx) => idx !== i)
-                    )
-                  }
+              <TabsTrigger
+                value="lines"
+                className="rounded-none px-3 data-active:text-[var(--erp-accent)]"
+              >
+                Order Lines
+              </TabsTrigger>
+              <TabsTrigger
+                value="other"
+                className="rounded-none px-3 data-active:text-[var(--erp-accent)]"
+              >
+                Other Info
+              </TabsTrigger>
+            </TabsList>
+          </div>
+
+          <TabsContent value="lines" className="mt-0 p-4 sm:p-5">
+            {notesOnly ? (
+              <p className="text-sm text-[var(--frappe-text-muted)]">
+                Line items are locked because this credit sale has payments.
+              </p>
+            ) : (
+              <>
+                <FrappeGridTable
+                  columns={[
+                    { key: "item", label: "Item" },
+                    { key: "uom", label: "UOM", className: "w-24" },
+                    { key: "w", label: "W", className: "w-20" },
+                    { key: "h", label: "H", className: "w-20" },
+                    { key: "qty", label: "Qty", className: "w-20" },
+                    { key: "rate", label: "Unit price", className: "w-28" },
+                    {
+                      key: "amount",
+                      label: "Amount",
+                      className: "w-28 text-right",
+                    },
+                  ]}
+                  onAddRow={() => setLines((prev) => [...prev, emptyLine()])}
+                  addLabel="Add a line"
                 >
-                  <FrappeGridCell>
-                    <ItemSearchSelect
-                      value={line.itemId}
-                      onValueChange={(v) => {
-                        const item = itemMap.get(v);
-                        updateLine(i, {
-                          itemId: v,
-                          item,
-                          uomId: defaultUomIdForItem(item, "sales") ?? "",
-                          width: "",
-                          height: "",
-                          quantity: "1",
-                        });
-                      }}
-                      options={itemOptions}
-                      disabled={!locationId}
-                      loading={stockLoading}
-                      filterLocally={false}
-                      onQueryChange={setItemQuery}
-                      placeholder="Item"
-                      footer={
-                        notesOnly
-                          ? undefined
-                          : (close) =>
-                              withSelectCreateTrigger(
-                                <QuickStockItemDialog
-                                  locationId={locationId}
-                                  onCreated={onStockCreated}
-                                  disabled={!locationId}
-                                />,
-                                close,
-                                "Create new item",
-                                !locationId
-                              )
+                  {lines.map((line, i) => {
+                    const cut = itemAllowsCuts(line.item, uoms);
+                    const hasDefaultWidth =
+                      line.item?.uomWidth != null &&
+                      Number.isFinite(parseFloat(String(line.item.uomWidth))) &&
+                      parseFloat(String(line.item.uomWidth)) > 0;
+                    const isCutFilled = Boolean(
+                      line.height.trim() &&
+                        (line.width.trim() || hasDefaultWidth)
+                    );
+                    const lineUom =
+                      uoms.find((u) => u.id === line.uomId) ||
+                      line.item?.salesUom ||
+                      line.item?.stockUom ||
+                      null;
+                    const dimSymbol =
+                      lineUom?.symbol || lineUom?.code || "m";
+                    const widthPlaceholder = hasDefaultWidth
+                      ? `W (default ${line.item?.uomWidth})`
+                      : `W (${dimSymbol})`;
+                    const qty = parseFloat(line.quantity);
+                    const price = parseFloat(line.unitPrice);
+                    const amount =
+                      line.itemId &&
+                      !Number.isNaN(price) &&
+                      price >= 0
+                        ? (Number.isNaN(qty) || qty <= 0 ? 1 : qty) * price
+                        : null;
+                    return (
+                      <FrappeGridRow
+                        key={i}
+                        canRemove
+                        onRemove={() =>
+                          setLines((prev) =>
+                            prev.length <= 1
+                              ? [emptyLine()]
+                              : prev.filter((_, idx) => idx !== i)
+                          )
+                        }
+                      >
+                        <FrappeGridCell>
+                          <ItemSearchSelect
+                            value={line.itemId}
+                            onValueChange={(v) => {
+                              const item = itemMap.get(v);
+                              updateLine(i, {
+                                itemId: v,
+                                item,
+                                uomId:
+                                  defaultUomIdForItem(item, "sales") ?? "",
+                                width: "",
+                                height: "",
+                                quantity: "1",
+                              });
+                            }}
+                            options={itemOptions}
+                            disabled={!locationId}
+                            loading={stockLoading}
+                            filterLocally={false}
+                            onQueryChange={setItemQuery}
+                            placeholder="Select item…"
+                            emptyMessage={
+                              !locationId
+                                ? "Set a selling location under Other Info."
+                                : "No items found."
+                            }
+                            footer={
+                              notesOnly
+                                ? undefined
+                                : (close) =>
+                                    withSelectCreateTrigger(
+                                      <QuickStockItemDialog
+                                        locationId={locationId}
+                                        onCreated={onStockCreated}
+                                        disabled={!locationId}
+                                      />,
+                                      close,
+                                      "Create new item",
+                                      !locationId
+                                    )
+                            }
+                          />
+                        </FrappeGridCell>
+                        <FrappeGridCell>
+                          <LineUomSelect
+                            value={line.uomId || null}
+                            onValueChange={(uomId) =>
+                              updateLine(i, { uomId: uomId ?? "" })
+                            }
+                            item={line.item}
+                            uoms={uoms}
+                            loading={uomsLoading}
+                            disabled={!locationId}
+                          />
+                        </FrappeGridCell>
+                        <FrappeGridCell>
+                          {cut ? (
+                            <Input
+                              type="number"
+                              min="0"
+                              step="any"
+                              className="h-8"
+                              value={line.width}
+                              onChange={(e) =>
+                                updateLine(i, { width: e.target.value })
+                              }
+                              placeholder={widthPlaceholder}
+                              title={
+                                hasDefaultWidth
+                                  ? `Width in ${dimSymbol}; blank uses item constant width`
+                                  : `Width in ${dimSymbol}`
+                              }
+                            />
+                          ) : (
+                            <span className="text-xs text-[var(--frappe-text-muted)]">
+                              —
+                            </span>
+                          )}
+                        </FrappeGridCell>
+                        <FrappeGridCell>
+                          {cut ? (
+                            <Input
+                              type="number"
+                              min="0"
+                              step="any"
+                              className="h-8"
+                              value={line.height}
+                              onChange={(e) =>
+                                updateLine(i, { height: e.target.value })
+                              }
+                              placeholder={`H (${dimSymbol})`}
+                              title={`Height in ${dimSymbol}`}
+                            />
+                          ) : (
+                            <span className="text-xs text-[var(--frappe-text-muted)]">
+                              —
+                            </span>
+                          )}
+                        </FrappeGridCell>
+                        <FrappeGridCell>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="any"
+                            className="h-8"
+                            value={line.quantity}
+                            onChange={(e) =>
+                              updateLine(i, { quantity: e.target.value })
+                            }
+                            required
+                            title={
+                              isCutFilled
+                                ? "Number of pieces of this size"
+                                : `Quantity in ${dimSymbol}`
+                            }
+                            placeholder={isCutFilled ? "Pcs" : "Qty"}
+                          />
+                        </FrappeGridCell>
+                        <FrappeGridCell>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="any"
+                            className="h-8"
+                            value={line.unitPrice}
+                            onChange={(e) =>
+                              updateLine(i, { unitPrice: e.target.value })
+                            }
+                            required
+                            placeholder="0.00"
+                          />
+                        </FrappeGridCell>
+                        <FrappeGridCell>
+                          <div className="flex h-8 items-center justify-end text-sm tabular-nums text-[var(--frappe-text)]">
+                            {amount != null ? formatMoney(amount) : "—"}
+                          </div>
+                        </FrappeGridCell>
+                      </FrappeGridRow>
+                    );
+                  })}
+                </FrappeGridTable>
+
+                <div className="mt-4 flex justify-end border-t border-[var(--frappe-border)] pt-3">
+                  <div className="min-w-[10rem] text-right">
+                    <div className="text-[11px] font-medium uppercase tracking-wide text-[var(--frappe-text-muted)]">
+                      Total
+                    </div>
+                    <div className="text-xl font-semibold tabular-nums text-[var(--frappe-text)]">
+                      {formatMoney(subtotal)}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </TabsContent>
+
+          <TabsContent value="other" className="mt-0 p-4 sm:p-5">
+            <FrappeFormGrid columns={2}>
+              <EntitySelectField
+                label="Selling location"
+                required={!notesOnly}
+                value={locationId}
+                onValueChange={onLocationChange}
+                options={(locations ?? []).map((l) => ({
+                  id: l.id,
+                  label: `${l.name} (${l.type})`,
+                }))}
+                listHref="/locations"
+                listLabel="All locations"
+                emptyMessage="Add a location to sell from."
+                quickCreate={
+                  notesOnly ? undefined : (
+                    <QuickLocationDialog onCreated={onLocationCreated} />
+                  )
+                }
+                disabled={notesOnly}
+              />
+              {canOnBehalf && !notesOnly ? (
+                <FrappeField label="Sales rep" required>
+                  <SearchSelect
+                    value={effectiveSoldByUserId}
+                    onValueChange={setSoldByUserId}
+                    options={salesRepOptions}
+                    placeholder="Select rep"
+                    searchPlaceholder="Search by name…"
+                    emptyMessage="No active users found."
+                  />
+                </FrappeField>
+              ) : null}
+              {!notesOnly ? (
+                <>
+                  <FrappeField label="Commission basis">
+                    <SearchSelect
+                      value={commissionBasis}
+                      onValueChange={(v) =>
+                        setCommissionBasis(v as CommissionBasis)
                       }
+                      options={COMMISSION_BASIS_OPTIONS}
+                      searchPlaceholder="Search commission basis…"
                     />
-                  </FrappeGridCell>
-                  <FrappeGridCell>
-                    <LineUomSelect
-                      value={line.uomId || null}
-                      onValueChange={(uomId) =>
-                        updateLine(i, { uomId: uomId ?? "" })
-                      }
-                      item={line.item}
-                      uoms={uoms}
-                      loading={uomsLoading}
-                      disabled={!locationId}
-                    />
-                  </FrappeGridCell>
-                  <FrappeGridCell>
-                    {cut ? (
-                      <Input
-                        type="number"
-                        min="0"
-                        step="any"
-                        className="h-8"
-                        value={line.width}
-                        onChange={(e) =>
-                          updateLine(i, { width: e.target.value })
-                        }
-                        placeholder={widthPlaceholder}
-                        title={
-                          hasDefaultWidth
-                            ? `Width in ${dimSymbol}; blank uses item constant width`
-                            : `Width in ${dimSymbol}`
-                        }
-                        disabled={notesOnly}
-                      />
-                    ) : (
-                      <span className="text-xs text-[var(--frappe-text-muted)]">
-                        —
-                      </span>
-                    )}
-                  </FrappeGridCell>
-                  <FrappeGridCell>
-                    {cut ? (
-                      <Input
-                        type="number"
-                        min="0"
-                        step="any"
-                        className="h-8"
-                        value={line.height}
-                        onChange={(e) =>
-                          updateLine(i, { height: e.target.value })
-                        }
-                        placeholder={`H (${dimSymbol})`}
-                        title={`Height in ${dimSymbol}`}
-                        disabled={notesOnly}
-                      />
-                    ) : (
-                      <span className="text-xs text-[var(--frappe-text-muted)]">
-                        —
-                      </span>
-                    )}
-                  </FrappeGridCell>
-                  <FrappeGridCell>
+                  </FrappeField>
+                  <FrappeField
+                    label="Commission %"
+                    hint={
+                      commissionBasis === "SALES"
+                        ? "Of sale subtotal · default 10%"
+                        : "Of gross profit · default 10%"
+                    }
+                  >
                     <Input
                       type="number"
                       min="0"
-                      step="any"
-                      className="h-8"
-                      value={line.quantity}
-                      onChange={(e) =>
-                        updateLine(i, { quantity: e.target.value })
-                      }
-                      required
-                      disabled={notesOnly}
-                      title={
-                        isCutFilled
-                          ? "Number of pieces of this size"
-                          : `Quantity in ${dimSymbol}`
-                      }
-                      placeholder={isCutFilled ? "Pcs" : "Qty"}
+                      max="100"
+                      step="0.01"
+                      value={commissionPercent}
+                      onChange={(e) => setCommissionPercent(e.target.value)}
+                      placeholder="10"
                     />
-                  </FrappeGridCell>
-                  <FrappeGridCell>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="any"
-                      className="h-8"
-                      value={line.unitPrice}
-                      onChange={(e) =>
-                        updateLine(i, { unitPrice: e.target.value })
-                      }
-                      required
-                      disabled={notesOnly}
-                    />
-                  </FrappeGridCell>
-                </FrappeGridRow>
-              );
-              })}
-            </FrappeGridTable>
-          </FrappeSection>
-        ) : null}
+                  </FrappeField>
+                </>
+              ) : null}
+              {canNegativeStock && !notesOnly ? (
+                <div className="flex items-center gap-2 sm:col-span-2">
+                  <Switch
+                    id="allow-negative"
+                    checked={allowNegativeStock}
+                    onCheckedChange={setAllowNegativeStock}
+                  />
+                  <Label htmlFor="allow-negative">Allow negative stock</Label>
+                </div>
+              ) : null}
+              <FrappeField label="Notes" fullWidth hint="Optional reference">
+                <Input
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="e.g. customer PO"
+                />
+              </FrappeField>
+            </FrappeFormGrid>
+          </TabsContent>
+        </Tabs>
       </FrappeDocument>
 
       <AlertDialog
