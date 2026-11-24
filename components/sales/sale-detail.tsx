@@ -8,6 +8,11 @@ import {
   FrappeSection,
   FrappeButtonLink,
 } from "@/components/frappe";
+import {
+  DocumentLetterFooter,
+  DocumentLetterhead,
+} from "@/components/branding/document-letterhead";
+import { PrintButton } from "@/components/shared/print-button";
 import { SaleDocumentActions } from "@/components/transactions/document-actions";
 import { CreditPaymentsPanel } from "@/components/credits/credit-payments-panel";
 import { formatMoney, formatDate, formatQty } from "@/lib/format";
@@ -83,7 +88,7 @@ export function SaleDetail({
 
   return (
     <div className="mx-auto max-w-5xl space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="no-print flex flex-wrap items-center gap-2">
         <FrappeButtonLink href="/sales">← Back to list</FrappeButtonLink>
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {isVoided ? (
@@ -91,19 +96,23 @@ export function SaleDetail({
           ) : (
             <Badge variant="outline">{paymentLabel}</Badge>
           )}
+          <PrintButton label="Print invoice" />
           <SaleDocumentActions saleId={sale.id} status={sale.status} />
         </div>
       </div>
 
-      <FrappeDocument>
-        <FrappeSection
-          title="Sales invoice"
-          description={
-            sale.createdAt
-              ? `Created ${formatDate(sale.createdAt)}`
-              : undefined
-          }
-        >
+      <FrappeDocument className="print-document">
+        <div className="border-b border-[var(--frappe-border)] px-4 py-4 sm:px-5">
+          <DocumentLetterhead
+            title="Sales invoice"
+            subtitle={
+              sale.createdAt
+                ? `Created ${formatDate(sale.createdAt)}`
+                : undefined
+            }
+          />
+        </div>
+        <FrappeSection title="Details">
           <FrappeFormGrid columns={2}>
             <DetailField
               label="Customer"
@@ -332,13 +341,19 @@ export function SaleDetail({
           )}
         </FrappeSection>
 
+        <div className="px-4 pb-4 sm:px-5">
+          <DocumentLetterFooter />
+        </div>
+
         {credit && !isVoided ? (
-          <CreditPaymentsPanel
-            type="customer"
-            credit={credit}
-            onCreditChange={onRefresh}
-            detailHref={`/credits/customers/${credit.id}`}
-          />
+          <div className="no-print">
+            <CreditPaymentsPanel
+              type="customer"
+              credit={credit}
+              onCreditChange={onRefresh}
+              detailHref={`/credits/customers/${credit.id}`}
+            />
+          </div>
         ) : null}
       </FrappeDocument>
     </div>

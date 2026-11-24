@@ -443,3 +443,43 @@
     padding: 10px;
   }
 }
+
+/* ========================================
+   PRINTABLE DOCUMENTS (invoices / papers)
+======================================== */
+
+@media print {
+  body {
+    background: white !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  [data-slot="sidebar"],
+  [data-sidebar],
+  aside,
+  nav,
+  header.sticky,
+  .frappe-form-toolbar {
+    display: none !important;
+  }
+
+  .print-document {
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  .document-letterhead {
+    break-inside: avoid;
+  }
+
+  a {
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+}

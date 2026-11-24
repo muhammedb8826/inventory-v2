@@ -10,7 +10,8 @@ import {
 } from "react";
 import {
   DEFAULT_BRANDING,
-  DEFAULT_HERO_IMAGE,
+  DEFAULT_LOGO_DARK_SRC,
+  DEFAULT_LOGO_LIGHT_SRC,
   fetchPublicBranding,
   readBrandingCache,
   resolveBrandingAssetUrl,
@@ -21,9 +22,10 @@ import type { BrandingSettings } from "@/lib/types";
 interface BrandingContextValue {
   branding: BrandingSettings;
   appName: string;
-  heroImageSrc: string;
-  headline: string;
-  supportingText: string;
+  logoLightSrc: string;
+  logoDarkSrc: string;
+  /** @deprecated Prefer logoLightSrc / theme-aware BrandLogo */
+  logoSrc: string;
   loading: boolean;
   reload: () => Promise<void>;
   setBranding: (next: BrandingSettings) => void;
@@ -34,9 +36,9 @@ const BrandingContext = createContext<BrandingContextValue | null>(null);
 function isDefaultBranding(b: BrandingSettings) {
   return (
     b.appName === DEFAULT_BRANDING.appName &&
-    !b.heroImageUrl &&
-    (b.headline ?? null) === (DEFAULT_BRANDING.headline ?? null) &&
-    (b.supportingText ?? null) === (DEFAULT_BRANDING.supportingText ?? null)
+    !b.logoLightUrl &&
+    !b.logoDarkUrl &&
+    !b.logoUrl
   );
 }
 
@@ -59,7 +61,6 @@ export function BrandingProvider({
   }, []);
 
   const reload = useCallback(async () => {
-    // Soft refresh: keep current brand visible; never snap back to defaults.
     setLoading(true);
     try {
       const next = await fetchPublicBranding();
@@ -70,8 +71,6 @@ export function BrandingProvider({
   }, [setBranding]);
 
   useEffect(() => {
-    // Prefer SSR payload; only hydrate from cache when SSR fell back to defaults
-    // (e.g. API briefly unreachable during render).
     if (!initialBranding || isDefaultBranding(initialBranding)) {
       const cached = readBrandingCache();
       if (cached && !isDefaultBranding(cached)) {
@@ -85,23 +84,26 @@ export function BrandingProvider({
     void reload();
   }, [initialBranding, reload]);
 
-  const value = useMemo<BrandingContextValue>(
-    () => ({
+  const value = useMemo<BrandingContextValue>(() => {
+    const logoLightSrc = resolveBrandingAssetUrl(
+      branding.logoLightUrl || branding.logoUrl,
+      DEFAULT_LOGO_LIGHT_SRC
+    );
+    const logoDarkSrc = resolveBrandingAssetUrl(
+      branding.logoDarkUrl || branding.logoLightUrl || branding.logoUrl,
+      branding.logoDarkUrl ? DEFAULT_LOGO_DARK_SRC : logoLightSrc
+    );
+    return {
       branding,
       appName: branding.appName,
-      heroImageSrc: resolveBrandingAssetUrl(
-        branding.heroImageUrl,
-        DEFAULT_HERO_IMAGE
-      ),
-      headline: branding.headline ?? DEFAULT_BRANDING.headline!,
-      supportingText:
-        branding.supportingText ?? DEFAULT_BRANDING.supportingText!,
+      logoLightSrc,
+      logoDarkSrc,
+      logoSrc: logoLightSrc,
       loading,
       reload,
       setBranding,
-    }),
-    [branding, loading, reload, setBranding]
-  );
+    };
+  }, [branding, loading, reload, setBranding]);
 
   return (
     <BrandingContext.Provider value={value}>{children}</BrandingContext.Provider>
@@ -114,9 +116,9 @@ export function useBranding(): BrandingContextValue {
     return {
       branding: DEFAULT_BRANDING,
       appName: DEFAULT_BRANDING.appName,
-      heroImageSrc: DEFAULT_HERO_IMAGE,
-      headline: DEFAULT_BRANDING.headline!,
-      supportingText: DEFAULT_BRANDING.supportingText!,
+      logoLightSrc: DEFAULT_LOGO_LIGHT_SRC,
+      logoDarkSrc: DEFAULT_LOGO_DARK_SRC,
+      logoSrc: DEFAULT_LOGO_LIGHT_SRC,
       loading: false,
       reload: async () => undefined,
       setBranding: () => undefined,

@@ -26,7 +26,6 @@ export async function generateMetadata(): Promise<Metadata> {
       template: `%s · ${branding.appName}`,
     },
     description:
-      branding.supportingText ||
       "Multi-location inventory, sales, purchases, and financial reporting",
   };
 }

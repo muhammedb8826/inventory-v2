@@ -87,11 +87,12 @@ export function AppSidebar({
         <Link
           href="/dashboard"
           aria-label={appName}
-          className="flex items-center rounded-xl bg-white px-2.5 py-2 shadow-sm"
+          className="flex items-center rounded-xl bg-transparent px-1.5 py-1.5"
         >
           <BrandLogo
             className="w-full"
-            imgClassName="h-10 w-auto max-w-full"
+            imgClassName="h-10 w-auto max-w-full bg-transparent"
+            forceVariant="dark"
             priority
           />
         </Link>

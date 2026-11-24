@@ -1,23 +1,38 @@
 import { api } from "@/lib/api";
-import type { BrandingSettings, UpdateBrandingBody } from "@/lib/types";
+import type {
+  BrandingSettings,
+  LogoVariant,
+  UpdateBrandingBody,
+} from "@/lib/types";
 
 export const DEFAULT_APP_NAME = "Qenenia ERP";
-export const DEFAULT_LOGO_SRC = "/qenenia-erp-horizontal.png";
-export const DEFAULT_HERO_IMAGE = "/background-image.webp";
-export const DEFAULT_HEADLINE =
-  "Tell us what you need. We will send a clear quote.";
-export const DEFAULT_SUPPORTING_TEXT =
-  "Share a product question or custom request — our team replies by phone or email.";
+/** Default light-mode / print logo (PNG with transparency). */
+export const DEFAULT_LOGO_LIGHT_SRC = "/qenenia-erp-horizontal.png";
+/** Default dark-mode logo — same asset until a dedicated dark file is added. */
+export const DEFAULT_LOGO_DARK_SRC = "/qenenia-erp-horizontal.png";
+export const DEFAULT_LOGO_SRC = DEFAULT_LOGO_LIGHT_SRC;
 
 export const DEFAULT_BRANDING: BrandingSettings = {
   appName: DEFAULT_APP_NAME,
-  heroImageUrl: null,
-  headline: DEFAULT_HEADLINE,
-  supportingText: DEFAULT_SUPPORTING_TEXT,
+  logoLightUrl: null,
+  logoDarkUrl: null,
+  logoUrl: null,
+  legalName: null,
+  tagline: null,
+  email: null,
+  phone: null,
+  website: null,
+  address: null,
+  taxId: null,
+  registrationNumber: null,
+  invoiceHeaderText: null,
+  invoiceFooterText: null,
+  termsAndConditions: null,
+  bankDetails: null,
 };
 
 /** localStorage key so soft client navigations / reloads keep the last known brand. */
-export const BRANDING_CACHE_KEY = "stock_branding_v1";
+export const BRANDING_CACHE_KEY = "stock_branding_v3";
 
 /** API origin without trailing `/api` (for uploaded asset URLs). */
 export function getApiOrigin(): string {
@@ -32,7 +47,7 @@ export function getApiOrigin(): string {
  */
 export function resolveBrandingAssetUrl(
   url: string | null | undefined,
-  fallback: string = DEFAULT_HERO_IMAGE
+  fallback: string = DEFAULT_LOGO_SRC
 ): string {
   if (!url || !url.trim()) return fallback;
   const trimmed = url.trim();
@@ -46,14 +61,35 @@ export function resolveBrandingAssetUrl(
 }
 
 export function normalizeBranding(
-  raw?: Partial<BrandingSettings> | null
+  raw?: Partial<BrandingSettings> & {
+    /** @deprecated API previously returned heroImageUrl for landing hero */
+    heroImageUrl?: string | null;
+  } | null
 ): BrandingSettings {
   const appName = raw?.appName?.trim() || DEFAULT_APP_NAME;
+  const logoLightUrl =
+    raw?.logoLightUrl?.trim() ||
+    raw?.logoUrl?.trim() ||
+    raw?.heroImageUrl?.trim() ||
+    null;
+  const logoDarkUrl = raw?.logoDarkUrl?.trim() || null;
   return {
     appName,
-    heroImageUrl: raw?.heroImageUrl?.trim() || null,
-    headline: raw?.headline?.trim() || DEFAULT_HEADLINE,
-    supportingText: raw?.supportingText?.trim() || DEFAULT_SUPPORTING_TEXT,
+    logoLightUrl,
+    logoDarkUrl,
+    logoUrl: logoLightUrl,
+    legalName: raw?.legalName?.trim() || null,
+    tagline: raw?.tagline?.trim() || null,
+    email: raw?.email?.trim() || null,
+    phone: raw?.phone?.trim() || null,
+    website: raw?.website?.trim() || null,
+    address: raw?.address?.trim() || null,
+    taxId: raw?.taxId?.trim() || null,
+    registrationNumber: raw?.registrationNumber?.trim() || null,
+    invoiceHeaderText: raw?.invoiceHeaderText?.trim() || null,
+    invoiceFooterText: raw?.invoiceFooterText?.trim() || null,
+    termsAndConditions: raw?.termsAndConditions?.trim() || null,
+    bankDetails: raw?.bankDetails?.trim() || null,
     updatedAt: raw?.updatedAt,
   };
 }
@@ -104,19 +140,28 @@ export async function updateBranding(
   return normalizeBranding(data);
 }
 
-export async function uploadHeroImage(file: File): Promise<BrandingSettings> {
+export async function uploadLogo(
+  file: File,
+  variant: LogoVariant = "light"
+): Promise<BrandingSettings> {
   const form = new FormData();
   form.append("file", file);
-  const data = await api<BrandingSettings>("/settings/branding/hero-image", {
-    method: "POST",
-    body: form,
-  });
+  const data = await api<BrandingSettings>(
+    `/settings/branding/logo/${variant}`,
+    {
+      method: "POST",
+      body: form,
+    }
+  );
   return normalizeBranding(data);
 }
 
-export async function clearHeroImage(): Promise<BrandingSettings> {
-  const data = await api<BrandingSettings>("/settings/branding/hero-image", {
-    method: "DELETE",
-  });
+export async function clearLogo(
+  variant: LogoVariant = "light"
+): Promise<BrandingSettings> {
+  const data = await api<BrandingSettings>(
+    `/settings/branding/logo/${variant}`,
+    { method: "DELETE" }
+  );
   return normalizeBranding(data);
 }

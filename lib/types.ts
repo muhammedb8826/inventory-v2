@@ -1092,21 +1092,47 @@ export interface UpdateInquiryBody {
   convertedSaleId?: string | null;
 }
 
-/** Public + admin branding / site appearance settings */
+/** Company branding for app chrome and printable documents */
 export interface BrandingSettings {
   appName: string;
-  /** Absolute URL or path to the hero image; null = use frontend default */
-  heroImageUrl?: string | null;
-  headline?: string | null;
-  supportingText?: string | null;
+  /** Logo for light UI / print (prefer PNG). */
+  logoLightUrl?: string | null;
+  /** Logo for dark UI (prefer PNG). Falls back to light. */
+  logoDarkUrl?: string | null;
+  /** @deprecated Prefer logoLightUrl */
+  logoUrl?: string | null;
+  legalName?: string | null;
+  tagline?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  address?: string | null;
+  taxId?: string | null;
+  registrationNumber?: string | null;
+  invoiceHeaderText?: string | null;
+  invoiceFooterText?: string | null;
+  termsAndConditions?: string | null;
+  bankDetails?: string | null;
   updatedAt?: string;
 }
 
 export interface UpdateBrandingBody {
   appName?: string;
-  headline?: string | null;
-  supportingText?: string | null;
+  legalName?: string | null;
+  tagline?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  website?: string | null;
+  address?: string | null;
+  taxId?: string | null;
+  registrationNumber?: string | null;
+  invoiceHeaderText?: string | null;
+  invoiceFooterText?: string | null;
+  termsAndConditions?: string | null;
+  bankDetails?: string | null;
 }
+
+export type LogoVariant = "light" | "dark";
 
 /** Company commission plan (Settings → Commission). */
 export interface CommissionSettings {

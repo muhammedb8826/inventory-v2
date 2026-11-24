@@ -184,7 +184,7 @@ export const adminNav: NavItem[] = [
     permissions: ["attributes.read", "attributes.write"],
   },
   {
-    title: "Branding",
+    title: "Company & branding",
     href: "/settings/branding",
     icon: Palette,
     permissions: ["settings.read", "settings.write"],
