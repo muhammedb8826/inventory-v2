@@ -1100,3 +1100,26 @@ export interface UpdateBrandingBody {
   headline?: string | null;
   supportingText?: string | null;
 }
+
+/** Company commission plan (Settings → Commission). */
+export interface CommissionSettings {
+  id: string;
+  enabled: boolean;
+  defaultPercent: number;
+  defaultBasis: CommissionBasis;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/** Defaults for sales form (plan rate/basis). */
+export interface CommissionDefaults {
+  enabled: boolean;
+  defaultPercent: number;
+  defaultBasis: CommissionBasis;
+}
+
+export interface UpdateCommissionSettingsBody {
+  enabled?: boolean;
+  defaultPercent?: number;
+  defaultBasis?: CommissionBasis;
+}

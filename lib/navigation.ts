@@ -20,6 +20,7 @@ import {
   MessageSquare,
   MessagesSquare,
   Palette,
+  Percent,
   Ruler,
   Tags,
 } from "lucide-react";
@@ -185,6 +186,12 @@ export const adminNav: NavItem[] = [
     title: "Branding",
     href: "/settings/branding",
     icon: Palette,
+    permissions: ["settings.read", "settings.write"],
+  },
+  {
+    title: "Commission",
+    href: "/settings/commission",
+    icon: Percent,
     permissions: ["settings.read", "settings.write"],
   },
   {

@@ -58,6 +58,7 @@ import { findDefaultLocationId } from "@/lib/inventory-defaults";
 import { buildItemOptionMap, itemOptionsFromMap, parseDocumentLines, productItemId, resolveItem, type DocumentLineBody } from "@/lib/inventory-items";
 import { defaultUomIdForItem, fetchUoms, itemAllowsCuts } from "@/lib/uom";
 import { saleRepUser } from "@/lib/sale-utils";
+import { fetchCommissionDefaults } from "@/lib/commission-settings";
 import { errorMessage, formatMoney, formatQty } from "@/lib/format";
 import {
   COMMISSION_BASIS_OPTIONS,
@@ -163,14 +164,16 @@ export function SaleForm({
     ) {
       return String(sale.commissionPercent);
     }
-    return sale ? "" : "10";
+    return "";
   });
   const [commissionBasis, setCommissionBasis] = useState<CommissionBasis>(
     () => sale?.commissionBasis ?? "PROFIT"
   );
+  const [commissionEnabled, setCommissionEnabled] = useState(true);
   const [notes, setNotes] = useState(sale?.notes ?? "");
   const [linkedInquiryId, setLinkedInquiryId] = useState(inquiryId ?? "");
   const canOnBehalf = hasPermission(user, "sales.on_behalf");
+  const canCommissionOverride = hasPermission(user, "sales.commission");
 
   /** Rep for API/UI: explicit pick, or logged-in user on new sales once auth loads. */
   const effectiveSoldByUserId =
@@ -226,6 +229,35 @@ export function SaleForm({
         : Promise.resolve([]),
     [paymentAccountType]
   );
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchCommissionDefaults()
+      .then((plan) => {
+        if (cancelled) return;
+        setCommissionEnabled(plan.enabled);
+        if (!isEdit) {
+          setCommissionPercent(String(plan.defaultPercent));
+          setCommissionBasis(plan.defaultBasis);
+        } else if (
+          sale?.commissionPercent == null ||
+          sale.commissionPercent === ""
+        ) {
+          setCommissionPercent(String(plan.defaultPercent));
+          if (!sale?.commissionBasis) setCommissionBasis(plan.defaultBasis);
+        }
+      })
+      .catch(() => {
+        /* keep form usable offline from plan; API applies settings on save */
+        if (!cancelled && !isEdit && !commissionPercent) {
+          setCommissionPercent("10");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isEdit, sale?.id]);
 
   useEffect(() => {
     if (isEdit || !inquiryId) return;
@@ -414,7 +446,8 @@ export function SaleForm({
     if (canOnBehalf && effectiveSoldByUserId) {
       body.soldByUserId = effectiveSoldByUserId;
     }
-    if (commissionPercent.trim()) {
+    // Only managers with sales.commission may override the company plan.
+    if (canCommissionOverride && commissionPercent.trim()) {
       const pct = parseFloat(commissionPercent);
       if (!Number.isNaN(pct)) {
         if (pct < 0 || pct > 100) {
@@ -976,7 +1009,16 @@ export function SaleForm({
               ) : null}
               {!notesOnly ? (
                 <>
-                  <FrappeField label="Commission basis">
+                  <FrappeField
+                    label="Commission basis"
+                    hint={
+                      !commissionEnabled
+                        ? "Commissions disabled in Settings"
+                        : canCommissionOverride
+                          ? "Company plan — override allowed"
+                          : "From company plan (read-only)"
+                    }
+                  >
                     <SearchSelect
                       value={commissionBasis}
                       onValueChange={(v) =>
@@ -984,14 +1026,17 @@ export function SaleForm({
                       }
                       options={COMMISSION_BASIS_OPTIONS}
                       searchPlaceholder="Search commission basis…"
+                      disabled={!canCommissionOverride || !commissionEnabled}
                     />
                   </FrappeField>
                   <FrappeField
                     label="Commission %"
                     hint={
-                      commissionBasis === "SALES"
-                        ? "Of sale subtotal · default 10%"
-                        : "Of gross profit · default 10%"
+                      !commissionEnabled
+                        ? "Plan disabled — amount will be 0"
+                        : commissionBasis === "SALES"
+                          ? "Of sale subtotal"
+                          : "Of gross profit"
                     }
                   >
                     <Input
@@ -999,9 +1044,12 @@ export function SaleForm({
                       min="0"
                       max="100"
                       step="0.01"
-                      value={commissionPercent}
+                      value={
+                        commissionEnabled ? commissionPercent : "0"
+                      }
                       onChange={(e) => setCommissionPercent(e.target.value)}
-                      placeholder="10"
+                      placeholder="—"
+                      disabled={!canCommissionOverride || !commissionEnabled}
                     />
                   </FrappeField>
                 </>
